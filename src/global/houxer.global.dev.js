@@ -40,10 +40,10 @@ const Houxit=(function(global){
   const E_Obj=Object.freeze({});
   const inBrowserCompiler = typeof self !== "undefined" && typeof self === "object";
   const variableDeclarationRegex=/([\s\S]+[^=]*)[ ]*=[ ]*([\s\S]+)?|([\w_$\-]+)/m;
-  const templateClassVslidatorRegex=/^([\w\-$.[\]\(\)]+)::/;
+  const templateClassValidatorRegex=/^([\w\-$.[\]\(\)]+)::/;
   const invalidIdentifierCharRegex=/[='"!@#%^&*()+\-\[\]{};:\\|,.<\/? ]/;
   const invalidAccessorCharRegex=/[='"!@#%^&*(){};:\\|,<? ]/;
-  const isValidAccessor=variable => isString(variable) && /[\w$]/.test(variable.at(0)) && !invalidAccessorCharRegex.test(variable);
+  const isValidAccessor=variable => isString(variable) && /[a-zA-Z_$]/.test(variable.at(0)) && !invalidAccessorCharRegex.test(variable);
   const isValidIdentifier=variable => isString(variable) && /[\w$]/.test(variable.at(0)) && !invalidIdentifierCharRegex.test(variable);
   const constBlockContext="if_Block,for_Block,slots_Block,children_Block";
   const isValidCtxType=type=>_makeMap_(constBlockContext, type);
@@ -109,13 +109,13 @@ const Houxit=(function(global){
     handlers:Object, 
     params:[Array, Object], 
     buildConfig:Object, 
-    styleSheet:String, 
+    stylesheet:String, 
     directives:Object, 
     template:String, 
     name:String, 
     observers:Object, 
     templateSrc:String, 
-    styleSheetSrc:String, 
+    stylesheetSrc:String, 
     filters:Object, 
     blocks:Object,
     signals:Array, 
@@ -125,7 +125,7 @@ const Houxit=(function(global){
     markdownSrc:String, 
     markdown:String,
     context:Function,
-    derived:Object,
+    computed:Object,
     mixins:Array,
     onTracked:Function,
     onEffect:Function,
@@ -153,9 +153,9 @@ const Houxit=(function(global){
   const nonAFuncMethod=fnName=> _makeMap_(plainFunctionOptions, fnName);
   const calledOnceFNOptions="model,preBuild,postBuild,preMount,postMount,onTracked,build,onSlotRender"
   const isCalledOnceOpt=opt=>_makeMap_(calledOnceFNOptions, opt)
-  const nodeJSOnlyOption="markdownSrc,styleSheetSrc,templateSrc";
+  const nodeJSOnlyOption="markdownSrc,stylesheetSrc,templateSrc";
   const isNodeJSOnlyOption=opt=>_makeMap_(nodeJSOnlyOption, opt);
-  const primaryKeyOptions="build,styleSheetSrc,styleSheet,templateSrc,template,name,markdownSrc,markdown,context";
+  const primaryKeyOptions="build,stylesheetSrc,stylesheet,templateSrc,template,name,markdownSrc,markdown,context";
   const isPrimaryKeyOption=opt=>_makeMap_(opt, primaryKeyOptions);
   const isArgument=arg=>_toStringCall(arg) === "[object Arguments]";
   function len(obj){
@@ -196,7 +196,7 @@ const Houxit=(function(global){
     return false;
   }
   const dataStringTypes="string,function,object,array,boolean,number,symbol,set,map,bigint,set,map,weakmap,weakset,date,weakref,promise,proxy,tuple";//Valid javascript datatypes
-  const isValidDataStringType=obj=>_makeMap_(dataTypes, obj);//checks if a string value is a dataTypes return text
+  const isValidDataTypeString=obj=>_makeMap_(dataTypes, obj);//checks if a string value is a dataTypes return text
   class Tuple extends BaseTuple{
     constructor(){
       super(...arguments);
@@ -261,7 +261,7 @@ const Houxit=(function(global){
     isVNodeClass(node) || isTemplateClass(node);
   }
   function isChildrenNode(val){
-    return isPrimitive(val) || isNativeElement(val) || validateType(val, [Array, HouxitElement, slotInstanceMap, vNodeClass, BaseTemplateClass]);
+    return isPrimitive(val) || isPFunction(val) || isNativeElement(val) || validateType(val, [ Array, HouxitElement, slotInstanceMap, vNodeClass, BaseTemplateClass]);
   }
   function isChildrenObjInstances(val){
     if(!isChildrenObj(val)) return false;
@@ -306,7 +306,7 @@ const Houxit=(function(global){
   class slotInstanceMap{
     slots=new Object();
     constructor(opts){
-      entries(opts).forEach((value, name)=>this.slots[name]=value);
+      entries(opts).forEach(([ name, value ])=>this.slots[name]=value);
     }
   }
   const isSlotInstance=val=> val instanceof slotInstanceMap;
@@ -318,9 +318,9 @@ const Houxit=(function(global){
   const isHouxitNativeElement=vnode=> vnode instanceof HouxitNativeElement;
   const isHouxitCustomNativeElement=vnode=> vnode instanceof HouxitCustomNativeElement;
   const isHouxitFragmentElement=vnode => vnode instanceof HouxitFragmentElement;
-  const readonlyModelProps="$element,$params,$attrs,$signals,$slots,$parent,$root";
-  const proxySkipped="$element,$signals,$parent,$root,$observe,$useAgent,$tick,$write,$effectHook,[[[reactive__Token]]],$params,$attrs";
-  const validTokenConfigOptions="onTrack,onEffect,isDerived,isReadonly,isShallow"
+  const readonlyModelProps="$element,$params,$attrs,$events,$signals,$slots,$parent,$root";
+  const proxySkipped="$element,$signals,$parent,$root,$observe,$useAgent,$tick,$write,$adapter,[[[reactive__Token]]],$params,$attrs,$events";
+  const validTokenConfigOptions="onTrack,onEffect,isComputed,isReadonly,isShallow"
   const isProxySkipped=prop=>_makeMap_(proxySkipped, prop);
   function createObj(name, props){
     if(len(arguments) === 1 && isPObject(name)) props=name;
@@ -356,12 +356,14 @@ const Houxit=(function(global){
   class Attrs{};
   class Slots{};
   class Signals{};
+  class Events{};
   class ReactiveEffectObject{};
   const isModelInstance=model=>model instanceof Model;
   const isParamsInstance=param=>param instanceof Params;
   const isAttrsInstance=param=>param instanceof Attrs;
   const isSlotsInstance=param=>param instanceof Slots;
   const isSignalsInstance=param=>param instanceof Signals;
+  const isEventssInstance=param=>param instanceof Events;
   const isREffObj=param=>param instanceof ReactiveEffectObject;
   const isClassBasedBuild=build=>isHouxitBuild(build) && build[$$$ownProperties].widgetType === 'class-based';
   const isFunctionBasedBuild=build=>isHouxitBuild(build) && build[$$$ownProperties].widgetType === 'function-based';
@@ -427,6 +429,9 @@ const Houxit=(function(global){
   const isSpecProp = prop => widgetSpecialAttrProps.has(prop);
   const isBuiltinBlocks=block=>_makeMap_("if,else,else:if,for,const,class,new,debugger,html", block);
   const isBuiltinVoidBlocks=block=>_makeMap_("else,else:if,const,new,debugger,html", block);
+  function is_rerender(self){
+    return isHouxitBuild(self) && isTrue(self[$$$operands].initializedRender);
+  }
   function createRenderFN(self, fn){
     if(!isPFunction(fn)){
       $debug_log(`parameter 2 of "createRenderFN" macro expects a plain Function`);
@@ -567,7 +572,7 @@ const Houxit=(function(global){
       }else if(isAllowedAdapterOpts(key)){
         adaptableComposers[key](value);
       }else if(isInvalidInjectorOpt(key)){
-        $debug_log(`invalid option "${key}" passed to options Adapter: not a valid  adapter.\n\nuse the options API instead`, self);
+        $debug_log(`invalid option "${key}" passed to options Adapter: not a valid  adapter.\n\nuse the options API macros instead`, self);
       }else{
         self[$$$core].opts[key]=value;
       }
@@ -596,14 +601,14 @@ const Houxit=(function(global){
       if(hasOwn(origin, key)){ //check if key exists inorih  object
         if(isOnListener(key)) {
           const value =  (!isArray(origin[key]) ? [origin[key]] : origin[key] );
-          const itemData = ( !isArray( item ) ? [ item ] : item ) ;
+          const itemData = (arrayInverter( item )) ;
           origin[ key ] = [ ...value, ...itemData ];
         }else if(key === 'class'){
           const patchRecord= new Tuple();
           mapClassTypeTransform(origin[key], patchRecord);
-          origin[key]=mapClassTypeTransform(item, patchRecord);
+          origin.class=mapClassTypeTransform(item, patchRecord);
         }else if(key === 'style'){
-          origin[key]={
+          origin.style={
             ...compileStyleProps(null, origin[key], {}),
             ...compileStyleProps(null, item, {})
           }
@@ -654,11 +659,11 @@ const Houxit=(function(global){
     const { name, max, validators, self, required, min, count, validator }=config;
     /* a string 'name', number max, array validator, houxit self instance and indexes of required arguments */
     if(isNumber(max) && len(args) > max) {
-      $debug_log(max === 0 ? `${name} Adapter does not accept any Argument` : `Parameter arguments received at ${name} macro exceds validator arguments maximum count\n\n"${name}()" expects only maximum of ${max} arguments`, self);
+      $debug_log(max === 0 ? `${name} Adapter does not accept any Argument` : `Parameter arguments received at ${name} macro exceds validator arguments maximum count\n\n"${name}()" expects only maximum of "${max}" arguments`, self);
       return false;
     }
     if( min && len(args) < min ) {
-      $debug_log(`"${name}" function expects atleastt ${min} minimum of arguments\n\n${len(args)} received`, self);
+      $debug_log(`"${name}" function expects atleast "${min}" minimum of arguments\n\n${len(args)} received`, self);
       return false;
     }
     if(!isUndefined(count) && !len(args) === count){
@@ -705,7 +710,7 @@ const Houxit=(function(global){
     let { name, props, self,  } = config ;
     if(!isObject(config)){
       $debug_log(`configuration parameter at argument 2 of validatorProps expects a plain javascript object`);
-      return
+      return;
     }else if(!isPObject(value) || hasOwn(value, 'props') && !isPObject(value.props)){
       $debug_log(`unexpected value received at "${name}, validation for ${isPObject(value) ? '{}.prop' : '{}'}" adapter\n\nInvalid input type :: expects a plain Object`, self);
       return false;
@@ -759,7 +764,7 @@ const Houxit=(function(global){
     const { initial, updateFlags, subscribers, ModelInstance, computed } =
     computed__Token[refInternalEffectKey];
     if(!deepEqualityCheck(initial,
-    callDepsGetters(subscribers)) || updateFlags){
+    callArrGetters(subscribers)) || updateFlags){
       computed__Token[refInternalEffectKey].updateFlags=0;
       const getCookie = computed.call(ModelInstance) ;
       computed__Token[refInternalEffectKey].cache=getCookie;
@@ -848,7 +853,7 @@ const Houxit=(function(global){
       effectZoom:false,
       isShallow:false,
       isReadonly:false,
-      isDerived:false,
+      isComputed:false,
       refGenreId:undefined
     } );
   }
@@ -857,9 +862,9 @@ const Houxit=(function(global){
     else return d_o.getter;//accessing getter from dirty_object
   }
   function defineTokenRuntime_Carriers(effective, watchers, metrics){
-    const { isFactoryToken, isDerived, isReadonly, isShallow, accessor, config } = metrics ;
+    const { isFactoryToken, isComputed, isReadonly, isShallow, accessor, config } = metrics ;
     const returnValue=()=>{
-      if(isDerived) return deferTokenComputedGetter(this, effective, watchers);
+      if(isComputed) return deferTokenComputedGetter(this, effective, watchers);
       return unwrap(effective);
     }
     const descriptor = {};
@@ -879,7 +884,7 @@ const Houxit=(function(global){
       if(hasOwn(watchers.factoryObject, 'set')) descriptor.set=watchers.factoryObject.set;
     }else{
       descriptor.get= function(){
-        dirty_object.getter=()=>isDerived ? returnValue() : effective[accessor()]  ;
+        dirty_object.getter=()=>isComputed ? returnValue() : effective[accessor()]  ;
         watchers.effectTrack()
         return dirty_object.getter();
       }
@@ -914,13 +919,13 @@ const Houxit=(function(global){
       delete config.readonly;
     }
     config = assign(config, reConfig);
-    const { isReadonly=false, isDerived=false, isShallow=false } = config;
+    const { isReadonly=false, isComputed=false, isShallow=false } = config;
     refLifeCircleHooksConfig.call(this, watchers,  config );
     effective[accessor()]=_createReactiveProxyCollectons( effective[accessor()], watchers, isShallow, config);
     this[refInternalEffectKey]=watchers;
     const descriptors = defineTokenRuntime_Carriers.call(this, effective, watchers, { 
       isFactoryToken, 
-      isDerived, 
+      isComputed, 
       isReadonly, 
       isShallow, 
       accessor, 
@@ -931,7 +936,7 @@ const Houxit=(function(global){
     assign(watchers, {
       isReadonly,
       isShallow,
-      isDerived,
+      isComputed,
       watchGetters:false,
       isStateToken:false,
       ModelInstance:undefined,
@@ -1017,7 +1022,7 @@ const Houxit=(function(global){
   function __Houxit__Tokenizer__Machine___( target , config={} ) {
     if(!isToken(target)) {
       if(isComputedMacro(target)){
-        $debug_log(`Unaccepted computed token cache passed to a Token\nWill not compile...`);
+        $debug_log(`Unaccepted computed token cache passed to a Token\n....Will not compile...`);
         return target;
         // target = hydrateComputedTokenTransform(self, target, true);
       }
@@ -1211,8 +1216,7 @@ const Houxit=(function(global){
         $debug_log(`"${prop}" not found in model instance\n\n..............at......"$write"`, this, true);
         return false
       }
-      const [ V, mutate ] = this.__public_model__.$useAgent(prop);
-      mutate( agent => agent.write(value));
+      this.__public_model__.$useAgent(prop)[1]( ({ write})=> write(value));
     }
     return true;
   }
@@ -1394,8 +1398,8 @@ const Houxit=(function(global){
   function isShallowReadonlyToken(value){
     return isReadonlyToken(value) && isShallowToken(value)
   }
-  function isDerived(value){
-    return isReadonlyToken(value) && value[refInternalEffectKey].isDerived;
+  function isComputed(value){
+    return isReadonlyToken(value) && value[refInternalEffectKey].isComputed;
   }
   function fromReadonlyToken(ref, config){
     if(!isToken(ref)) return token(ref, config);
@@ -1545,7 +1549,7 @@ const Houxit=(function(global){
   }
   function genericStreamTransform(stream, config, types){
     if(isPrimitive(stream)){
-      $debug_log(`Value Exception\nFailed to convert a primutive Value to a streamable object\n\nExpects a plain object or a collection`);
+      $debug_log(`Value Exception\nFailed to convert a primitive Value to a streamable object\n\nExpects a plain object or a collection`);
       return ;
     }else {
       types = new Tuple(...types);
@@ -1597,7 +1601,7 @@ const Houxit=(function(global){
     return isTuple(obj) ? obj : Object.freeze(obj);
   }
   function effectDependencyTracking(self, fn , args=[]){
-    args=!isArray(args) ? [args] : args;
+    args=arrayInverter(args);
     self[$$$operands].onEffectWatch = true;
     const value = fn(...args);
     self[$$$operands].onEffectWatch=false;
@@ -1631,23 +1635,23 @@ const Houxit=(function(global){
     })
     if(!response) return pass;
     const self=getCurrentRunningEffect({
-      name:'effectHook'
+      name:'adapter'
     });
     if(!self ){
-      $debug_log(`effectHook called out of scope`);
+      $debug_log(`adapter called out of scope`);
       return pass;
     }
     return EffectAdapterHook.call(self, ...arguments);
   }
-  function effectHook(fn, config){
+  function adapter(fn, config){
     return _runGlobalEffectHook(...arguments);
   }
   function EffectAdapterHook(fn, config={}){
     if(!isPFunction(fn)){
-      $debug_log(`"effectHook" at parameter 1 argument expects a plain function`, this, true);
+      $debug_log(`"adapter" at parameter 1 argument expects a plain function`, this, true);
       return ;
     }else if(len(arguments) > 1 && !isPObject(config)){
-      $debug_log(`config parameter 2 argument of effectHook expects a plain object`);
+      $debug_log(`config parameter 2 argument of adapter expects a plain object`);
       return;
     }
     config.initial=false;
@@ -1655,13 +1659,16 @@ const Houxit=(function(global){
       return fn();
     } );
     const stoper=this.__public_model__.$observe(subscribers, fn, config);
-    return function stopEffect(callback){
+    function stopEffect(callback){
       if(len(arguments) ) {
         if(isPFunction(callback)){
           callback[effectHookValueKey]=returnValue;
           stoper(callback);
         }
       }else stoper();
+    }
+    return function stopEffect(...args){
+      return stopEffect(...args);
     }
   }
   class Type{
@@ -1975,11 +1982,15 @@ const Houxit=(function(global){
       validators:[Number],
       name:"Tuple.at()"
     })) return;
-    if(index < 0 && index > this.size){
+    index=Number(index);
+    if(isNaN(index)){
+      $debug_log(`index passed to Tuple.at() is not a number`);
+      return undefined;
+    }else if(index < 0 && index > this.size){
       $debug_log(`index exceded Tuple limit.........\n"at()"`);
       return null
     }
-    return this.list()[Number(index)];
+    return this.list()[index];
   }
   BaseTuple.prototype.list=function list(){
     return [ ...this[$$tupleStore].array ] ;
@@ -2000,7 +2011,7 @@ const Houxit=(function(global){
     return this.list().forEach(...arguments);
   }
   BaseTuple.prototype.contains = function contains(...args){
-    if(!len(args)) return true;
+    if(!len(args)) return false;
     for (let item of args.values()){
       if(!this.has(item)) return false;
     }
@@ -2031,9 +2042,9 @@ const Houxit=(function(global){
     }
     return self;
   }
-  function _compose(value, config){
+  function _createAgent(value, config){
     const response=validateCollectionArgs(arguments, {
-      name:'compose',
+      name:'createAgent',
       required:[true, false ],
       min:1,
       max:2,
@@ -2041,15 +2052,15 @@ const Houxit=(function(global){
     });
     if(!response) return pass
     const self=getCurrentRunningEffect({
-      name:'compose'
+      name:'createAgent'
     })
     if(!self) return [ pass, pass ];
     const parameters = exists(config) ? [ value, config ] : [ value ] ;
     const state = !isToken(value) && !isPrimitive(value) ? stream(...parameters) : token(...parameters);
     return _useAgent_(state);
   }
-  function compose(value, config){
-    return _compose(...arguments);
+  function createAgent(value, config){
+    return _createAgent(...arguments);
   }
   function deferWatch(getter){
     if(!isPFunction(getter)){
@@ -2197,12 +2208,14 @@ const Houxit=(function(global){
     forwardSlot:Boolean, 
     forwardAttrs:Boolean, 
     delimiters:Array, 
-    scopedStyleSheet:Boolean, 
+    scopedStyleSheet:Boolean,
+    forwardEvents:Boolean
   }
   class FrameworkCompilerOptions{
     debug=true
     forwardSlot=true
     forwardAttrs=true
+    forwardEvents=this.forwardAttrs;
     delimiters=['{{','}}']
     scopedStyleSheet=true
   }
@@ -2216,6 +2229,10 @@ const Houxit=(function(global){
     forwardAttrs(forwardAttrs){
       if(isFalse(mapSettingCheck(this, 'forwardAttrs', forwardAttrs))) return this;
       Compiler_Config_Options.forwardAttrs=forwardAttrs
+    }
+    forwardEvents(forwardEvents){
+      if(isFalse(mapSettingCheck(this, 'forwardEvents', forwardEvents))) return this;
+      Compiler_Config_Options.forwardEvents=forwardEvents
     }
     forwardSlot(forwardSlot){
       if(isFalse(mapSettingCheck(this, 'forwardSlot', forwardSlot))) return this;
@@ -2238,7 +2255,8 @@ const Houxit=(function(global){
       return false;
     }
   }
-  const reverseRegex=new RegExp(`(${escapeRegExp("*****")}[\\d])`, 'g');
+  const extractorArsterists="*****";
+  const reverseRegex=new RegExp(`(${escapeRegExp(extractorArsterists)}[\\d])`, 'g');
   function ArgsExtractor(source, funcN, config={}){
     const orgFName=funcN;
     config=assign({
@@ -2254,7 +2272,7 @@ const Houxit=(function(global){
     let draftCount=0;
     source=source.replace(stringsMonitorRegex, (match, rex, roll)=>{
       drafts.push(match);
-      let dataDraft="*****"+draftCount;
+      let dataDraft=extractorArsterists+draftCount;
       draftCount++;
       return dataDraft;
     });
@@ -2356,8 +2374,9 @@ const Houxit=(function(global){
         node=textContent;
         hx_Element.$element=textContent;
       }
-      if(len(subscribers)) hx_Element.VNodeManager.patchFlags.subscriptions.extend(subscribers);
-    }else if(is_hyperscript && isRerender) {
+      if(len(subscribers) && !isRerender) hx_Element.VNodeManager.patchFlags.subscriptions.extend(subscribers);
+    }
+    if(isRerender && (is_hyperscript || !hasSpecialCharacters(text))){
       node = text;
       hx_Element.$element=text;
     }
@@ -2383,7 +2402,7 @@ const Houxit=(function(global){
         this.key=this.props.key;
         delete this.props.key;
       }
-      this.children= exists(children) && !isArray(children) ? [ children ] : exists(children) ? children : null;
+      if(children) this.children=arrayInverter(children);
       let { subs, ctx, is_hyperscript, key, config, self, flags=[] } = configOptions;
       this.ctx=ctx;
       for(let fl of flags.values()){
@@ -2403,7 +2422,7 @@ const Houxit=(function(global){
       $$$Events:{},
       $Model_Event:null,
       $Notifiers:null,
-      $StarterKit:null
+      $StarterKit:null,
     }
     rawChildren=null
     rawProps=null
@@ -2415,7 +2434,7 @@ const Houxit=(function(global){
     GeneticProvider=null
   }
   class vNodeClass extends BasevNodeClass{
-    constructor(type, propsOrChildren, childrenOrProps, config){
+    constructor(){
       super(...arguments);
     }
   }
@@ -2444,10 +2463,10 @@ const Houxit=(function(global){
     $element=undefined
     slot_name=undefined
     widget_instance=undefined
-    updated_hook=pass
-    destroyed_hook=pass
-    _vnode_key=undefined
-    patch_tracks=new Set()
+    updated_hook=pass;
+    destroyed_hook=pass;
+    _vnode_key=undefined;
+    patch_tracks=new Set();
     conditional_record={ 
       src:undefined, 
       res:false,
@@ -2487,7 +2506,7 @@ const Houxit=(function(global){
       KEYS_INDEXES:new Tuple(),
       LEAGUE_TREE:{},
       PRIORITIES:{},
-      ELEMENTS:new Tuple()
+      ELEMENTS:undefined
     }
     hx_build=undefined
     is_hyperscript=false
@@ -2662,8 +2681,8 @@ const Houxit=(function(global){
     const [ hasIf, hasElseIf , hasElse ] = recordPatch[3];
     const condCount=hasMultiConditionals(hasIf, hasElse, hasElseIf);
     if(condCount > 1){
-      $debug_log(`((directive))>.....Numerous Conditional directive found on element instance\n\n
-        "${hasIf ? "$$if" : hasElseIf ? "$$else-if" : "$$else" }"`, self, true);
+      $debug_log(`((directive))>.....Overloaded Conditional directive found on element instance\n\n
+        "${hasIf ? "$$if" : hasElseIf ? "$$else-if" : "$$else" }"\nfailed to determine>>>>`, self, true);
       return ;
     }
     const GIC=new _$Directive_$Conditional$_Renderer(self, vnode, hx_Element, siblings, recordPatch, ctx);
@@ -2693,7 +2712,7 @@ const Houxit=(function(global){
     Panel_If_Block(){
       const { self, propValue, hx_Element, vnode, siblings, srcKey, ctx } = this ;
       let data=_$runModelBind(self, propValue, ctx);
-      this.vnode=memMove(vnode, true)
+      this.vnode=memMove(vnode, true);
       delete this.vnode.props[srcKey];
       if(!data) return $IfElseDirRenderLess.call(this, data, 'if');
       const node=this.createElement();
@@ -3039,7 +3058,7 @@ const Houxit=(function(global){
       if this is a customElement, make sure its defined through the "customElements.define()" method `, self, true);
   }
   function isCustomElementTagname(tagname){
-    return isFunction(customElements.get(tagname));
+    return isPFunction(customElements.get(tagname));
   }
   function translateVElementNormalizer(virtualElement, self){
     
@@ -3072,6 +3091,9 @@ const Houxit=(function(global){
     }
     hx_Element._vnode_key=key || undefined;
   }
+  function createFragmentMove(vElement){
+    
+  }
   function HouxitTemplateGenerators(vnode, self, is_hyperscript=false, ctx, siblings, ssc, hx_Element, starterKit, isWidget=false){
     vnode.hx_Element=this;
     this.VNodeManager.vNodeClass=vnode;
@@ -3090,6 +3112,7 @@ const Houxit=(function(global){
     customElementsArgs.pop();
     const element=generateTemplateElement(vnode, self, this, siblings,
     vnode.IS_RENDERLESS, customElementsArgs, starterKit);
+    if(isRerender && isWidget && slotBindings) this.compiler_options.createSlot=()=> _HouxitTemplateParser(vnode.children, self, null, this, assign({}, hx_Element.LabContext));
     if(!isRerender && isHouxitNativeElement(this)) HouxitElementLifeCircleHooks(self, element, this);
     this.$element=element;
     if(!isRerender){
@@ -3122,34 +3145,40 @@ const Houxit=(function(global){
     constructor(vnodes=[], self, hx_Element, key){
       super();
       if(!isHouxitBuild(self)) self=null;
-      vnodes=!isArray(vnodes) ? [vnodes] : vnodes;;
+      vnodes=arrayInverter(vnodes);
       let index=0;
       const isRerender = self ? self[$$$operands].initializedRender : undefined;
       const fragment = !isRerender ?  _createFragment() : undefined;
-      const template=!isRerender ? document.createElement('template') : undefined;
-      template?.append(document.createTextNode(""));
+      const start_el=document.createComment("");
+      fragment?.append(start_el);
       for(let [ key, node ] of vnodes.entries()){
         if(!node && !fragment) continue;
         if(isHouxitElement(node)) this.NodeList.add(node);
-        template?.append(node.$element);
+        fragment?.append(node.$element);
         resolve_keyed_mapping(this, node, index, self);
         index ++;
       }
-      template?.append(document.createTextNode(""));
+      const end_el=document.createComment("");
+      fragment?.append(end_el);
       evaluateKeyOnElement(this, key, self);
       if(!isRerender){
-        for(const [ index, els ] of entries(template.childNodes)){
-          this.VN_Tree.ELEMENTS.add(els);
-          fragment.append(els);
+        this.VN_Tree.ELEMENTS=()=>{
+          const recorder=new Tuple();
+          if(!isInDomNode(start_el)) return;
+          let node = start_el;
+          while(node){
+            let next = node.nextSibling;
+            if(!IS_COMMENT_NODE(node) && node) recorder.add(node);
+            if(node === end_el) break;
+            node = next;
+          }
+          return recorder;
         }
       }
       this.$element=fragment;
     }
-    forEach(callback){
-      return this.NodeList.forEach(callback);
-    }
     upload(callback){
-      this.VN_Tree.ELEMENTS.forEach((el, ind)=> callback(el));
+      this.VN_Tree.ELEMENTS().forEach((el, ind)=> callback(el));
     }
   }
   class HouxitRenderlessElement extends HouxitFragmentElement{
@@ -3225,17 +3254,17 @@ const Houxit=(function(global){
       count:1,
       validators:[[Object, Function]],
       required:[true],
-      name:"renderSlots"
+      name:"enSlot"
     })) return ;//renderimg of slots contents in hyperscript;
     if(isClass(options)){
-      $debug_log(`Uresolved function type ---- received at "renderSlots"\n\nSeems to be a "class" instance value type`);
+      $debug_log(`Uresolved function type ---- received at "enSlot"\n\nSeems to be a "class" instance value type`);
       return;
     }else if(isPFunction(options)) options={
       default:options
     }
     return new slotInstanceMap(options);
   }
-  function renderSlots(options){
+  function enSlot(options){
     return __renderSlots__(...arguments);
   }
   const isHouxitWidgetElement=vnode=> vnode instanceof HouxitWidgetElement;
@@ -3296,17 +3325,13 @@ const Houxit=(function(global){
     let { type, props, children, key } = virtualNode;
     const argsCount=len(arguments);
     let element;
-    const is_hyperscript=hx_Element?.is_hyperscript || false;
+    const is_hyperscript=virtualNode.is_hyperscript;
     const isRerender=self[$$$operands]?.initializedRender;
-    if(isString(type)){
-      if(!isRerender ){
-        element=document.createElement(type);
-        if(hx_Element) {
-          if(isHouxitBuild(self)) {
-            hx_Element.hx_build=self[$$$ownProperties].hx_build
-            if(self[$$$ownProperties].hx_build) element.setAttribute("data-hx_build", self[$$$ownProperties].hx_build);
-          }
-        }
+    if(!isRerender && isString(type)){
+      element=document.createElement(type);
+      if(hx_Element && isHouxitBuild(self)) {
+        hx_Element.hx_build=self[$$$ownProperties].hx_build
+        if(self[$$$ownProperties].hx_build) element.setAttribute("data-hx_build", self[$$$ownProperties].hx_build);
       }
     }
     const metrics ={
@@ -3323,7 +3348,7 @@ const Houxit=(function(global){
     }
     let childNodes;
     if(children && !IS_HTML_VOID_TAG(type)) {
-      if( hasOwn(virtualNode.filesFilter ,'dir--raw')){ 
+      if(!isRerender && hasOwn(virtualNode.filesFilter ,'dir--raw')){ 
         const item= _$runModelBind(self, virtualNode.filesFilter['dir--raw'], hx_Element, true);
         if(item){
           const content=escapeDecoder(virtualNode.rawChildren);
@@ -3332,7 +3357,7 @@ const Houxit=(function(global){
         }
       } else {
         childNodes=_HouxitTemplateParser(children, self, true, hx_Element, assign({}, hx_Element.LabContext));
-        childNodes = childNodes && !isArray(childNodes) ? [ childNodes ] : isArray(childNodes) ? childNodes : [];
+        childNodes = arrayInverter( childNodes );
         let index=0;
         for(let [key, els] of childNodes.entries()){
           if(!els) continue;
@@ -3369,20 +3394,19 @@ const Houxit=(function(global){
   function _createWidgetElement(virtualNode, self, hx_Element, siblings,IS_RENDERLESS, customElementsArgs, starterKit){
     let { type, props, children, prototype_ } = virtualNode;
     const is_hyperscript=hx_Element?.is_hyperscript;
+    const isRerender=self[$$$operands].initializedRender;
     let buildInstance;
     const slotsCompilerArgs={
       self,
       hx_Element,
       isRerender:self[$$$operands]?.initializedRender,
-      is_hyperscript,
-      IS_RENDERLESS,
     }
-    if(!is_hyperscript){
-      slotsCompilerArgs.config={};
-      buildInstance=ResolveWidget(self, hx_Element, virtualNode, IS_RENDERLESS, slotsCompilerArgs)//reso;ving a widget data object
-     if(buildInstance) hx_Element.hx_build=buildInstance[$$$ownProperties].hx_build;
-    }else if(validHouxitWidget(type)) buildInstance =$compilerEngine(self, virtualNode, hx_Element, slotsCompilerArgs);
-    if(buildInstance && buildInstance[$$$ownProperties]?.slot_name) hx_Element.slot_name=buildInstance[$$$ownProperties].slot_name;
+    if(!is_hyperscript) slotsCompilerArgs.config={};
+    if(validHouxitWidget(prototype_)) buildInstance =$compilerEngine(self, virtualNode, hx_Element, slotsCompilerArgs);
+    if(buildInstance){
+      if(!is_hyperscript) hx_Element.hx_build=buildInstance[$$$ownProperties].hx_build;
+      if(buildInstance[$$$ownProperties]?.slot_name) hx_Element.slot_name=buildInstance[$$$ownProperties].slot_name;
+    }
     return isHouxitBuild(buildInstance) ? buildInstance.$build?.$element : undefined;;
   }
   function createWidgetElement(virtualNode, metrics ){
@@ -3514,7 +3538,7 @@ const Houxit=(function(global){
         let draftCount=0;
         text=text.replace(stringsMonitorRegex, (match, rex, roll)=>{
           drafts.push(match);
-          let dataDraft="*****"+draftCount;
+          let dataDraft=extractorArsterists+draftCount;
           draftCount++;
           return dataDraft;
         });
@@ -3543,14 +3567,15 @@ const Houxit=(function(global){
     const context=isHouxitElement(hx_Element) ? hx_Element?.LabContext || {} : isPObject(hx_Element) ? hx_Element : {};
     try{
       value=_Evaluate_THIS( model, ref, self, context) ;
-      if(isNull(value) && !hasSpecialCharacters(ref) && !isNullBasedKeyword(ref) ){
-        return checkForModeLAndContextAvailability(model, context, ref, returnToken);
-      }
+      // if(isNull(value) && !hasSpecialCharacters(ref) && !isNullBasedKeyword(ref) ){
+      //   return checkForModeLAndContextAvailability(model, context, ref, returnToken);
+      // }
     } catch(err){
-        if(ref && !returnToken){
-          $debug_log(`Accessor Error::\n\n"${ref}" property value was accessed during render, but not initialized on model or is undefined\n\nat at\n ..."${ref}" property \n\n${err}`, self, true);
-          return;
-        }else return ref
+      console.error(err)
+      if(ref && !returnToken){
+        $debug_log(`Accessor Error::\n\n"${ref}" property value was accessed during render, but not initialized on model or is undefined\n\nat at\n ..."${ref}" property \n\n${err}`, self, true);
+        return;
+      }else return ref
     }
     return value 
   }
@@ -3744,35 +3769,16 @@ const Houxit=(function(global){
   const isHouxitDirective=dir=>_makeMap_(HouxitDirectives, dir);
   
   const validIdentifierRegex=/([...]*[\w\d]+)/g;
-  function trackExistentDextructureNamespace(self, syntaxes){
-    const register= new Tuple();
-    const newSyntaxRecord=[]
-    let rIndex=0;
-    for(let [index, syntax] of syntaxes.toReversed().entries()){
-      let setup=syntax;
-      syntax=syntax.replace(validIdentifierRegex, (match, valId)=>{
-        valId=hasSpread_bind(valId) ? valId.slice(3) : valId;
-        if(register.has(valId)){
-          // setup=setup.replace(new RegExp(`${valId}`), (m, v)=> v)
-        }else register.add(valId)
-      })
-      newSyntaxRecord.unshift(setup)
-      rIndex++
-    }
-    return newSyntaxRecord;
-  }
   const isNullBasedKeyword=str=>/^(null|undefined)$/.test(str);
-  function _Evaluate_THIS(obj, str, self, optional){
-  // Use a regular expression to match statements or multiple expressions
-    const statementRegex = /^(?:let|var|const|if|for|while|do|switch|else|else if|await|break|case|yield|with|catch|continue|debugger|void|try|import|throw|finally|exports|do|delete|return|throw|delete|;).*$/;
+  function _Evaluate_THIS(obj, str, self, optional){// Use a regular expression to match statements or multiple expressions
+  const statementRegex=/^(?:const|var|let|while|for|of|if|else|import|export|switch|case|try|catch|throw|continue|break|with|debugger|label|do|from|as|finally|delete|void|enum|implements|interface|package|protected;).*$/;;
     // =|\+\+|\+=|--|-=|\*|\*=|\.\.|\/\/|\/\*|\*\*|\[=|==\+|\/=|%=\*\*=|&&=|\|\|=|<=|>=|\\|
-    if (statementRegex.test(str) && !passableBlock(str)) {
+    if (statementRegex.test(str.replace(stringsMonitorRegex, ()=>"" )) && !passableBlock(str)) {
       throw new Error(`Invalid expression: \n\n"${str}" Your binding seems to contain an unallowed expression a a statement\n Only single expressions are allowed.`, self, true);
     }// Use a regular expression to remove comments from the expression by using string .replace regex method
     const commentRegex = /\/\/.*$|\/\*[^]*?\*\//g;//comment matching regular expression
     let expressionWithoutComments = str.replace(commentRegex, '');// Use a regular expression to match any remaining unsupported constructs and statement keywords
-    // const unsupportedRegex = /(?:\.\.|\/\/|\/\*|\*\*|\[=|==\+|-\+|\+=|\-=|\*=|\/=|%=\*\*=|&&=|\|\|=|<=|>=|\breturn\b|\bthrow\b|\bfunction\b|\bnew\b|\btypeof\b|\bdelete\b|\binstanceof\b|\bvoid\b|\bnull\b|\bundefined\b|\bconst\b|\blet\b|\bvar\bclass\b)/;
-    const unsupportedRegex = /(?:\.\.|\bthrow\b|\bdelete\b|\bvoid\b|\bconst\b|\blet\b|\bvar\b)/;
+    const unsupportedRegex = /(?:\.\.|\bthrow\b|\bdelete\b|\bvoid\b|\bconst\b|\blet\b|\bvar\b|\bwhile\b|\bfor\b|\bof\b|\bif\b|\belse\b|\bimport\b|\bexport\b|\bswitch\b|\bcase\b|\btry\b|\bcatch\b|\bcontinue\b|\bbreak\b|\bwith\b|\bdebugger\b|\blabel\b|\bdo\b|\bfrom\b|\bas\b|\bfinally\b|\benum\b|\bimplements\b|\binterface\b|\bpackage\b|\bprotected\b)/;
     let scriptRender;
     let checkRegex=false;
     try{
@@ -3780,21 +3786,26 @@ const Houxit=(function(global){
     }catch(err){
       checkRegex=true;
     }
-    expressionWithoutComments = expressionWithoutComments.replace(stringsMonitorRegex, ()=> "");
-    if (checkRegex && unsupportedRegex.test(expressionWithoutComments)) {
+    if (checkRegex && unsupportedRegex.test(expressionWithoutComments.replace(stringsMonitorRegex, ()=>"" ))) {
       throw new Error(`Invalid expression: \n\nUnsupported constructs are not allowed.\n\n"${str}"`, self, true);
+    }else if(commentRegex.test(str)){
+      $debug_log(`Template SyntaxError...\n\nComments not allowed in template expression\n\n"${str}"`, self, true);
+      return;
     }
     let dexTransform;
     if(optional && isPObject(optional) && hasOwn(optional, $$dexTransformKey)){
       dexTransform=optional[$$dexTransformKey];
       let syntaxArray=dexTransform.syntaxArray;
-      syntaxArray = trackExistentDextructureNamespace(self, syntaxArray)
       dexTransform.traverse=()=>transformDestructureContext(syntaxArray, dexTransform.sourcesArray, str, [obj, optional]);
     }
     const getValue = new Function('obj','$$$ctx','dexTransform', `
       with(obj){
         with($$$ctx){
-          return dexTransform ? dexTransform.traverse()  : ${str.trim() || "undefined" };
+          try{
+            return dexTransform ? dexTransform.traverse()  : ${str.trim() || "undefined" };
+          }catch(err){
+            throw new Error(err);
+          }
         }
       }
     `);
@@ -3807,17 +3818,107 @@ const Houxit=(function(global){
       return value;
   }
   function transformDestructureContext(props, sources, vv, metrics=[]){
+    props=props.toReversed().join(',');
+    const register=new Tuple(...extractArgumentsFromDext(props, true));
+    const syntax =dextNamespaceControler(props, tokenGENERATOR({
+      size:10
+    }, (uuid)=>{
+      if(!register.has(uuid)){
+        register.add(uuid);
+        return true
+      }
+      return false;
+    }));
     const traverse =Function('obj', '$$$ctx',`
       with(obj){
         with($$$ctx){
-          return function transform(${props.join(",")}){
-            return ${vv}
+          try{
+            return function transform(${syntax}){
+              return ${vv}
+            }
+          }catch(err){
+            throw new Error(err)
           }
         }
       }
     `);
     const [obj={}, $$$ctx={}]=metrics;
-    return traverse.call(obj, obj, $$$ctx ).call(obj, ...sources);
+    return traverse.call(obj, obj, $$$ctx ).call(obj, ...sources.toReversed());
+  }
+  function dextNamespaceControler(src, replacement=""){
+    const namespace=extractArgumentsFromDext(src);
+    const register=new Tuple();
+    for(const [ index, { key, start, end }] of namespace.entries()){
+      if(!register.has(key)){
+        register.add(key);
+        continue;
+      }
+      src=src.substring(0, start) + replacement + src.substring(end+1);
+      register.add(replacement);
+    }
+    return src;
+  }
+  function facadeArgsRegister(setup, namespace, index, traverse){
+    if(len(setup.ariel)){
+      const word=setup.ariel.join("");
+      if(word.trim()) namespace.push(traverse ? word : {
+        start:index-(len(setup.ariel)),
+        end:index-1,
+        key:word
+      });
+      setup.ariel=[];
+    }
+  }
+  function extractArgumentsFromDext(src, traverse=false){
+    const isStrRegex=val=>/['"`]+/.test(val);
+    const setup={
+      ariel:[],
+      deff:undefined,
+      op_str:false,
+      str_type:undefined,
+      re_start:false,
+      deff_cage:{}
+    }
+    const rChar={
+      ")":"(",
+      "]":"[",
+      "}":"{"
+    }
+    const namespace=[];
+    let index=0;
+    let prev_item;
+    for(const val of values(src)){
+      const prev=index > 0 ? src[index-1] : undefined;
+      if(isString(prev) ? prev.trim() : prev) prev_item=prev;
+      const next=src[index+1];
+      if(/[`'"]/.test(val)){
+        if(!setup.op_str){
+          setup.op_str=true;
+          setup.str_type=val;
+        }else if(val === setup.str_type){
+          setup.op_str=false;
+          setup.str_type=undefined;
+        }
+      }else if(setup.op_str);
+      else if(val==='='){
+        facadeArgsRegister(setup, namespace, index, traverse);
+        setup.deff=true;
+      }else if(setup.deff){
+        if(/[[({]/.test(val)){
+          setup.deff_cage[val]=(setup.deff_cage[val] || 0)+1;
+          setup.re_start=true
+        }else if(/[\)}\]]/.test(val)){
+          if(hasOwn(setup.deff_cage, rChar[val])){
+            if((setup.deff_cage[rChar[val]] || 0) <= 1) delete setup.deff_cage[rChar[val]];
+            else setup.deff_cage[rChar[val]]--;
+          }
+        }else if(!len(setup.deff_cage) && /[{([\])},]/.test(val)) setup.deff=false;
+      }else if(/[, \W]/.test(val) && !/[$:]/.test(val)) facadeArgsRegister(setup, namespace, index, traverse);
+      else if(/\w$/.test(val)) setup.ariel.push(val)
+      else if(val === ":") setup.ariel=[];
+      index++;
+    }
+    return namespace;
   }
   const dynamicAttrRegex=/\[(.*?)\]/;
   function _DynamicAttrNameResolver(self, attr, hx_Element, metrics){
@@ -3889,7 +3990,7 @@ const Houxit=(function(global){
           if(!isEmptyStr(match)) value = value[match];
           if(len(access)) {
             for(let [index, keys ] of access.entries()){
-              if( !validateType(value, [ Object , Array, Function]) && isTrue(isArray(value) && isNaN(Number(keys))) && Number(keys)+1 > len(value)) return false
+              if( !validateType(value, [ Object , Array, Function]) && isArray(value) && isNaN(Number(keys)) && Number(keys)+1 > len(value)) return false
               value=value[keys];
             }
           }
@@ -4076,6 +4177,7 @@ const Houxit=(function(global){
       '@':1, 
       '...':3, 
       "$$" :2,
+      "#":1
     };
     if( !isString(key) && !key.trim() && hasSpecialCharacters(attr)) return key ;
     for(const [ky, sl] of entries(Key_Binding)){
@@ -4267,7 +4369,7 @@ const Houxit=(function(global){
         element.setAttribute(key, compileToRenderable(unwrap(attr)));
       }catch(err){
         $debug_log(`Attribute Error::\n\n...unable to set node attribute "${key}\n\n ${err}`, self, true, `When setting the attribute "${key}" on "${element.outerHTML}"`, self, !is_hyperscript );
-        return
+        return;
       }
     }
   }
@@ -4388,7 +4490,7 @@ const Houxit=(function(global){
     }, self, hx_Element, metrics, element) ;
   }
   function transformAttachProp(self, bindings, element, hx_Element, metrics){
-    const { key, value, } = bindings
+    const { key, value, } = bindings;
     if(!isPFunction(value)){
       $debug_log(`"attach" special property expects a plain Function type`, self, true);
       return;
@@ -4397,12 +4499,12 @@ const Houxit=(function(global){
     const hooksList=new Tuple(...directivesHooksMap.split(","));
     const context_obj={
       use(directive, value, modifiers){
-        attachUseCallback(self, [...arguments], element, hx_Element, metrics, hooksList);
+        attachUseCallback(self, [ ...arguments ], element, hx_Element, metrics, hooksList);
       },
       on(events, callback, modifiers){
         attachOnListener(self, [ ...arguments ], element, hx_Element, metrics);
       },
-      prop(key, value){
+      addProp(key, value){
         attachMultiProp(self, [ ...arguments ], element, hx_Element, metrics);
       }
     }
@@ -4428,13 +4530,11 @@ const Houxit=(function(global){
     let { key, value, src, deepKeys } = bindings;
     const { is_hyperscript, patch, vNode } = metrics;
     let re_evaluate=false;
-    if(isOnListener(key) || key === 'dispatch'){
-      click_handler_facading(self,[ key, value, src], bindings, element, hx_Element, metrics);
-    }else if((!hasOwn(element, key))) {
+    if(isOnListener(key) || key === 'dispatch') click_handler_facading(self,[ key, value, src], bindings, element, hx_Element, metrics);
+    else if(key === 'attach') transformAttachProp(self, bindings, element, hx_Element, metrics)
+    else if((!hasOwn(element, key))) {
       element[key]=value;
       re_evaluate=true;
-    }else{
-      // log(key, value, 99)
     }
     if(!re_evaluate || (!is_hyperscript && !(patch && len(patch[0])))) return;
     const traverse=hx_Element.VNodeManager.propsTraversers;
@@ -4489,8 +4589,8 @@ const Houxit=(function(global){
     // if(hx_Element.VNodeManager.scopedBindings=()=>SSBs[value].bindings;
   }
   function SlotContextBindingTRANSITON(self, bindings, element, hx_Element, metrics){
-    const { isRerender, is_hyperscript, patch, vnode} = metrics;
-    if(!isRerender && !element.localName === "slot"){
+    const { isRerender, is_hyperscript, patch, vnode } = metrics;
+    if(!isRerender && element.localName !== "slot"){
       // $debug_log(`"context" special property is only scoped to html "<slot>" element in Houxit\n<slot> element scope context property found on a none "<slot>" element\n\nFailed to resolve binding`);
       return;
     }
@@ -4501,35 +4601,28 @@ const Houxit=(function(global){
       $warn(`To resolve this, make sure the "name" attribute comes before the "context" key on this slot element`, self);
       return;
     }
-    let subscribers=[]
+    let subscribers=[];
+    let data_bind=bindings.value;
     if(!isRerender) {
       assign(SSBs[slotName], {
         patch,
         is_hyperscript,
         watchEffect(callback){
-          return self.__public_model__.$observe(subscribers, ()=> callback(self), {
+          return self.__public_model__.$observe(subscribers, ()=> {
+            callback(self);
+          }, {
             flushType:'post'
           });
         }
       });
-      let data_bind=bindings.value;
-      define(SSBs[slotName], 'bindings', {
-        get(){
-          return data_bind;
-        },
-        set(newV){
-          data_bind=newV;
-          return true;
-        }
-      });
+      SSBs[slotName].bindings=data_bind;
     }
+  
     if(isRerender){
-      const s_b=SSBs[slotName]
-      const oldValue=s_b.bindings;
-      if(deepEqualityCheck(bindings.value,  s_b.bindings)) return;
-      s_b.bindings=bindings.value;
+      const s_b=SSBs[slotName];
+      if(!deepEqualityCheck(data_bind,  s_b.bindings)) s_b.bindings=bindings.value;
     }
-    subscribers=is_hyperscript ? ()=> data_bind : patch[0];
+    subscribers=is_hyperscript ? (()=> data_bind) : patch[0];
   }
   function IDLPropsTransform(self, props, element, metrics, hx_Element ){
     let [ key, attr ] = props;
@@ -4713,7 +4806,7 @@ const Houxit=(function(global){
       $debug_log(`"ref" prop value expects a Houxit token value\n\nfailed to mount ref token property value`,self, true);
       return;
     }else if(isReadonlyToken(data)){
-        $debug_log(`Path provided to the ref special prop resolves to a readonly token value\n\nfailed to mutate excep a readonly readonlyBypasser is to be implemented by the Houxit compiler`, self, true);
+        $debug_log(`Path provided to the ref special prop resolves to a readonly token value\n\nfailed to mutate ... except a readonly readonlyBypasser is to be implemented by the Houxit compiler`, self, true);
         return;
     }
     if(node && isWidget) node.props[$$$$dir__ref$$$$]=data;
@@ -4747,14 +4840,17 @@ const Houxit=(function(global){
     let { value, modifiers, key } = bindings;
     const { is_hyperscript, isRerender } = metrics;
     if(!key){
-      $debug_log(`slot key: "$$slot" directive has no key mapping name defined to the "slot" element\n\nfailed to normalize slot directive`);
+      $debug_log(`slot key error: "$$slot" directive has no key mapping name defined to the "slot" element\n\nfailed to normalize slot directive`);
       return;
     }
     modifiers=new Set(modifiers);
     const iswt=!isNativeElement(vnode) && validHouxitWidget(vnode?.prototype_);
-    // hx_Element.slot_name=key;
+    hx_Element.slot_name=key;
     const slotBindings=hx_Element?.VNodeManager.slotBindings;
     let dataBind=slotBindings ? slotBindings[key]?.bindings : undefined;
+    if(isRerender && !is_hyperscript) {
+      dataBind=slotBindings[key].patch[1]()[1];
+    }
     if(!hx_Element.LabContext) hx_Element.LabContext={};
     else hx_Element.LabContext=assign({}, hx_Element.LabContext);
     if(value && isDestructureSyntax(value)){
@@ -4766,33 +4862,30 @@ const Houxit=(function(global){
         }
       });
     }else if(value) hx_Element.LabContext[value]=dataBind;
-    slotBindings[key].watchEffect((patchFlags)=>{
-      const observer = { 
-        mutated:false, 
-        willMutate:false, 
-        updated_hooks:new Tuple(),
-        effectFlush:new Tuple(),
-        active:false
-      } ;
-      const renderedSlotsList=patchFlags[$$$core].slotsFactory.renderedSlotsList;
-      const renderedSlot=renderedSlotsList[key];
-      const data_set=slotsGeneticProvider(patchFlags, patchFlags[$$$core].opts, patchFlags[$$$core].virtualNode, true, true, );
-      const slotsCore=_induceSlotContents(patchFlags, patchFlags[$$$core].opts, data_set, {});
-      const vnode=slotsCore[key];
-      const res=Scoped_Slot_Effect_Wizard(patchFlags, renderedSlot, vnode || undefined, {
-        key,
-        renderedSlotsList,
-        data_set
-      }, observer);
-      //rerendef is lagging during batch update refresh
-    });
+    if(!isRerender) {
+      slotBindings[key].watchEffect((patchFlags)=>{
+        const instance=hx_Element.widget_instance;
+        if(patchFlags[$$$operands].slot_ctx_effect) {
+          patchFlags[$$$operands].slot_ctx_effect=false;
+          return;
+        }
+        const renderedSlotsList=patchFlags[$$$core].slotsFactory.renderedSlotsList;
+        const sc_co=patchFlags[$$$core].scoped_compiler;
+        sloting_effect_manager(patchFlags, renderedSlotsList, {
+          key,
+          self,
+          renderedSlot:renderedSlotsList[key],
+          children:key === 'default' ? sc_co.default.vNode.list() : [ sc_co[key] ],
+        }, hx_Element);
+      });
+    }
   }
   function __dilateHandler(self, props, hx_Element, is_hyperscript){
     const { key, item, src } = props;
     if(is_hyperscript || (!isOnListener(src) && !hasAt_bind(src) && !src.startsWith("$$on:") ) || isContextMethodString(self, hx_Element, item)){
       return item;
     }
-    return `($event)=>${item}`;
+    return "($event)=>"+item;
   }
   function $$dir_BIND(self, binding, el, hx_Element, metrics){
     const { is_hyperscript, shatteredFlags, ctx } = metrics
@@ -4813,8 +4906,8 @@ const Houxit=(function(global){
       patch:[subscribers, carrierGetter, transform]
     }, metrics);
     if(!key && !isPObject(transform)) {
-      $debug_log(`"$$bind" directive attributes binding expects a plain props object value when not chained to any attribute/prop argument`, self, true);
-      return 
+      $debug_log(`"$$bind" directive attributes binding expects a plain props object value when not chained to any key argument`, self, true);
+      return ;
     }else if(!key && isPObject(transform)) {
       for(const [ ky, attr ] of entries(transform)){
         attributes_hydration({
@@ -4949,14 +5042,14 @@ const Houxit=(function(global){
     }else value=runBinding();
     const unwraped=unwrap(value);
     if(isFalse(unwraped) || isNull(unwraped)) return node;
-    node.innerHTML=_styleSheet_hydration(self, node.innerHTML);
+    node.innerHTML=_stylesheet_hydration(self, node.innerHTML);
     return node;
   }
   function $$dir_PROVIDE(self, Binding, vNode, hx_Element){
     let { directive, value, key, }=Binding;
-    hx_Element.VNodeManager[$$$context]=createObj('Provide', { 
+    hx_Element.VNodeManager[$$$context]={ 
       prop:value
-    });
+    };
   }
   function $$dir_MODEL(self, bindings, element, hx_Element, metrics){
     let { value:item, modifiers, key, }=bindings;
@@ -4995,7 +5088,6 @@ const Houxit=(function(global){
     }
     if(!len(subscribers)) return;
     // hx_Element.VNodeManager.propsTraversers.add(function(observers, vNode){
-    //   // log(observers)
     // });
       
   }
@@ -5050,7 +5142,7 @@ const Houxit=(function(global){
     return true ;
   }
   function propsAndChildrenGetter( type , propsOrChildren , childrenOrProps ) {
-    if(!hyperscriptElArgumentsValidator( [ ...arguments ] ))  return [ ] ;
+    if(!hyperscriptElArgumentsValidator( [ ...arguments ] ))  return {} ;
     let props ;
     const lab = new Set() ;
     if( isPObject( propsOrChildren ) && !isChildrenNode( propsOrChildren ) ) { 
@@ -5347,7 +5439,7 @@ const Houxit=(function(global){
   function genericModelPropTransform(self, key, value, code , mygetters, useModel=false){
     if(isComputedMacro(value)){
       if(!useModel){
-        $debug_log(`The computed macro is not allowed in the model option\n\nOnly allowed to be used within the body of the Build method option, in a function based widget or within the <script build> WUF (Widget Unit File) build system scope\n\nUse the "derived" option instead if you are using the options API`, self, true);
+        $debug_log(`The computed macro is not allowed in the model option\n\nOnly allowed to be used within the body of the Build method option, in a function based widget or within the <script build> WUF (Widget Unit File) build system scope\n\nUse the "computed" option instead if you are using the options API`, self, true);
         return;
       }
     }else if(isReadonlyToken(value)){
@@ -5459,6 +5551,7 @@ const Houxit=(function(global){
   function runObjectifiedParamsValidation(self, paramsSet, objMetrics, PN){
     const [ props, param, ind ] = objMetrics;
     let response = true;
+    // log(vb(self), param, props, ind)
     if(isTrue(param.required) && hasProp(param, 'default')){
       $debug_log(`validation error  .......\n\nthe required validator should not be truthy alongside a default value\nat at\n\n"${ind}" ${PN}`, self, true);
       response = false;
@@ -5551,7 +5644,7 @@ const Houxit=(function(global){
   function transform_param_master(self, param){
     const setup={}
     if(validateType(param, [Array, Function ]) || param instanceof Type) setup.type=param;
-    else if(isString(param)) setup.type=Any;
+    else if(isString(param) || !param) setup.type=Any;
     else if(isPObject(param)) return param;
     return setup;
   }
@@ -5593,22 +5686,27 @@ const Houxit=(function(global){
       }
     }
     if(!isStream(self.__public_model__.$attrs)){
-      defineGetter(self.__public_model__, '$attrs', shallowReadonlyStream(self.__public_model__.$attrs));
+      const $attrs=self.__public_model__.$attrs;
+      delete self.__public_model__.$attrs;
+      defineGetter(self.__public_model__, '$attrs', shallowReadonlyStream($attrs));
     }
     // inDomPropsFallback(self, props, params, garbage);
   }
   function GarbagePropsPrefix(self, paramsSet, garbage, props){
   
   }
-  function _hydrate_props(opts, self, vnode, metrics){
+  function _hydrate_props_fallthrough(opts, self, vnode, metrics){
     if(self[$$$operands].initializedRender) return vnode;
-    const forwardAttrs=self[$$$core].settings.forwardAttrs;
-    const Attrs=self.__public_model__.$attrs;
-    if(!(forwardAttrs && isHouxitNativeElement(vnode) && len(Attrs))) return vnode ;
-    iterate(Attrs).each((attr, key)=>{
+    const { forwardAttrs, forwardEvents }=self[$$$core].settings;
+    const { $attrs, $events } =self.__public_model__;
+    if(!((forwardAttrs || forwardEvents) && (isHouxitNativeElement(vnode) || isHouxitWidgetElement(vnode)) && (len($attrs) || len($events) ))) return vnode ;
+    const forwardProps=assign({}, $attrs);
+    if(len($events) && forwardEvents) forwardProps.attach=({on})=> iterate($events).each((value, key)=> on(key, value));
+    const w_props={};
+    if(forwardAttrs) iterate(forwardProps).each((attr, key)=>{
       try{
-        const getter=()=>Attrs[key];
-        HTMLAttrsMagnifier(vnode.$element, {
+        const getter=()=>forwardProps[key];
+        (isHouxitNativeElement(vnode) ? HTMLAttrsMagnifier : widget_props_plugin )(isHouxitWidgetElement(vnode) ? w_props : vnode.$element, {
           key,
           value:attr,
           src:key
@@ -5624,9 +5722,9 @@ const Houxit=(function(global){
           Check warning details info on attribute "${key}"`, self, true);
         return Break();
       }
-    })
-    if(hasOwn(self.__public_model__.$signals, 'resourceModel:Binding')){
-      self.__public_model__.$signals["resourceModel:Binding"].fire(vnode.$element, true);
+    });
+    if(isHouxitWidgetElement(vnode)){//trying to forward fallthrough attrs and events
+      
     }
     return vnode;
   }
@@ -5699,7 +5797,7 @@ const Houxit=(function(global){
     return modified;
   };
   const selectorPattern = /([^\r\n{]+)\s*{/g;
-  function _styleSheet_hydration(self, styles){
+  function _stylesheet_hydration(self, styles){
     return styles.replace(selectorPattern, (match, text)=>{
       return _hydrateHashToSelector(text, `[data-hx_build=${self[$$$ownProperties].hx_build}]`)+'{';
     });
@@ -5707,14 +5805,14 @@ const Houxit=(function(global){
   function _preCompile_StyleSheet(opts, self, vnode){
     if(IS_TEXT_NODE(vnode?.$element)) return vnode;
     const scopedConfig=self[$$$core].settings.scopedStyleSheet;
-    const CssStylesheet=opts.styleSheet ? opts.styleSheet : null;
+    const CssStylesheet=opts.stylesheet ? opts.stylesheet : null;
     if(CssStylesheet){
       const styleEl=generateTemplateElement({ 
         type:'style'
       }, { 
         type:'text/css'
       }, null);
-      const ModifiedCssStylesheet=isTrue(scopedConfig) ? _styleSheet_hydration(self, CssStylesheet) : CssStylesheet ;
+      const ModifiedCssStylesheet=isTrue(scopedConfig) ? _stylesheet_hydration(self, CssStylesheet) : CssStylesheet ;
       styleEl.textContent=ModifiedCssStylesheet;
       if(vnode  && !IS_TEXT_NODE(vnode.$element)) vnode.$element.append(styleEl);
     }
@@ -5722,7 +5820,6 @@ const Houxit=(function(global){
   }
   function assignSlot(self, slot, content, name, assynedSlots, renderedSlotsList, tillMount){
     if(content && isHouxitElement(content) && !hasOwn(renderedSlotsList, name)){
-      self[$$$compiler].template.VN_Tree.ELEMENTS.replace(slot, content.$element);
       slot.replaceWith(content.$element);
       assynedSlots.add(name);
       renderedSlotsList[name]=content
@@ -5799,11 +5896,7 @@ const Houxit=(function(global){
     entries(opts.buildConfig).forEach(([key, setting])=>{
       let rv= mapSettingCheck(self, key, setting);
       if(isFalse(rv)) return false;
-      define(self[$$$core].settings, key,{
-        value:setting, 
-        enumerable,
-        configurable
-      });
+      self[$$$core].settings[key]=setting;
     })
     return true
   }
@@ -5863,7 +5956,7 @@ const Houxit=(function(global){
   function Observer_Track(self, opts){
     entries(opts.observers||{}).forEach(([name, method])=>{
       EffectObserver.call(self.__public_model__, name, method);
-    })
+    });
   }
   function _EffectDependencyNotifier(self){
     const postEffList=[];
@@ -5882,7 +5975,7 @@ const Houxit=(function(global){
     defineGetter( self.__public_model__ , "$tick" , tick.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$useAgent" , useAgent.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$write", WRITE.bind( self ) ) ;
-    defineGetter( self.__public_model__ , "$effectHook" , EffectAdapterHook.bind( self ) ) ;
+    defineGetter( self.__public_model__ , "$adapter" , EffectAdapterHook.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$pushEffect" , pushEffect.bind( self ) ) ;
   }
   function __useModelAdapter__( props ) {
@@ -6002,15 +6095,16 @@ const Houxit=(function(global){
     }
   }
   function map_Events_Fall(self, vnode, in_build=false){
-    if(!self.__public_model__.$attrs) self.__public_model__.$attrs= new Attrs();
+    self.__public_model__.$attrs= new Attrs();
     if(!len(vnode.filesFilter.$$$Events)) return;
     for(let [ name, value ] of entries(vnode.filesFilter.$$$Events)){
       if(hasOwn(self.__public_model__.$signals, name)) continue;
       const transformKey=toCamelCase("on-"+name);
-      self.__public_model__.$attrs[toCamelCase(transformKey)]=function(){
+      self.__public_model__.$events[name]=function(){
         value.callbacks.forEach((callback)=>callback.call(this, ...arguments));
         // delete self.__public_model__.$attrs[transformKey];
       }
+      
     }
   }
   function createSignalFromEventObject(self, event){
@@ -6030,6 +6124,7 @@ const Houxit=(function(global){
     }
   }
   function $construct_With_Signals(self, options, in_build=false, vnode){
+    if(!self.__public_model__.$events) defineGetter(self.__public_model__, '$events', new Events());
     if(in_build) vnode = options
     const $$events=(in_build ? self[$$$core].vNodeClass : vnode).filesFilter.$$$Events;
     const signals=new Tuple(...(options.signals || []));
@@ -6069,9 +6164,9 @@ const Houxit=(function(global){
     __Generate_Widget_Hash(self);
     return options;
   }
-  const alphaNum ='A,a,B,b,C,c,D,d,E,e,F,f,G,g,H,h,I,i,J,j,K,k,L,l,M,m,N,n,O,o,P,p,Q,q,R,r,S,s,T,t,U,u,V,v,W,w,X,x,Y,y,Z,z,0,1,2,3,4,5,6,7,8,9,$';
   const alpha ='A,a,B,b,C,c,D,d,E,e,F,f,G,g,H,h,I,i,J,j,K,k,L,l,M,m,N,n,O,o,P,p,Q,q,R,r,S,s,T,t,U,u,V,v,W,w,X,x,Y,y,Z,z'
   const num='0,1,2,3,4,5,6,7,8,9';
+  const alphaNum =alpha+','+num;
   const numRegex=/\d/;
   const alphaNumRegex=/\w/;
   const alphaRegex=/\b/;
@@ -6473,7 +6568,8 @@ const Houxit=(function(global){
     agents:createObj('agents'), 
     blocks:createObj('blocks'),
     mixins:new Tuple(),
-    properties:createObj('properties')
+    properties:createObj('properties'),
+    templateClasses:createObj('templateClasses')
   });
   const HXBuildOwnPropertiesInitial=(opts, vNode)=>({ 
     name:opts?.name ? opts.name : isString(vNode.type) ? vNode.type : 'AnonymousWidget', 
@@ -6554,28 +6650,43 @@ const Houxit=(function(global){
     let flag=0;
     define(self[$$$compiler].compilerFlags, 'flags', {
       get(){
-        return flag
+        return flag;
       },
       set(newFlag){
         flag = newFlag;
-        effect(self, flag)
-        flag=0
+        effect(self, flag);
+        flag=0;
         return true;
       }
-    })
+    });
   }
-  function sloting_effect_manager(self, renderedSlotsList, vnode){
-    const observer = { 
+  function sloting_effect_manager(self, renderedSlotsList, scope, hx_Element, parent, observer, EVNode){
+    observer = observer || { 
       mutated:false, 
       willMutate:false, 
       updated_hooks:new Tuple(),
       effectFlush:new Tuple(),
-      active:false
+      active:false,
     } ;
-    const data_set=slotsGeneticProvider(self, self[$$$core].opts, self[$$$core].virtualNode, true, true, );
-    const slotsCore=_induceSlotContents(self, self[$$$core].opts, data_set, {});
+    const opts=self[$$$core].opts;
+    const vNode=self[$$$core].virtualNode;
+    observer.hx_Element=hx_Element;
+    if(!scope) runtimeSlotsContext_Manager(self, opts, null, vNode);
+    const data_set=slotsGeneticProvider(self, opts, vNode, true, true, scope, observer, EVNode);
+    const slotsCore=_induceSlotContents(self, opts, data_set, {});
+    if(scope){
+      const { key, renderedSlot, self:parseSelf } = scope;
+      scope.scopeFlag=self;
+      const EffectVNode=slotsCore[key];
+      const res=Scoped_Slot_Effect_Wizard(parseSelf, renderedSlot, EffectVNode, {
+        key,
+        renderedSlotsList,
+        data_set
+      }, observer, scope);
+      return;
+    }
     iterate(renderedSlotsList).each((node, key)=>{
-      let vnode=slotsCore[key];
+      const vnode=slotsCore[key];
       const res=Scoped_Slot_Effect_Wizard(self, node, vnode || undefined, {
         key,
         renderedSlotsList,
@@ -6584,21 +6695,20 @@ const Houxit=(function(global){
       if(isIterateController(res)) return res;
     });
   }
-  function Scoped_Slot_Effect_Wizard(self, node, vnode, metrics, observer){
+  function Scoped_Slot_Effect_Wizard(self, node, vnode, metrics, observer, scope){
     const { key, renderedSlotsList, data_set } = metrics;
-    if(isUndefined(vnode)) {
-      unMountVNode(node); // use unmount vnodw here
-      delete renderedSlotsList[key];
-      return Continue();
-    }
     tick(function(){
+      observer.scope=scope || {};
+      if(!observer.scope.context) observer.scope.context={};
+      const slotB=data_set[3]?.slotBindings[key]?.bindings;
+      assign(observer.scope.context, slotB);
       patchRenderNormalizerCall(self, node, vnode(data_set[1], true), observer);
     }).then( function( resolve, reject ){
       if(len(observer.effectFlush)) callSetHooks(self, observer.effectFlush  );
     }).then(function(){
       if( observer.mutated && len(observer.updated_hooks ) && len(observer.effectFlush)) {
         callSetHooks( self , observer.updated_hooks, null, self.__public_model__ ) ;
-        observer.updated_hooks.clear();
+        observer.updated_hooks.clear()
       }
     }) ;
   }
@@ -6610,7 +6720,7 @@ const Houxit=(function(global){
     const renderedSlotsList=self[$$$core].slotsFactory.renderedSlotsList;
     if(!len(renderedSlotsList)) return;
     tick(function(){
-      sloting_effect_manager(self, renderedSlotsList, hx_Element, vNode);
+      sloting_effect_manager(self, renderedSlotsList, null, hx_Element, parent, observer, vNode);
     }).then(()=>{
       self[$$$compiler].slotRendererNotified= false;
     });
@@ -6623,11 +6733,10 @@ const Houxit=(function(global){
     }
   }
   function smartSlotMapping(self, slotContent, slotName, defaultSlotsRecord, slotsCore, patchFlags){
-    if(slotName === 'default'){
-      defaultSlotsRecord.push(slotContent)
-    }else if(!hasOwn(slotsCore, slotName) ){
+    if(slotName === 'default') defaultSlotsRecord.push(slotContent);
+    else if(!hasOwn(slotsCore, slotName) ){
       slotsCore[slotName]=function slotRender() {
-        return  new HouxitFragmentElement( isArray(slotContent) ? slotContent : [ slotContent ], patchFlags)
+        return  new HouxitFragmentElement( arrayInverter( slotContent ), patchFlags);
       }
     }else{
       slotDebuger(self)(slotName, slotContent);
@@ -6636,17 +6745,16 @@ const Houxit=(function(global){
   }
   const shouldUnwrap = child=> isHouxitFragmentElement(child) && child.isLoopWrappRenderer;
   function unwrapLoopWrappers(children){
-    const childrenRender=[];
+    const childrenRender=new Tuple();
     for(const child of children.values()){
       if(shouldUnwrap(child)){
-        for(const gChild of child.NodeList.values()){
-          childrenRender.push(gChild);
-        }
-      }else childrenRender.push(child)
+        childrenRender.extend(unwrapLoopWrappers(child))
+      }else childrenRender.add(child)
     }
-    return childrenRender;
+    return childrenRender.list();
   }
   function _induceSlotContents(self, options, setData , renderedSlotsList){
+    const isRerender=self[$$$operands].initializedRender;
     let [ children, patchFlags, Flaghx_Element ] = setData;
     const defaultSlotsRecord=[];
     const slotsCore=renderedSlotsList ? renderedSlotsList : self[$$$core].slots;
@@ -6663,10 +6771,8 @@ const Houxit=(function(global){
         smartSlotMapping(self, slotContent, slotName, defaultSlotsRecord, slotsCore, patchFlags);
       }
     }
-    if(len(defaultSlotsRecord)){
-      slotsCore.default=function slotRender() {
-        return _getNodeListResponse(defaultSlotsRecord, patchFlags);
-      }
+    if(len(defaultSlotsRecord)) slotsCore.default=function slotRender() {
+      return _getNodeListResponse(defaultSlotsRecord, patchFlags);
     }
     if(is_hyperscript ) defineFallbackSlotsToken(self, options, defaultSlotsRecord, slotsCore);
     return renderedSlotsList;
@@ -6746,6 +6852,7 @@ const Houxit=(function(global){
     try{
       hook.call(self.__public_model__);
     }catch(err){
+      console.error(err)
       $debug_log(`${name} hook \n\n`,self, true, `during the call of the "${name}" LifeCycle hook`, self, true);
       $warn(`${err}`);
     }
@@ -6759,20 +6866,21 @@ const Houxit=(function(global){
   function normalizeHyperscriptSlotting(self, children, hx_Element, patchFlags, isRerender, config){
     const renderSlotList=[];
     const except=new Set();
+    const slotBindings=self[$$$compiler]?.scopeSlotsBindings;
+    const $$$context=()=>self[$$$core].map.$$$context?.();
     for(let [key, value] of children.entries()){
+      if(isNull(value)) continue;
+      value = isPFunction(value) ? value($$$context().value) : value;
       if(isSlotInstance(value)){
-        const slotBindings=self[$$$compiler].scopeSlotsBindings;
         for(let [slotN, slotRender] of entries(value.slots)){
-          slotRender=slotRender.call((self[$$$core].map.$$$context().value), slotBindings[slotN].bindings);
+          slotRender=slotRender.call(($$$context().value), slotBindings[slotN]?.bindings);
           if(!isChildrenNode(slotRender)){
             $debug_log(`Element Recognition Error: unrecognised element/value passed to render`, self, true);
             return;
           }
-          if(!isArray(slotRender)) slotRender=[slotRender];
-          slotRender=_HouxitTemplateParser(slotRender, patchFlags, null, hx_Element, null, config);
-          if(!isArray(slotRender)) slotRender=[ slotRender ];
+          slotRender=arrayInverter(_HouxitTemplateParser(arrayInverter( slotRender ), patchFlags, null, hx_Element, null, config));
           if(slotN !=='default' && except.has(slotN) ){
-            $debug_log(`Duplicate Slot Error: slot content with the name mapping "${slotN}" has already be declared\n\nUntraced slotting mapping\n Duplicate fount`, self, true);
+            $debug_log(`Duplicate Slot Error: slot content with the name mapping "${slotN}" has already be defined\n\nUntraced slotting mapping\n"${slotN}" slot Duplicate found`, self, true);
             return;
           }else{
             except.add(slotN);
@@ -6785,7 +6893,7 @@ const Houxit=(function(global){
       }else{
         except.add("default");
         const slotRender=_HouxitTemplateParser(value, patchFlags, null, hx_Element, null, config);
-        (!isArray(slotRender) ? [slotRender] : slotRender).forEach((hx_el)=> {
+        arrayInverter(slotRender).forEach((hx_el)=> {
           hx_el.slot_name="default";
           renderSlotList.push(hx_el);
         });
@@ -6794,26 +6902,47 @@ const Houxit=(function(global){
     except.clear();
     return renderSlotList;
   }
-  function slotsGeneticProvider(self, options, vnode, isRerender=false, inSlot, rawChildren){
-    if(!vnode.children) return;
-    let children = vnode.children;
+  function arrayInverter(value){
+    if(!isNull(value) && !isArray(value)){
+      const array=[];
+      array.push(value);
+      return array;
+    }else if(isNull(value)) return [];
+    return value;
+  }
+  function collectCompiler_Args(self, ){
+    
+  }
+  function slotsGeneticProvider(self, options, vnode, isRerender, inSlot, scope, observer, EVNode ){
+    const ObsScope=observer?.scope;
+    if(!scope && !vnode.children) return;
+    let children = (scope ? scope : vnode )?.children;
     const slotsCompilerArgs= isInitialBuild(self) ? {
       self,
-      hx_Element:vnode.hx_Element,
+      hx_Element:( scope ? scope : vnode )?.hx_Element,
       config:{}
     } : vnode.filesFilter?.slotsCompilerArgs;
-    let { hx_Element, self:patchFlags, is_hyperscript, fall, config } =  slotsCompilerArgs;
-    if(!is_hyperscript) {
+    let { hx_Element, self:patchFlags, fall, config } =  slotsCompilerArgs;
+    const is_hyperscript=vnode.is_hyperscript;
+    if(!config?.slotBindings) {
+      if(!config) config={};
+      config.slotBindings={};
+    }
+    if(!is_hyperscript && slotsCompilerArgs?.config?.slotBindings) {
       slotsCompilerArgs.config.slotBindings=self[$$$compiler].scopeSlotsBindings;
       config.slotBindings=slotsCompilerArgs.config.slotBindings;
     }
-    const context=self[$$$core].context?.() || {};
-    const initializedRender=self[$$$operands]?.initializedRender;
+    config.patchFlags=self;
+    const context=self[$$$core].map.$$context?.() || {};
     let childrenRender;
-    if(is_hyperscript) childrenRender=normalizeHyperscriptSlotting(self, children, hx_Element, patchFlags, context, isRerender, config);
-    else childrenRender=_HouxitTemplateParser(children, patchFlags, null, hx_Element, context, config );
-    childrenRender = childrenRender && !isArray( childrenRender ) ? [ childrenRender ] : exists(childrenRender) ? childrenRender : [] ;
-    return [ childrenRender, patchFlags, hx_Element ] ;
+    if(isRerender && EVNode?.compiler_options.createSlot) childrenRender=EVNode.compiler_options.createSlot();
+    else if(is_hyperscript) childrenRender=normalizeHyperscriptSlotting(self, children, hx_Element, patchFlags, isRerender, config);
+    else childrenRender= _HouxitTemplateParser(children, patchFlags, null, hx_Element, context, config )
+    return [ arrayInverter(childrenRender), patchFlags, hx_Element, {
+      slotBindings:config.slotBindings,
+      hx_Element,
+      patchFlags
+    }] ;
   }
   function createContext_Parameters(self, options, vnode){
     if(!options.context) return;
@@ -6828,7 +6957,7 @@ const Houxit=(function(global){
       self.__public_model__.$observe(subscribers, ()=>{
         data=RunContext()
       }, {
-        flushType:'sync'
+        flushType:'post'
       });
     }catch(err){
       $debug_log(`Provider Method Error: Encountered an error while trying to run the context >> provider option method`, self, true);
@@ -6857,9 +6986,9 @@ const Houxit=(function(global){
           effectFlush:new Tuple(),
           active:false
         } ;
+        self[$$$operands].slot_ctx_effect=true;
         const hx_Element=vnode.hx_Element;
-        const EffectVNode=hx_Element.compiler_options.createElement();
-        self[$$$compiler].slotsTransformRender(self, observer, hx_Element, EffectVNode);
+        self[$$$compiler].slotsTransformRender(vnode.filesFilter.slotsCompilerArgs.self, observer, hx_Element);
       }, {
         flushType:'post'
       });
@@ -6889,7 +7018,9 @@ const Houxit=(function(global){
     self[$$$core].context=contextPropsProvider;
   }
   function defineLateGlobalProps(self, build){
-    if(isHouxitElement(build)) useModel.call(self, { $element:build.$element});
+    if(isHouxitElement(build)) useModel.call(self, { 
+      $element:build.$element
+    });
   }
   function isInitialBuild(self){
     return isHouxitBuild(self) && isTrue(self[$$$ownProperties].isInitialBuild)
@@ -7002,7 +7133,7 @@ const Houxit=(function(global){
     __Ensure_Renderer(this, opts, vnode);
     this[$$$compiler].templateProcessor = function (self, build ){
       if(!self[$$$operands].initializedRender) build=_$slotHydrationRenderer(self, opts, build);
-      build =  _hydrate_props(opts, self, build);
+      build =  _hydrate_props_fallthrough(opts, self, build);
       build=_preCompile_StyleSheet(opts, self, build);
       RuntimeTokenDir(self, opts, vnode);
       defineLateGlobalProps(self, build);
@@ -7026,13 +7157,14 @@ const Houxit=(function(global){
       signals:self.__public_model__.$signals,
       attrs:self.__public_model__.$attrs,
       slots:self[$$$compiler].composedSlots,
+      events:self.__public_model__.$events,
       use:use.bind(self)
     });
     for(const [key, macro] of entries(assign( adapters, self[$$$core].utils))){
       define(adapters, key, { 
         value:macro, 
         enumerable 
-      })
+      });
     }
     return adapters;
   }
@@ -7145,14 +7277,14 @@ const Houxit=(function(global){
       self[$$$core].map.is_hyperscript=true;
       self[$$$core].render= function factoryRender(instance, update=false){
         let response=responseRender();
-        return !isArray(response) && isChildrenNode(response) ? [ response ] : isChildrenNode(response) ? response : [] ;
+        return !isArray(response) && isChildrenNode(response) ? arrayInverter(response) : isChildrenNode(response) ? response : [] ;
       };
       return self[$$$core].render;
     }else if(hasOwn(self[$$$core].opts, 'render')){
       self[$$$core].map.is_hyperscript=true;
       self[$$$core].render= function factoryRender(instance, update=false){
         let response=responseRender.call(self.__public_model__);
-        return !isArray(response) && isChildrenNode(response) ? [ response ] : isChildrenNode(response) ? response : [] ;
+        return !isArray(response) && isChildrenNode(response) ? arrayInverter(response) : isChildrenNode(response) ? response : [] ;
       };
       return self[$$$core].render;
     }else {
@@ -7229,6 +7361,11 @@ const Houxit=(function(global){
     }
   }
   function widgetSlotsManager(self, options, vnode){
+    self[$$$core].scoped_compiler={
+      default:{
+        vNode:new Tuple()
+      }
+    }
     createContext_Parameters(self, options, vnode);
     runtimeSlotsContext_Manager( self , options, null, vnode ) ;
     const setData = slotsGeneticProvider( self , options, vnode );
@@ -7287,7 +7424,7 @@ const Houxit=(function(global){
     }
     transformer(prop){
       return {
-        derived:{
+        computed:{
           [prop]:this.deriveData
         }
       }
@@ -7302,18 +7439,18 @@ const Houxit=(function(global){
       validators:[[Function, Object], Object ]
     })
     if(!res && !isPFunction(callback) && !isGettersObject(callback)){
-      $debug_log(`derived macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
+      $debug_log(`computed macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
       return;
     }
     const self=getCurrentRunningEffect({
-      name:'derived',
+      name:'computed',
     });
     if(!isHouxitBuild(self)) return new deriveCache(callback, config || {});
     const computed=hydrateComputedTokenTransform(self, callback, true, config || {});
      _mountTokenEffect(computed, self);
     return computed;
   }
-  function derived(callback, config){
+  function computed(callback, config){
     return _computed_.call(this, ...arguments);
   }
   function composedTokenHydration(self, computed, config){
@@ -7321,7 +7458,7 @@ const Houxit=(function(global){
       return ( isPFunction(computed) ? computed : computed.get).call(self.__public_model__);
     } );
     if(isPFunction(computed)) return [ readonly(value, {
-      isDerived:true ,
+      isComputed:true ,
       ...( config || {} )
     }), subscribers ];
     return [ factoryToken(function(track, effect, deepTranform){
@@ -7330,7 +7467,7 @@ const Houxit=(function(global){
           track();
           return computed.get.call(self.__public_model__, ...arguments);
         },
-        isDerived:true,
+        isComputed:true,
         ...( config || {} )
       }
       if(hasOwn(computed, 'set') && isPFunction(computed.set)){ 
@@ -7345,17 +7482,17 @@ const Houxit=(function(global){
   }
   function hydrateComputedTokenTransform(self, computed, composed, config){
     if(composed && !isPFunction(computed) && !isGettersObject(computed)){
-      $debug_log(`derived:: derived macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
+      $debug_log(`computed:: computed macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
       computed = pass;
     }
     const [ deriveData, subscribers ] =composedTokenHydration(self, computed, config);
-    deriveData[refInternalEffectKey].isDerived = true;
+    deriveData[refInternalEffectKey].isComputed = true;
     deriveData[refInternalEffectKey].computed=( isPFunction(computed) ? computed : computed.get ).bind(self.__public_model__)  ;
     deriveData[refInternalEffectKey].subscribers.extend(subscribers)
-    deriveData[refInternalEffectKey].Initial=callDepsGetters(subscribers);
+    deriveData[refInternalEffectKey].Initial=callArrGetters(subscribers);
     if( len( subscribers ) ) {
       self.__public_model__.$observe( subscribers , () => {
-        if( isDerived( deriveData ) ) {
+        if( isComputed( deriveData ) ) {
           deriveData[refInternalEffectKey].updateFlags ++;
           if( !deriveData[refInternalEffectKey].ModelInstance ){ 
             deriveData[refInternalEffectKey].ModelInstance = self.__public_model__;
@@ -7363,15 +7500,15 @@ const Houxit=(function(global){
         }
       }, {
         flushType: "post"
-      })
+      });
     }
     return deriveData;
   }
   function derivesCompile(self, opts){
-    if(!opts.derived || !len(opts.derived)) return
-    for(let [key, computed] of entries(opts.derived)){
+    if(!opts.computed || !len(opts.computed)) return
+    for(let [key, computed] of entries(opts.computed)){
       if(!isPFunction(computed) && !isGettersObject(computed)){
-        $debug_log(`derived option  at "${key}" property expects a getter function method option or a descriptor object of a "get" and an optional "set" property methods`, self, true);
+        $debug_log(`computed option  at "${key}" property expects a getter function method option or a descriptor object of a "get" and an optional "set" property methods`, self, true);
         return;
       }
       const deriveData = hydrateComputedTokenTransform(self, computed);
@@ -7422,7 +7559,6 @@ const Houxit=(function(global){
           postEffCall()
         }catch(e){
           console.error(e)
-          
         }
       });
     }, self, true);
@@ -7464,15 +7600,16 @@ const Houxit=(function(global){
       self.property('$root', self.$build);
       domRoot.IS_HOUXIT_MOUNTROOT=true;
       tick(()=>{
-        if(domRoot.hasAttribute('cloak')) domRoot.removeAttribute('cloak');
+        if(domRoot.hasAttribute('hx-cloak')) domRoot.removeAttribute('hx-cloak');
       });
     }else domRoot=self.$build?.$element;
     return domRoot;
   }
   function createCloakDirectiveHydrator(action){
+    if(!inBrowserCompiler) return;
     const styleEl=document.createElement('style');
     styleEl.append(`
-    [cloak]{
+    [hx-cloak]{
       display:none;
     }
     `);
@@ -7564,6 +7701,16 @@ const Houxit=(function(global){
     if(len(arguments) === 2) this[$$$core].$globals.register.properties[name]=value;
     return this
   }
+  function templateClass(name, value){
+    if(!validateCollectionArgs(arguments, {
+      name:"initBuild().templateClass()",
+      validators:[String, Any],
+      count:2,
+      required:[true, true]
+    })) return;
+    if(len(arguments) === 2) this[$$$core].$globals.register.templateClasses[name]=value;
+    return this
+  }
   function _Build_destroy(){
     if(len(arguments)){
       $debug_log(`.destroy() method of initBuild accepts no formal parameters`, this);
@@ -7574,7 +7721,6 @@ const Houxit=(function(global){
     try{
       // use unMountVNode vnofe macro hete
       unMountVNode(this.$build)
-      // log(this)
       /*
       delete this[$$$operands];
       delete this[$$$core];
@@ -7609,6 +7755,9 @@ const Houxit=(function(global){
   function configForwardAttrs(forwardAttrs){
     return createConfig_Constraint.call(this, "forwardAttrs", ...arguments);
   }
+  function configForwardEvents(forwardEvents){
+    return createConfig_Constraint.call(this, "forwardEvents", ...arguments);
+  }
   function configForwardSlot(forwardSlot){
     return createConfig_Constraint.call(this, "forwardSlot", ...arguments);
   }
@@ -7625,9 +7774,9 @@ const Houxit=(function(global){
     }
     this[$$$core].$globals.controller.add(options);
     optionsRegistery(this, options);
-    let { setupOptions , pluginAdapter } = options;
+    let { setup , pluginAdapter } = options;
     if(hasOwn(options, 'pluginAdapter') && !isPFunction(pluginAdapter)) {
-      $debug_log(`pluginAdapter option of .controller() method expects a function/method type`, this, true);
+      $debug_log(`pluginAdapter option of .controller({}) method expects a function/method type`, this, true);
       return this;
     }
     if(!exists(pluginAdapter) && !isPFunction(pluginAdapter)) pluginAdapter = pass
@@ -7697,6 +7846,7 @@ const Houxit=(function(global){
       property,
       filter,
       block,
+      templateClass,
       configDelimiters,
       configForwardSlot, 
       configScopedStyleSheet,
@@ -7769,7 +7919,7 @@ const Houxit=(function(global){
     const is_hyperscript=self[$$$core].map.is_hyperscript;
     const isRerender=self[$$$operands].initializedRender;
     if(isPFunction(initBuild)) initBuild = initBuild( instance );
-    if(is_hyperscript) initBuild=_HouxitTemplateParser(!isArray(initBuild) ? [initBuild] : initBuild, instance, null, null, null, {
+    if(is_hyperscript) initBuild=_HouxitTemplateParser(arrayInverter(initBuild), instance, null, null, null, {
       official:true
     });
     if(isArray(initBuild)) initBuild= new HouxitFragmentElement(initBuild, self, null);
@@ -7846,7 +7996,7 @@ const Houxit=(function(global){
     }) ;
   }
   function RenderEffect_$Warn(self, err){
-    $debug_log(`unable to complete the rerender circle patch\n\nthis is likely a probable bug/error within the houxit's compiler level;\nplease report any problem —— and open an issue on our github repo`, self, true);
+    $debug_log(`----unable to complete the rerender effect circle patch\n\nthis is likely a probable bug/error in the houxit's compiler level;\nplease report any problem —— and open an issue on our github repo`, self, true);
     $debug_log(`${err}`, self)
     console.error(err);
   }
@@ -7855,8 +8005,8 @@ const Houxit=(function(global){
     const isRerender=self[$$$operands].initializedRender;
     try{
       let EffectVNode;
-      Promise.try(()=> EffectVNode=Render_Template(self, self[$$$core].render, true)).catch((e)=>RenderEffect_$Warn(self, e)).then(()=>{
-        Promise.try(()=> patchRenderNormalizerCall(self, self.$build, EffectVNode, observer)).catch((e)=>RenderEffect_$Warn(self, e));
+      Promise.try(()=> EffectVNode=Render_Template(self, self[$$$core].render, true)).catch((e)=> $debug_log(e)).then(()=>{
+        Promise.try(()=> patchRenderNormalizerCall(self, self.$build, EffectVNode, observer)).catch((e)=> $debug_log(e));
       });
     }catch(e){
       RenderEffect_$Warn(self, e);
@@ -7894,10 +8044,11 @@ const Houxit=(function(global){
         if(tempIndexes.has(key)){//but still exists in new vNodes
           const vnodeTM=tempLeagues[tempK];
           let targetElem= tempK ? transformTargetElement(vnodeTM[0], null, true) : undefined;
-          const posixElem=document.createTextNode("");
+          const posixElem=document.createComment("");
           if(tempK) targetElem.after(posixElem);
+          log(Template.VN_Tree.ELEMENTS())
           exchangeRecorder.push({
-            elements:[tempLeagues[key], vnodeTM],//the position the current elemet is destinated
+            elements:[tempLeagues[key], vnodeTM],//the position the current element is destinated
             keys:[key, tempK],
             index:[tempIndexes.indexOf(key), index],
             parent:targetElem?.parentNode,
@@ -7906,12 +8057,11 @@ const Houxit=(function(global){
         }else{
           const effectEl=LEAGUE_TREE[key][0];
           const Rerender_Element=__createRerenderBlock(self, effectEl);
-          if(index >= len(tempIndexes)){
-            forAppending.push([Rerender_Element, key, index]);
-          }else{
+          if(index >= len(tempIndexes)) forAppending.push([Rerender_Element, key, index]);
+          else{
             const [ targetBox, targetInd]=tempLeagues[tempK];
             const targetElem=transformTargetElement(targetBox, null, );
-            const posixElem=document.createTextNode("");
+            const posixElem=document.createComment("");
             targetElem.before(posixElem);
             forInsertion.push({
               elements:[Rerender_Element, targetBox],
@@ -7947,13 +8097,6 @@ const Houxit=(function(global){
       const [key, tempK] = keys;
       tempLeagues[key]=[Element, tempInd ];
       posixElem.after(Element.$element);
-      const parentList=Template.VN_Tree.ELEMENTS;
-      const start=parentList.has(posixElem) ? parentList.indexOf(posixElem) : undefined;
-      generateWrapElementAction(Element, (el)=>{
-        if(isUndefined(start)) return;
-        parentList.splice(start, 0, el);
-        start++;
-      });
       Template.NodeList.splice(EffectVNode.NodeList.indexOf(Target), 0,
       Element);
       cleanup_zip.add(()=> posixElem.remove());
@@ -7968,7 +8111,6 @@ const Houxit=(function(global){
       const [ targetBox, targetInd ]=tempLeagues[adjKey];
       tempLeagues[key]=[Element, index ];
       const targetElem=transformTargetElement(targetBox, null, true);
-      generateWrapElementAction(targetBox, (el)=> Template.VN_Tree.ELEMENTS.add(el));
       Template.NodeList.add(targetBox);
       targetElem.after(Element.$element);
       observer.mutated=true;
@@ -7982,7 +8124,7 @@ const Houxit=(function(global){
       const [ targetBox, targetInd ] = tempLeagues[tempK];
       const targetElem=transformTargetElement(targetBox, null, true);
       const parent=targetElem.parentNode;
-      const posixElem=document.createTextNode("");
+      const posixElem=document.createComment("");
       targetElem.after(posixElem);
       generateWrapElementAction(element[0], (el)=> smartMoveElement(self, parent, el, posixElem));
       observer.mutated=true;
@@ -7996,7 +8138,6 @@ const Houxit=(function(global){
       });
     }
     for(const [ key, Element, index ] of forRemovals.values()){
-      generateWrapElementAction(Element[0], (el)=> Template.VN_Tree.ELEMENTS.delete(el));
       Template.NodeList.delete(Element[0]);
       unMountVNode(Element[0]);
       observer.mutated=true;
@@ -8010,7 +8151,10 @@ const Houxit=(function(global){
       parent.moveBefore(mover, target );
     }catch(err){
       if(err.name === "HierarchyRequestError") parent.insertBefore(mover, target);
-      else $debug_log(`${err}`, self, true);
+      else {
+        $debug_log(`${err}`, self, true);
+        console.error(err)
+      }
     }
   }
   function effect_Position_Transform(self, exchangeRecorder, Template, EffectVNode, metrics){
@@ -8031,7 +8175,10 @@ const Houxit=(function(global){
           });
         }
       }else{
-        generateWrapElementAction(element[0], (el)=> smartMoveElement(self, parent, el, posixElem));
+        generateWrapElementAction(element[0], (el)=> {
+          // log(parent, 8888)
+          smartMoveElement(self, parent, el, posixElem);
+        });
         observer.mutated=true;
         cleanup_zip.add(function(){
           tempLeagues[key][1]=tempInd;
@@ -8050,11 +8197,11 @@ const Houxit=(function(global){
     if(isHouxitTextElement(hx_Element) ) return RerenderingTextsContents(self, hx_Element, vNode, observer, parent);
     else if(isHouxitWidgetElement(hx_Element)) WidgetEffectTrigger(self, hx_Element, vNode, parent, observer);
     else if(isRenderlessElement(hx_Element)) return;
-    if(!(isHouxitNativeElement(hx_Element) && IS_HTML_VOID_TAG(hx_Element.prototype_))) resolvePatchAlgorithm(self, hx_Element, vNode, observer, pass, false);
+    if(isHouxitNativeElement(hx_Element) && !IS_HTML_VOID_TAG(hx_Element.prototype_)) resolvePatchAlgorithm(self, hx_Element, vNode, observer, pass, false);
     if(isHouxitNativeElement(hx_Element)){
       const traverse=hx_Element.VNodeManager.propsTraversers;
       if(!len(traverse)) return;
-      traverse.forEach( trackAttr => trackAttr( observer, vNode.VNodeManager.vNodeClass));
+      traverse.forEach( trackAttrsEffect => trackAttrsEffect( observer, vNode.VNodeManager.vNodeClass));
     }
   }
   function __createRerenderBlock(self, vnode){
@@ -8067,24 +8214,13 @@ const Houxit=(function(global){
     let { index, key } = metrics;
     if(!HouxitElementDiffing(hx_Element, vNode)) {
       const NewNode=__createRerenderBlock(self, vNode);
-      const posixElem=document.createTextNode("");
+      const posixElem=document.createComment("");
       const targetElem=transformTargetElement(hx_Element, null, true);
       targetElem.after(posixElem);
       if(parent) parent.VN_Tree.LEAGUE_TREE[key]=[NewNode, index];
-      const parentList=parent.VN_Tree.ELEMENTS;
-      let start=undefined;
-      generateWrapElementAction(hx_Element, (el)=>{
-        if(parentList.has(el)){
-          if(isUndefined(start)) start=hx_Element.VN_Tree.ELEMENTS.indexOf(el);
-          parentList.delete(el);
-        }
-      });
       unMountVNode(hx_Element);
       parent.NodeList.replace(hx_Element, NewNode);
       posixElem.before(NewNode.$element);
-      generateWrapElementAction(NewNode, (el)=>{
-        parentList.splice(start, 0, el);
-      });
       posixElem.remove();
       observer.mutated=true;
       return ;
@@ -8096,7 +8232,7 @@ const Houxit=(function(global){
     if(isTextOrNativeElement(target)) targetElem = target.$element;
     else{
       if(isHouxitWidgetElement(target)) target=WidgetElementUnwrap(target)
-      if(isHouxitFragmentElement(target)) targetElem=target.VN_Tree.ELEMENTS.at( last ? len(target.VN_Tree.ELEMENTS)-1 : 0);
+      if(isHouxitFragmentElement(target)) targetElem=target.VN_Tree.ELEMENTS().at( last ? len(target.VN_Tree.ELEMENTS())-1 : 0);
       else if(isTextOrNativeElement(target)) targetElem=target.$element;
     }
     return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) ? targetElem : fallback;
@@ -8116,20 +8252,16 @@ const Houxit=(function(global){
   }
   function WidgetEffectTrigger(self, hx_Element, vNode, parent, observer){
     const is_hyperscript=self[$$$core].map.is_hyperscript;
-    hx_Element.widget_instance[$$$compiler].slotsTransformRender(self, observer, hx_Element, vNode);
     const traverse=hx_Element.VNodeManager.propsTraversers;
+    slotsTransformRender(parent, observer, hx_Element, vNode);
     if(!len(traverse)) return;
-    traverse.forEach( (trackAttr) => {
-      trackAttr( observer, [ hx_Element.widget_instance.__public_model__.$params, hx_Element.widget_instance.__public_model__.$attrs ], hx_Element.VNodeManager.vNodeClass, observer, self);
+    traverse.forEach( trackAttrsEffect => {
+      const { $attrs, $params } = hx_Element.widget_instance.__public_model__;
+      trackAttrsEffect( observer, [ $params, $attrs ], hx_Element.VNodeManager.vNodeClass, observer, self);
     });
   }
-  function callDepsGetters(depsArray){
-    if(!len(depsArray)) return [];
-    const valueDeps=[];
-    depsArray.entries().forEach(([index, getter])=>{
-      if(isPFunction(getter)) valueDeps[index]= getter();
-    });
-    return valueDeps;
+  function callArrGetters(depsArray){
+    return depsArray.map( getter => isPFunction(getter) ? getter?.() : getter );
   }
   function primate_check(node, vNode){
     if(!isPrimitive(node.prototype_) ) return isS(node.prototype_, vNode.prototype_);
@@ -8182,10 +8314,7 @@ const Houxit=(function(global){
       }
       $$dir_PROVIDE(self, bindings, vNode, hx_Element, metrics);
     }
-    const directiveArgs=[self, bindings, virtualNode, hx_Element, metrics];
-    if(!hasOwn(DirectiveMacros, directive)) return;
-    if(directive === 'text') directiveArgs.push(true);
-    DirectiveMacros[directive](...directiveArgs);
+    if(hasOwn(DirectiveMacros, directive)) DirectiveMacros[directive](self, bindings, virtualNode, hx_Element, metrics, directive === "text");
   }
   function dynamicPropRemover(obj, propName){
     for(let [key, value ] of entries(obj)){
@@ -8214,7 +8343,7 @@ const Houxit=(function(global){
       type:'alpha'
     }, config );
     let uuid=generateUUID(config.size, config.type);
-    if(isFalse(FN(uuid))) uuid=_Houxit_token_GENERATOR_(config,  FN, $factoryTokenKey);
+    if(!FN(uuid)) uuid=_Houxit_token_GENERATOR_(config,  FN, $factoryTokenKey);
     return uuid;
   }
   function tokenGENERATOR(config, Test_Callback){
@@ -8231,7 +8360,7 @@ const Houxit=(function(global){
   function liquidateBuiltinGenerators(self, vNode, selfProp, prop){
     const is_hyperscript=vNode.is_hyperscript;
     let children=vNode.children;
-    children = !is_hyperscript ? ( children ? children.NodeList : null ) : ( children && !isArray(children) ? [ children ] : children ? children : null );
+    children = !is_hyperscript ? children?.NodeList : arrayInverter(children);
     if(!selfProp) return children;
     const dataVnode=h(selfProp, assign({}, vNode.props || {}), children );
     dataVnode.is_hyperscript=vNode.is_hyperscript;
@@ -8282,10 +8411,6 @@ const Houxit=(function(global){
     if(validHouxitWidget(widget)) vNode.GeneticProvider=widget;
     vNode.prototype_=validHouxitWidget(widget) ? widget : tagname;
     return true;
-  }
-  function ResolveWidget(self, hx_Element, vNode, IS_RENDERLESS, slotsCompilerArgs){
-    const widget=vNode.GeneticProvider;
-    return $compilerEngine(self, vNode, hx_Element, slotsCompilerArgs);//$compilerEngine the widget flags, passed the widget to HouxitBuild, sets global widgets from  its parents if any, installs all GLOBAL_WIDGETS_AND_PLUGINS, mounts the widget to a fragment and return the build'
   }
   function $compilerEngine ( self , virtualNode , hx_Element, slotsCompilerArgs ) {
     let { rawChildren, GeneticProvider:widget } =virtualNode
@@ -8392,6 +8517,12 @@ const Houxit=(function(global){
     
   }
   resolve.mixin=function resolveMixin(name){
+    
+  }
+  resolve.block=function resolveBlock(name){
+    
+  }
+  resolve.resolver=function resolver(path){
     
   }
   function _directive_batch__(name){//dynamically resolving and controlling of directives and arguments
@@ -8535,7 +8666,7 @@ const Houxit=(function(global){
   const openingTagsRegex = /(\<[ ]*\>|\<\/[ ]*\>)|(<(\/)?([\w\-\$!:\#\@.()[\]%?\/&]+)(\s+[^>]*?(?:(?:[\w]+[_!@#$'"%^&*()+\-\[\]{};:\\|,.<\/?~`]*)|(?:'[^']*')|(?:"[^"]*")))*\s*(\/)?>)|([\w \s!@#$'"%^&*()+\-\[\]{};:\\|,.\/?`~]+)/mg;
   const openingTagRegex=/<([\w\-\$!:\#\@.()[\]%?&]+)(\s+[^>]*?(?:(?:[\w]+[_!@#$'"%^&*()+\-\[\]{};:\\|,.<\/?`~]*)|(?:'[^']*')|(?:"[^"]*")))*\s*(\/)?>/m;
   const isOpeningTag = (source)=> openingTagRegex.test(source);
-  const closingTagRegex= /<[\/]([\w$.:\-\@()[\]%&?]+)[ ]*>/;
+  const closingTagRegex= /<[\/]([\w$.:\-\@()[\]%&?\\\/]+)[ ]*>/;
   const isClosingTag=(source)=> closingTagRegex.test(source);
   const isText=(text)=> !openingTagRegex.test(text) && /([\w \s!@#$'"%^&*()+\-\[\]{};:\\|,.\/?`~]+)/m.test(text);
   const openingTagAttrRegex=/^<[\w\-\$!\@:.()[\]%?&]+([\s\S]*[^\/>])?\s*(\/)?>\s*$/m;
@@ -8746,14 +8877,14 @@ const Houxit=(function(global){
         let [ match, tagName ]=tagMatch.match(closingTagRegex);
         let lastLoader=trackNodes[len(trackNodes)-1];
         if(len(loaderList)){
-          if(config.JSXParser && tagName === "%%") child_src= finishTagLoader(tagName, {
+          if(config.JSXParser && tagName === "/") child_src= finishTagLoader(tagName, {
             loaderList,
             trackNodes,
             child_src
           }, NodeList, self, config, tagMatch);
           else if(len(trackNodes) && new Set(trackNodes).has(tagName) ){
             child_src=child_src+tagMatch;
-            let mIndex=trackNodes.findLastIndex((f)=> f== tagName);
+            let mIndex=trackNodes.findLastIndex((f)=> f == tagName);
             if(mIndex > -1) trackNodes.splice(mIndex, 1);
             continue;
           }else if(tagName === loaderList[0][0]){
@@ -8812,6 +8943,7 @@ const Houxit=(function(global){
   function specializedTemplateProductionProcessor(self, attributes, node, metrics, config ){
     let [ hx_Element, NodeList , tagName, fall ]=metrics;
     let Vnode;
+    const isRerender=self[$$$operands].initializedRender;
     if(config.if_Block && !config.props?.status) return
     if(isHouxitBuild(self)){
       negotiateRawDirective(self, node);
@@ -8830,7 +8962,8 @@ const Houxit=(function(global){
         children
       });
     }
-    NodeList.add(Vnode)
+    NodeList.add(Vnode);
+    return Vnode;
   }
   const validAttrNameRegex= /[\w\$]+/;
   function transcript_to_VNodeClass(){
@@ -8846,14 +8979,13 @@ const Houxit=(function(global){
     if(isString(tagName) && isBlockTag(tagName)) {
       if(!isHouxitBuild(self)) {
         $debug_log(`block tags Cannot be used in build/static templates mode`, self, true);
-      }else blockElementsPreProcessors(self, vNode, args(), config );
-    }else specializedTemplateProductionProcessor(self, attributes, vNode,
-    args(), config);
+      }else return blockElementsPreProcessors(self, vNode, args(), config );
+    }else return specializedTemplateProductionProcessor(self, attributes, vNode, args(), config);
   }
   function templateTextNodeCompiler(self, node, hx_Element, config,  NodeList, fall){
     if(node){
       let LabContext;
-      if(len(config.ctx)) fall=smartDextCtxMerging(fall||{}, config.ctx||{})
+      if(len(config.ctx)) fall=smartDextCtxMerging(fall||{}, config.ctx||{});
       if(fall) {
         LabContext=smartDextCtxMerging(hx_Element?.LabContext || {} , fall );
         if(hx_Element) {
@@ -8864,22 +8996,44 @@ const Houxit=(function(global){
       let value = node;
       node=self ? new HouxitTextElement(value, self, hx_Element, LabContext) : value;
       NodeList.add(node);
+      return node;
     }
+  }
+  function createElementRenderBlock(self, node, hx_Element, config, NodeList, fall){
+    let childNodes;
+    if(isString(node) && node.trim()) childNodes=templateTextNodeCompiler(self, node, hx_Element, config,  NodeList, fall);
+    else if(isHtmlComment(node))/*Ignore comment nodes*/pass;
+    else if(isVNodeClass(node)) childNodes=templateElementNodeCompiler(self, node, hx_Element, config, NodeList, fall );
+    else if(isTemplateClass(node)){
+      const childNodes=node[TemplateClassKey](self, null, hx_Element, fall, config);
+      NodeList[isArray(childNodes) ? 'extend' : 'add' ](childNodes);
+    }else if(isCollection(node)){
+      const FragmentNodes=new Tuple();
+      generateTemplateClasses(self, arrSet(node), hx_Element, config, FragmentNodes, fall);
+      childNodes=new HouxitFragmentElement(FragmentNodes.list(), self, null)
+      NodeList.add(childNodes);
+    }
+    return childNodes;
   }
   function generateTemplateClasses(self, parser, hx_Element, config, NodeList, fall ){
     fall=assign({}, fall);
+    const isRerender=self[$$$operands].initializedRender;
     for (let [ index, node ] of parser.entries()){
       if(node){
-        if(isString(node) && node.trim()) templateTextNodeCompiler(self, node, hx_Element, config,  NodeList, fall);
-        else if(isHtmlComment(node))/*Ignore comment nodes*/pass;
-        else if(isVNodeClass(node)) templateElementNodeCompiler(self, node, hx_Element, config, NodeList, fall );
-        else if(isTemplateClass(node)){
-          const childNodes=node[TemplateClassKey](self, null, hx_Element, fall, config);
-          NodeList[isArray(childNodes) ? 'extend' : 'add' ](childNodes);
-        }else if(isCollection(node)){
-          const FragmentNodes=new Tuple();
-          generateTemplateClasses(self, arrSet(node), hx_Element, config, FragmentNodes, fall);
-          NodeList.add(new HouxitFragmentElement(FragmentNodes.list(), self, null));
+        if(config.slotBindings) node = isPFunction(node) ? node(self[$$$core].map.$$$context?.()) : node;
+        const filesFilter=node.filesFilter;
+        if(isRerender && config?.slotBindings?.scoped_compiler){
+          const slot_name = isString(node) && !filesFilter.slotBindings ? "default" : filesFilter.slotBindings;
+          const parallel=config.slotBindings.scoped_compiler;
+          if(slot_name !== parallel) continue;
+        }
+        const childNodes=createElementRenderBlock(self, node, hx_Element, config, NodeList, fall);
+        if(!isRerender && config.slotBindings){
+          const scoped_compiler=config.patchFlags[$$$core].scoped_compiler;
+          const slot_name=childNodes?.slot_name || "default";
+          if(filesFilter && !filesFilter.slotBindings) filesFilter.slotBindings=slot_name;
+          if(slot_name === 'default') scoped_compiler?.default?.vNode.add(node);
+          else scoped_compiler[slot_name]=node;
         }
       }
     }
@@ -8904,7 +9058,7 @@ const Houxit=(function(global){
     let template=[];
     let subscribers=[];
     let data;
-    const ctx=[children, exp ]
+    const ctx=[children, exp ];
     if(blockN === 'if') template = blockIFPreprocessor(...args(), ctx);
     else if(blockN === 'else' || blockN === "else:if") blockElseIfPreprocessor(self, node, config, blockN);
     else if(blockN === 'for') template = blockForProcessor(...args(), ctx);
@@ -8923,9 +9077,7 @@ const Houxit=(function(global){
     let [ subscribers, value ] = effectDependencyTracking(self, ()=>{
       return _$runModelBind(self, exists(exp.trim()) ? exp : "undefined", hx_Element);
     });
-    
-    
-    return [  ]
+    return [];
   }
   function blockClassTransformer(self, node, blockN,  metrics , [children, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics
@@ -8935,7 +9087,7 @@ const Houxit=(function(global){
     }
     let [ match, var_name, var_params]= exp.match(variableDeclarationRegex);
     let validator;
-    if(var_params) validator=var_params.match(templateClassVslidatorRegex);
+    if(var_params) validator=var_params.match(templateClassValidatorRegex);
     if(validator){
       var_params=var_params.slice(len(validator[0]));
       validator=validator[1];
@@ -9073,7 +9225,7 @@ const Houxit=(function(global){
       return [];
     }
     template=template[TemplateClassKey](self, null, hx_Element, fall, config);
-    return !isArray(template) ? [ template ] : template;
+    return arrayInverter(template);
   }
   function blockConstPreprocessor(self, node, blockN,  metrics , [children, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
@@ -9187,7 +9339,7 @@ const Houxit=(function(global){
     }
     if(!config.props.status) return true;
     const vNodes=_HouxitTemplateParser(vNode, self, true, hx_Element, fall, config);
-    iterate(!isArray(vNode) ? [ vNodes ] : vNodes).each((node)=> NodeList.add(node));
+    iterate(arrayInverter( vNodes)).each((node)=> NodeList.add(node));
     return true;
   }
   function conditionTagOrderCheck(self, config, tag){
@@ -9227,6 +9379,7 @@ const Houxit=(function(global){
     for(const [ index, vnode ] of (!isArray(renderedNodes) ? (validateType(renderedNodes, [Set, Tuple]) ? [...arrSet(renderedNodes)] : [renderedNodes] ) : renderedNodes).entries()){
       if(vnode) NodeList.add(vnode);
     }
+    return renderedNodes;
   }
   function customBlocksTraverse(self, node, blockN,  metrics){
     let [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
@@ -9273,7 +9426,7 @@ const Houxit=(function(global){
   }
   class TemplateClass extends BaseTemplateClass{
     constructor(...args){
-      super();
+      super(args[0]);
       this[TemplateClassKey]=createKlassBoilerPlate(this.class, ...args)
     }
   }
@@ -9287,10 +9440,10 @@ const Houxit=(function(global){
   }
   function normalizePreJSXFormat(strings, values){
     let boundJoin=[];
-    const restTag=(count)=> `hx:((__${count}__))`
+    const scripting_tag=(count)=> `hx:((__${count}__))`
     for(let [index, strs ] of strings.entries()){
       boundJoin.push(strs);
-      if(hasOwn(values, index)) boundJoin.push(restTag(index));
+      if(hasOwn(values, index)) boundJoin.push(scripting_tag(index));
     }
     return __HouxitHTMLParser__(boundJoin.join(""), [], {
       JSXParser:{
@@ -9319,6 +9472,9 @@ const Houxit=(function(global){
       trim:true
     }, null);
   };
+  function __HouxitMKDParser__(){
+    
+  }
   function MKDParser(mkd){
     
   }
@@ -9380,7 +9536,7 @@ const Houxit=(function(global){
         if('onAttrChanged' === ind) Hooks['attributeChangedCallback']=value;
         delete opts[ind];
       } 
-    })
+    });
     CustomNativeElement.prototype.disConnectedCallback=Hooks.disConnectedCallback || pass;
     CustomNativeElement.prototype.adoptedCallback=Hooks.adoptedCallback || pass;
     CustomNativeElement.prototype.attributeChangedCallback=Hooks.attributeChangedCallback || pass;
@@ -9521,6 +9677,9 @@ const Houxit=(function(global){
     })
     return initBuild( ...arguments )
   }
+  function initAsyncBuild(options, propsOrChildren, childrenOrProps){
+    
+  }
   function boilerPlate(){
     
   }
@@ -9555,7 +9714,7 @@ const Houxit=(function(global){
     return new vNodeClass(...arguments);
   }
   function _defineVNode_ELEMENT(options){
-    if(isFalse(defineElementOptionsValidator(options))) return undefined;
+    if(!defineElementOptionsValidator(options)) return undefined;
     let { type , props , children } = options ;
     const vNode= createVNodeClass( type, props, children ) ;
     vNode.is_hyperscript=true;
@@ -9570,7 +9729,7 @@ const Houxit=(function(global){
   }
   function TranslateWidgetPropsAndChildren(type, props, children){
     if(validHouxitWidget(type)){
-      children = children && !isArray( children ) ? [ children ] : children ;
+      children = arrayInverter(children);
     }
   }
   const RENDER_ELEMENTS = createObj('RENDER_ELEMENTS');
@@ -9634,7 +9793,7 @@ const Houxit=(function(global){
   global.None = None ;
   global.useBind = useBind ;
   global.useStyleSheet = useStyleSheet ;
-  global.renderSlots = renderSlots ;
+  global.enSlot = enSlot ;
   global.escapeReverseDecoder = escapeReverseDecoder ;
   global.HouxitCompilerSetup = HouxitCompilerSetup ;
   global.isReactiveToken = isReactiveToken ;
@@ -9691,7 +9850,7 @@ const Houxit=(function(global){
   global.Type = Type ;
   global.defineWidget = defineWidget ;
   global.isShallowStream = isShallowStream ;
-  global.onCatch = onCatch ;
+  global.onCatch = onCatch ; //dev
   global.onEffect = onEffect ;
   global.onTracked = onTracked ;
   global.html = html ;
@@ -9701,7 +9860,7 @@ const Houxit=(function(global){
   global.escapeDecoder = escapeDecoder ;
   global.resolve = resolve ;
   global.observe = observe ;
-  global.effectHook = effectHook ;
+  global.adapter = adapter ;
   global.$$ = $$ ;
   global.generateTemplateElement = generateTemplateElement ;
   global.memMove = memMove ;
@@ -9723,7 +9882,7 @@ const Houxit=(function(global){
   global.token = token ;
   global.createNativeElement = createNativeElement ;
   global.Request = Request ;
-  global.derived = derived ;
+  global.computed = computed ;
   global.read = read ;
   global.factoryToken = factoryToken ;
   global.isNativeElement = isNativeElement ;
@@ -9741,10 +9900,10 @@ const Houxit=(function(global){
   global.effectObject = effectObject ;
   global.cloneVElement = cloneVElement ;
   global.createCustomElement = createCustomElement ;
-  global._createFragment = _createFragment ; //dev
+  global._createFragment = _createFragment ;
   global.$debug_log = $debug_log ; //dev
   global.Fragment = Fragment ;
-  global.compose = compose ;
+  global.createAgent = createAgent ;
   global.Exception = Exception ;
   global.isShallowReactiveToken = isShallowReactiveToken ;
   global.Tuple = Tuple ;
@@ -9753,7 +9912,7 @@ const Houxit=(function(global){
   global.traceBack = traceBack ;
   global.version = version ;
   global.mountToken = mountToken ;
-  global.raise = raise ;
+  global.raise = raise ; //dev
   global.deepEqualityCheck = deepEqualityCheck ;
   global.isShallowReadonlyToken = isShallowReadonlyToken ;
   global.isShallowReadonlyStream = isShallowReadonlyStream ;
@@ -9767,7 +9926,7 @@ const Houxit=(function(global){
   global.createTemplateClass = createTemplateClass ;
   global.isReadonlyStream = isReadonlyStream ;
   global.isStateStream = isStateStream ;
-  global.isDerived = isDerived ;
+  global.isComputed = isComputed ;
   global.useAgent = useAgent ;
   console.info( devInfo ) ; //dev
   return global ;
