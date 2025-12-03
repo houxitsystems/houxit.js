@@ -112,7 +112,7 @@ const Houxit=(function(global){
     stylesheet:String, 
     directives:Object, 
     template:String, 
-    name:String, 
+    name:String,
     observers:Object, 
     templateSrc:String, 
     stylesheetSrc:String, 
@@ -319,7 +319,7 @@ const Houxit=(function(global){
   const isHouxitCustomNativeElement=vnode=> vnode instanceof HouxitCustomNativeElement;
   const isHouxitFragmentElement=vnode => vnode instanceof HouxitFragmentElement;
   const readonlyModelProps="$element,$params,$attrs,$events,$signals,$slots,$parent,$root";
-  const proxySkipped="$element,$signals,$parent,$root,$observe,$useAgent,$tick,$write,$adapter,[[[reactive__Token]]],$params,$attrs,$events";
+  const proxySkipped="$element,$signals,$parent,$root,$observe,$useAgent,$tick,$write,$effectHook,[[[reactive__Token]]],$params,$attrs,$events";
   const validTokenConfigOptions="onTrack,onEffect,isComputed,isReadonly,isShallow"
   const isProxySkipped=prop=>_makeMap_(proxySkipped, prop);
   function createObj(name, props){
@@ -763,8 +763,7 @@ const Houxit=(function(global){
   function deferTokenComputedGetter(computed__Token, effective, watchers){
     const { initial, updateFlags, subscribers, ModelInstance, computed } =
     computed__Token[refInternalEffectKey];
-    if(!deepEqualityCheck(initial,
-    callArrGetters(subscribers)) || updateFlags){
+    if(!deepEqualityCheck(initial, callArrGetters(subscribers)) || updateFlags){
       computed__Token[refInternalEffectKey].updateFlags=0;
       const getCookie = computed.call(ModelInstance) ;
       computed__Token[refInternalEffectKey].cache=getCookie;
@@ -773,8 +772,9 @@ const Houxit=(function(global){
     return computed__Token[refInternalEffectKey].ModelInstance ? computed__Token[refInternalEffectKey].cache : effective[watchers.accessor] ;
   }
   function hydrateEffectSubs(watchers){
-    if(isHouxitBuild(watchers.self)) watchers.watchGetters=watchers.self[$$$operands].onEffectWatch;
-    else watchers.watchGetters=false;
+    watchers.watchGetters=true;
+    /*if(isHouxitBuild(watchers.self)) watchers.watchGetters=watchers.self[$$$operands].onEffectWatch;
+    else if(!watchers.watchGetters) watchers.watchGetters=false;*/
     return watchers.watchGetters;
   }
   function deepTranformMacro(watchers){
@@ -858,15 +858,11 @@ const Houxit=(function(global){
     } );
   }
   function factoryGetter(accessor, isFactoryToken, d_o){
-    if(isFactoryToken) return ()=> this[accessor()];
-    else return d_o.getter;//accessing getter from dirty_object
+    return isFactoryToken ? (()=> this[accessor()]) : d_o.getter;//accessing getter from dirty_object
   }
   function defineTokenRuntime_Carriers(effective, watchers, metrics){
     const { isFactoryToken, isComputed, isReadonly, isShallow, accessor, config } = metrics ;
-    const returnValue=()=>{
-      if(isComputed) return deferTokenComputedGetter(this, effective, watchers);
-      return unwrap(effective);
-    }
+    const returnValue=()=> isComputed ? deferTokenComputedGetter(this, effective, watchers) : unwrap(effective);
     const descriptor = {};
     const dirty_object={};
     watchers.effectTrack=function(){
@@ -909,7 +905,7 @@ const Houxit=(function(global){
     const isFactoryToken=hasOwn(config, $factoryTokenKey);
     if(isFactoryToken) config = fineTuneFactoryTokenCompile.call(this, effective, watchers, config);
     if(isS(config, E_Obj)) return;
-    const reConfig={}
+    const reConfig={};
     if(hasOwn(config, 'shallow')) {
       reConfig.isShallow=config.shallow
       delete config.shallow;
@@ -1602,11 +1598,10 @@ const Houxit=(function(global){
   }
   function effectDependencyTracking(self, fn , args=[]){
     args=arrayInverter(args);
-    self[$$$operands].onEffectWatch = true;
+    const subsDeps=self[$$$core].effectSubscribers;
+    subsDeps.createWatch();
     const value = fn(...args);
-    self[$$$operands].onEffectWatch=false;
-    const subscribers=[ ...arrSet(self[$$$core].effectSubscribers) ];
-    self[$$$core].effectSubscribers.clear();
+    const subscribers=subsDeps.endWatch() || [];
     return [ subscribers, value ];
   }
   function _trackEffectDeps(fn, ...args ){
@@ -1643,15 +1638,15 @@ const Houxit=(function(global){
     }
     return EffectAdapterHook.call(self, ...arguments);
   }
-  function adapter(fn, config){
+  function effectHook(fn, config){
     return _runGlobalEffectHook(...arguments);
   }
   function EffectAdapterHook(fn, config={}){
     if(!isPFunction(fn)){
-      $debug_log(`"adapter" at parameter 1 argument expects a plain function`, this, true);
+      $debug_log(`"effectHook" at parameter 1 argument expects a plain function`, this, true);
       return ;
     }else if(len(arguments) > 1 && !isPObject(config)){
-      $debug_log(`config parameter 2 argument of adapter expects a plain object`);
+      $debug_log(`config parameter 2 argument of effectHook expects a plain object`);
       return;
     }
     config.initial=false;
@@ -1768,7 +1763,7 @@ const Houxit=(function(global){
         index++
       }
     }
-    this.size=setTupleSize(len(this.list()));
+    this.size=setTupleSize(len(this[$$tupleStore].array));
   }
   function instanciate_tuple_indexes(tuple){
     const oldListKeys=keys(tuple);
@@ -4591,7 +4586,7 @@ const Houxit=(function(global){
   function SlotContextBindingTRANSITON(self, bindings, element, hx_Element, metrics){
     const { isRerender, is_hyperscript, patch, vnode } = metrics;
     if(!isRerender && element.localName !== "slot"){
-      // $debug_log(`"context" special property is only scoped to html "<slot>" element in Houxit\n<slot> element scope context property found on a none "<slot>" element\n\nFailed to resolve binding`);
+      $debug_log(`"context" special property is only scoped to html "<slot>" element in Houxit\n<slot> element scope context property found on a none "<slot>" element\n\nFailed to resolve binding`);
       return;
     }
     const slotName = isRerender ? hx_Element.VNodeManager.element_slot_ref : element.name
@@ -5718,7 +5713,7 @@ const Houxit=(function(global){
           forwardAttrs
         });
       }catch(err){
-        $debug_log(`Encountered a road block during attributes fallthrough forwarding on element "<${vnode.$element.localName}>"\n\n
+        $debug_log(`Encountered a road block during attributes fallthrough forwarding on element "<${vnode.$element.localName} ... >"\n\n
           Check warning details info on attribute "${key}"`, self, true);
         return Break();
       }
@@ -5759,13 +5754,14 @@ const Houxit=(function(global){
       if(isHouxitProp(key)) pass;
       else if(isValidWidgetOption(key) && !isNodeJSOnlyOption(key) && !validateType(opt, widgetOptionType[key])){
         if(isClassBasedBuild(self) && key === 'model' && !isPObject(opt) || !isClassBasedBuild(self) ){
-          $debug_log(`${key} option is of an invalid type, \n\n "${key}" option cannot be a ${getType(opt)} type`, self, true);
+          $debug_log(`${key} option is of an invalid type, \n\n "${key}" option cannot be of a "${getType(opt)}" type`, self, true);
           return;
         }
       }else if(isNodeJSOnlyOption(key) && inBrowserCompiler) {
         $debug_log(`"${key}" option is a nodejs only option, and cannot be used in houxit inbrowser compiler`, self, true);
       }else if(!isValidWidgetOption(key)) self[$$$operands]._OPTIONS[key]=opt
     }
+    if(isInitialBuild(self) && vnode.filesFilter.useSSRCompiler) self[$$$core].settings.useSSRCompiler=true;
   }
   function _hydrateHashToSelector(selector, $Data_Hash){
     const trimmed = selector.trim();
@@ -5975,7 +5971,7 @@ const Houxit=(function(global){
     defineGetter( self.__public_model__ , "$tick" , tick.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$useAgent" , useAgent.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$write", WRITE.bind( self ) ) ;
-    defineGetter( self.__public_model__ , "$adapter" , EffectAdapterHook.bind( self ) ) ;
+    defineGetter( self.__public_model__ , "$effectHook" , EffectAdapterHook.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$pushEffect" , pushEffect.bind( self ) ) ;
   }
   function __useModelAdapter__( props ) {
@@ -6111,10 +6107,10 @@ const Houxit=(function(global){
     function merger(){
       let res;
       try{
-        event.callbacks.forEach((callback)=>  callback.call(this, ...arguments));
+        event.forEach((callback)=>  callback.call(this, ...arguments));
       }catch(err){
         $debug_log(`Signal traceBack error:: prevíous call on Signal events failed with an error`, self, true);
-        $debug_log(`${self}`, self);
+        $debug_log(`${err}`, self);
         return;
       }
       return res;
@@ -6204,7 +6200,7 @@ const Houxit=(function(global){
       defineGetter(self.__public_model__, "$refs", self[$$$operands].templateTokenizedInputs);
     });
     registerTemplateClasses(self, options, vnode);
-    derivesCompile(self, options)
+    computedPropsCompiler(self, options)
     receivePublicationPrefix(self, options);
     Observer_Track(self, options);
   }
@@ -6242,7 +6238,7 @@ const Houxit=(function(global){
       }
     }
     notify() {
-      this.self[$$$operands].PATCH_FLAG++
+      this.self[$$$operands].PATCH_FLAG++;
       this.subscribers.forEach((observer) => observer.update());
     }
   }
@@ -6300,10 +6296,8 @@ const Houxit=(function(global){
     }
   }
   function subscribeEffect(effObj, sub, master){
-    if(!isHouxitBuild(effObj.self) && !(effObj.self || {} )[$$$operands]?.onEffectWatch) pass;
-    else if(isHouxitBuild(effObj.self) && (effObj.self || {} )[$$$operands]?.onEffectWatch){ 
-      effObj.self[$$$core].effectSubscribers.extend(sub);;
-    }else if(isREffObj(master)) {
+    if(isHouxitBuild(effObj.self)) effObj.self[$$$core].effectSubscribers.subscribe(sub);
+    else if(isREffObj(master)) {
       if(master.watchGetters) master.subscribers.extend(sub);
     }
   }
@@ -6432,8 +6426,9 @@ const Houxit=(function(global){
     if(validateType(obj, [Object, Array, Tuple ])) return new Proxy(obj, {
       get(target, prop){
         const getter=()=> Reflect.get(...arguments);
-        hydrateEffectSubs(ReactiveEffect)
+        hydrateEffectSubs(ReactiveEffect);
         if(ReactiveEffect.watchGetters) subscribeEffect( ReactiveEffect, [ getter ]);
+        if(isHouxitBuild(ReactiveEffect.self) && obj.constructor === Object) ReactiveEffect.subscribers.add(getter);
         let effect_sync=ReactiveEffect.effect_sync;
         return getter();
       },
@@ -6527,6 +6522,29 @@ const Houxit=(function(global){
       ...( isObject(config) ? config :  {})
     } );
   }
+  class SubscriptionEffectBoard{
+    subtree=[];
+    createWatch(){
+      this.subtree.push({
+        subscritions:new Tuple(),
+      });
+      return true;
+    }
+    endWatch(){
+      if(!len(this.subtree)) return null;
+      const eff=this.subtree.pop();
+      return eff.subscritions.list();
+    }
+    subscribe(subs, patch){
+      subs=arrayInverter(subs, true);
+      const index=isNaN(Number(patch)) ? len(this.subtree): patch;
+      if(index < 1) return;
+      for(let i=0; i < index; i++){
+        this.subtree[i].subscritions.extend(subs);
+      }
+      return true;
+    }
+  }
   function Setup_State_Effect(self, obj ){
     const dependency = new  Dependency(self);
     self[$$$operands].dependency=dependency;
@@ -6539,10 +6557,8 @@ const Houxit=(function(global){
     return obj;
   }
   function generateDependencySubscriptions(self, subscribers){
-    if(!self[$$$operands].onEffectWatch) return false;
-    subscribers = !isCollection(subscribers) ? [ subscribers ] : arrSet(subscribers);
-    self[$$$core].effectSubscribers.extend(subscribers);
-    return true;
+    if(len(subscribers)) self[$$$operands].PATCH_FLAG++;
+    self[$$$core].effectSubscribers.subscribe(subscribers);
   }
   function defineGetter(obj, prop, value, desc={}){
     const { enumerable=false, writable=false, debug=false }=desc;
@@ -6559,6 +6575,9 @@ const Houxit=(function(global){
     }
     if(isTrue(enumerable)) descriptor.enumerable=enumerable;
     return define(obj, prop, descriptor);
+  }
+  function isSSRCompiler(self){
+    return isHouxitBuild(self) && isTrue(self[$$$core].settings.useSSRCompiler);
   }
   const registra=()=> createObj( 'Register', { 
     directives:createObj('directives'), 
@@ -6591,7 +6610,7 @@ const Houxit=(function(global){
       is_hyperscript:vnode.is_hyperscript
     } ), 
     activeObserver:null, 
-    effectSubscribers:new Tuple(),
+    effectSubscribers:new SubscriptionEffectBoard(),
     slotsFactory:createObj('slotsFactory', {
       renderedSlotsList:createObj('renderedSlotsList'),
     })
@@ -6611,7 +6630,8 @@ const Houxit=(function(global){
       priority:new Tuple()
     },
     template:undefined,
-    scopeSlotsBindings:{}
+    scopeSlotsBindings:{},
+    SSRHydrationFlag:false
   })
   const HXBuildOperandInitial=()=>({
     installers_plugin:new Tuple(),
@@ -6624,7 +6644,8 @@ const Houxit=(function(global){
     onRenderTracked:false,
     onEffectWatch:false, 
     modelMethods:createObj('modelMethods'),
-    templateTokenizedInputs:createObj("Refs", {})
+    templateTokenizedInputs:createObj("Refs", {}),
+    shouldInstallRenderEffect:true,
   });
   function createCordinationProperties(self, vnode){
     self.__public_model__=new Model();
@@ -6729,7 +6750,7 @@ const Houxit=(function(global){
     return (slotName, slotContent)=>{
       $debug_log(`Problem when mapping slot element>>>\n\nMore than one vnode slot name seems to be pointing to the  same slot\nat at "${slotName}" slot Directive  of "${slotContent.$element.outerHTML}" \n\nmaybe you should wrap them within a single template wrapper`, self, true, "During the induction of slots contents");
       $warn(`Note: unnamed contents will be automatically mapped  as "default" slot\nWon't conflict with other default contents`, self );
-      return false;
+      return;
     }
   }
   function smartSlotMapping(self, slotContent, slotName, defaultSlotsRecord, slotsCore, patchFlags){
@@ -6738,10 +6759,7 @@ const Houxit=(function(global){
       slotsCore[slotName]=function slotRender() {
         return  new HouxitFragmentElement( arrayInverter( slotContent ), patchFlags);
       }
-    }else{
-      slotDebuger(self)(slotName, slotContent);
-      return;
-    }
+    }else return slotDebuger(self)(slotName, slotContent);
   }
   const shouldUnwrap = child=> isHouxitFragmentElement(child) && child.isLoopWrappRenderer;
   function unwrapLoopWrappers(children){
@@ -6902,8 +6920,8 @@ const Houxit=(function(global){
     except.clear();
     return renderSlotList;
   }
-  function arrayInverter(value){
-    if(!isNull(value) && !isArray(value)){
+  function arrayInverter(value, useCollections=false){
+    if(!isNull(value) && (useCollections ? !isCollection(value) : !isArray(value))){
       const array=[];
       array.push(value);
       return array;
@@ -7179,19 +7197,19 @@ const Houxit=(function(global){
     if(isString(core_build) || isCollection(core_build)){
       render = (instance)=>{
         return _HouxitTemplateParser(temp_build(), instance, false, hx_Element, fall, {
-        official:true
-      });
+          official:true
+        });
       }
       self[$$$core].render=render;
-    }else if(!(core_build) && selector && isInitialBuild(self)){
-      self[$$$core].build=_GenerateRoot(selector, self)?.innerHTML || '';
-      render = (instance)=> _HouxitTemplateParser( temp_build(), instance, false, hx_Element, fall, {
+    }else if(!core_build && selector && isInitialBuild(self)){
+      self[$$$core].build=escapeReverseDecoder(_GenerateRoot(selector, self)?.innerHTML || '');
+      render = instance => _HouxitTemplateParser( temp_build(), instance, false, hx_Element, fall, {
         official:true
       });
       self[$$$core].render=render;
     }
-    self[$$$core].map.is_hyperscript=false
-    return render
+    self[$$$core].map.is_hyperscript=false;
+    return render;
   }
   function createGarbageCollector(self){
     self[$$$compiler][garbageKey]={
@@ -7388,7 +7406,7 @@ const Houxit=(function(global){
       $debug_log(`tokenRefs options received an invalid data type`, self, true);
       return;
     }
-    const tokenized=new Token(null);
+    const tokenized=new Token(undefined);
     _mountTokenEffect(tokenized, self, true);
     self[$$$operands].templateTokenizedInputs[ref]=tokenized;
     return tokenized;
@@ -7416,21 +7434,21 @@ const Houxit=(function(global){
     activateTemplateTokenizedOptions(self, options);
   }
   const isGettersObject=computed=>isPObject(computed) && ( isPFunction(computed.get) && ( !hasOwn(computed, 'set') ? false : isPFunction(computed.set) ) );
-  class deriveCache {
-    deriveData = pass
+  class computedCache {
+    computedData = pass
     constructor( callback, config ) {
-      this.deriveData=callback;
-      this.deriveData.config = config || {};
+      this.computedData=callback;
+      this.computedData.config = config || {};
     }
     transformer(prop){
       return {
         computed:{
-          [prop]:this.deriveData
+          [prop]:this.computedData
         }
       }
     }
   }
-  const isComputedMacro=value=> value instanceof deriveCache;
+  const isComputedMacro=value=> value instanceof computedCache;
   function _computed_(callback, config){
     const res=validateCollectionArgs(arguments, {
       min:1,
@@ -7445,7 +7463,7 @@ const Houxit=(function(global){
     const self=getCurrentRunningEffect({
       name:'computed',
     });
-    if(!isHouxitBuild(self)) return new deriveCache(callback, config || {});
+    if(!isHouxitBuild(self)) return new computedCache(callback, config || {});
     const computed=hydrateComputedTokenTransform(self, callback, true, config || {});
      _mountTokenEffect(computed, self);
     return computed;
@@ -7485,36 +7503,36 @@ const Houxit=(function(global){
       $debug_log(`computed:: computed macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
       computed = pass;
     }
-    const [ deriveData, subscribers ] =composedTokenHydration(self, computed, config);
-    deriveData[refInternalEffectKey].isComputed = true;
-    deriveData[refInternalEffectKey].computed=( isPFunction(computed) ? computed : computed.get ).bind(self.__public_model__)  ;
-    deriveData[refInternalEffectKey].subscribers.extend(subscribers)
-    deriveData[refInternalEffectKey].Initial=callArrGetters(subscribers);
+    const [ computedData, subscribers ] =composedTokenHydration(self, computed, config);
+    computedData[refInternalEffectKey].isComputed = true;
+    computedData[refInternalEffectKey].computed=( isPFunction(computed) ? computed : computed.get ).bind(self.__public_model__)  ;
+    computedData[refInternalEffectKey].subscribers.extend(subscribers)
+    computedData[refInternalEffectKey].Initial=callArrGetters(subscribers);
     if( len( subscribers ) ) {
       self.__public_model__.$observe( subscribers , () => {
-        if( isComputed( deriveData ) ) {
-          deriveData[refInternalEffectKey].updateFlags ++;
-          if( !deriveData[refInternalEffectKey].ModelInstance ){ 
-            deriveData[refInternalEffectKey].ModelInstance = self.__public_model__;
+        if( isComputed( computedData ) ) {
+          computedData[refInternalEffectKey].updateFlags ++;
+          if( !computedData[refInternalEffectKey].ModelInstance ){ 
+            computedData[refInternalEffectKey].ModelInstance = self.__public_model__;
           }
         }
       }, {
         flushType: "post"
       });
     }
-    return deriveData;
+    return computedData;
   }
-  function derivesCompile(self, opts){
+  function computedPropsCompiler(self, opts){
     if(!opts.computed || !len(opts.computed)) return
     for(let [key, computed] of entries(opts.computed)){
       if(!isPFunction(computed) && !isGettersObject(computed)){
         $debug_log(`computed option  at "${key}" property expects a getter function method option or a descriptor object of a "get" and an optional "set" property methods`, self, true);
         return;
       }
-      const deriveData = hydrateComputedTokenTransform(self, computed);
+      const computedData = hydrateComputedTokenTransform(self, computed);
       if(self) define(self.__public_model__, key, {
         get(){
-          return deriveData;
+          return computedData;
         }
       })
     }
@@ -7526,18 +7544,18 @@ const Houxit=(function(global){
     obs.updated_hooks.clear();
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.postUpdate, 'postUpdate');
   }
-  function mount(nodeSelector){
+  function render(nodeSelector){
     const useSSRCompiler=this[$$$core].settings.useSSRCompiler;
     let domRoot=_GenerateRoot(nodeSelector, this);
     activateWatchObserverPlugin(this, nodeSelector);
     if(IS_ELEMENT_NODE(domRoot) && isInitialBuild(this) && !useSSRCompiler ) domRoot.innerHTML="";
     if(isInitialBuild(this) && !IS_ELEMENT_NODE(domRoot)){
-      $debug_log('Initial entry Point mount root expects an element node', this, true);
-      return this
+      $debug_log('Initial entry Point render root expects an element node', this, true);
+      return this;
     }
     if(isInitialBuild(this) && isTrue(domRoot.IS_HOUXIT_MOUNTROOT)){
       this[$$$operands].initializedRender=false;
-        $debug_log(`A Houxit widget has already been mounted on this element, cannot mount more than one Widget on a single root element`, this, true, `When trying to mount this initialBuild instance to the target DOM`);
+        $debug_log(`A Houxit widget has already been mounted on this element, cannot render more than one Widget on a single root element`, this, true, `When trying to render this initialBuild instance to the target DOM`);
       this[$$$operands].initializedRender=true;
       return this;
     }
@@ -7545,7 +7563,7 @@ const Houxit=(function(global){
     return this;
   }
   function activateWatchObserverPlugin(self, nodeSelector){
-    _Data_Hydrations(self, self[$$$core].opts)
+    _Data_Hydrations(self, self[$$$core].opts);
     prefixManagement(self);
     handleBuildGenerator(self, nodeSelector);
     let initialBuild=self[$$$core].render;
@@ -7553,12 +7571,12 @@ const Houxit=(function(global){
     defineGetter(self, '$build', Render_Template(self, initialBuild) );
     _Reactive_Adapter_Plugin( self.__public_model__ ,async function(){
       const postEffCall=_EffectDependencyNotifier(self);
-      _ReconciliationTransformTrigger(self,  nodeSelector );
+      if(self[$$$operands].shouldInstallRenderEffect) _ReconciliationTransformTrigger(self,  nodeSelector );
       tick(()=> {
         try{
-          postEffCall()
+          postEffCall();
         }catch(e){
-          console.error(e)
+          console.error(e);
         }
       });
     }, self, true);
@@ -7812,7 +7830,7 @@ const Houxit=(function(global){
   function mountedWarning(self, name){
     if(isTrue(self[$$$operands].hasMountProto)){
       if(!self[$$$core].map.mountWarn) {
-        $debug_log(`This "mount" method has been called and calling of methods after the widget is mounted is prohibited\n\n call to the ('.${name}') method is considered an invalid houxit syntax`, self, true);
+        $debug_log(`This "render" method has been called and calling of methods after the widget is mounted is prohibited\n\n call to the ('.${name}') method is considered an invalid houxit syntax`, self, true);
         self[$$$core].map.mountWarn=true;
       }
       return false;
@@ -7837,7 +7855,7 @@ const Houxit=(function(global){
   }
   function buildMethods(){
     return { 
-      mount,
+      render,
       widget, 
       mixin,
       install, 
@@ -7918,10 +7936,13 @@ const Houxit=(function(global){
     const instance =isBuiltinWidgetBuild(self)  ? self[$$$core].virtualNode.filesFilter.INSTANCE_NORMALIZER : self;
     const is_hyperscript=self[$$$core].map.is_hyperscript;
     const isRerender=self[$$$operands].initializedRender;
+    const s_x=self[$$$core].effectSubscribers;
+    if(!isRerender) s_x.createWatch();
     if(isPFunction(initBuild)) initBuild = initBuild( instance );
     if(is_hyperscript) initBuild=_HouxitTemplateParser(arrayInverter(initBuild), instance, null, null, null, {
       official:true
     });
+    if(!isRerender) self[$$$operands].shouldInstallRenderEffect= len(s_x.endWatch() || []) > 0;
     if(isArray(initBuild)) initBuild= new HouxitFragmentElement(initBuild, self, null);
     self[$$$compiler].template=initBuild;
     if(!isRerender) initBuild=posixVNodeTransform(self, initBuild);
@@ -7956,7 +7977,7 @@ const Houxit=(function(global){
       observer.update();
     }
     if(self[$$$operands].PATCH_FLAG ){
-      observe(()=>data[$$$StreamProxyKey], function(){
+      observe(()=> data[$$$StreamProxyKey], function(){
         try{
           callback();
           self[$$$operands].PATCH_FLAG=0;
@@ -8040,13 +8061,12 @@ const Houxit=(function(global){
           index,
           key
         });
-      }else if(key !== tempK ){//if render no more not at this index
-        if(tempIndexes.has(key)){//but still exists in new vNodes
+      }else if(key !== tempK ){//if render no more at this index
+        if(tempIndexes.has(key)){//but still exists in new vNodes listings
           const vnodeTM=tempLeagues[tempK];
-          let targetElem= tempK ? transformTargetElement(vnodeTM[0], null, true) : undefined;
+          let targetElem= tempK ? resolveTargetElement(vnodeTM[0], null, true) : undefined;
           const posixElem=document.createComment("");
-          if(tempK) targetElem.after(posixElem);
-          log(Template.VN_Tree.ELEMENTS())
+          if(tempK && targetElem ) targetElem.after(posixElem);
           exchangeRecorder.push({
             elements:[tempLeagues[key], vnodeTM],//the position the current element is destinated
             keys:[key, tempK],
@@ -8060,7 +8080,7 @@ const Houxit=(function(global){
           if(index >= len(tempIndexes)) forAppending.push([Rerender_Element, key, index]);
           else{
             const [ targetBox, targetInd]=tempLeagues[tempK];
-            const targetElem=transformTargetElement(targetBox, null, );
+            const targetElem=resolveTargetElement(targetBox, null, );
             const posixElem=document.createComment("");
             targetElem.before(posixElem);
             forInsertion.push({
@@ -8075,7 +8095,7 @@ const Houxit=(function(global){
       }
     }
     fractional_diffing_transform(self, exchangeRecorder, Template, EffectVNode, tempIndexes, tempLeagues, LEAGUE_TREE, KEYS_INDEXES, observer, forAppending, forInsertion, forRemovals);
-    // tempIndexes.arrange(KEYS_INDEXES.list());
+    tempIndexes.arrange(KEYS_INDEXES.list());
     keys(tempLeagues).forEach(key=>{
       if(!tempIndexes.has(isNaN(Number(key)) ? key : Number(key))) delete tempLeagues[key];
     });
@@ -8110,7 +8130,7 @@ const Houxit=(function(global){
       const adjKey=KEYS_INDEXES.at(index-1);
       const [ targetBox, targetInd ]=tempLeagues[adjKey];
       tempLeagues[key]=[Element, index ];
-      const targetElem=transformTargetElement(targetBox, null, true);
+      const targetElem=resolveTargetElement(targetBox, null, true);
       Template.NodeList.add(targetBox);
       targetElem.after(Element.$element);
       observer.mutated=true;
@@ -8122,7 +8142,7 @@ const Houxit=(function(global){
       const [ key, targekey ]=keys;
       const tempK=KEYS_INDEXES.at(tempInd-1);
       const [ targetBox, targetInd ] = tempLeagues[tempK];
-      const targetElem=transformTargetElement(targetBox, null, true);
+      const targetElem=resolveTargetElement(targetBox, null, true);
       const parent=targetElem.parentNode;
       const posixElem=document.createComment("");
       targetElem.after(posixElem);
@@ -8175,10 +8195,7 @@ const Houxit=(function(global){
           });
         }
       }else{
-        generateWrapElementAction(element[0], (el)=> {
-          // log(parent, 8888)
-          smartMoveElement(self, parent, el, posixElem);
-        });
+        generateWrapElementAction(element[0], (el)=> smartMoveElement(self, parent, el, posixElem));
         observer.mutated=true;
         cleanup_zip.add(function(){
           tempLeagues[key][1]=tempInd;
@@ -8215,7 +8232,7 @@ const Houxit=(function(global){
     if(!HouxitElementDiffing(hx_Element, vNode)) {
       const NewNode=__createRerenderBlock(self, vNode);
       const posixElem=document.createComment("");
-      const targetElem=transformTargetElement(hx_Element, null, true);
+      const targetElem=resolveTargetElement(hx_Element, null, true);
       targetElem.after(posixElem);
       if(parent) parent.VN_Tree.LEAGUE_TREE[key]=[NewNode, index];
       unMountVNode(hx_Element);
@@ -8227,7 +8244,7 @@ const Houxit=(function(global){
     }
     effectiveElement_REPATCH(self, hx_Element, vNode, observer, parent );
   }
-  function transformTargetElement(target, fallback, last=false){
+  function resolveTargetElement(target, fallback, last=false){
     let targetElem;
     if(isTextOrNativeElement(target)) targetElem = target.$element;
     else{
@@ -8238,12 +8255,14 @@ const Houxit=(function(global){
     return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) ? targetElem : fallback;
   }
   function unMountVNode(vnode){
-    if(isHouxitWidgetElement(vnode)){
-      vnode.widget_instance.destroy();
-    }else if(isHouxitFragmentElement(vnode)) vnode.upload((el)=> {
-      el.remove();
-    });
-    else if(!isRenderlessElement(vnode)) vnode?.$element?.remove();
+    if(isHouxitWidgetElement(vnode))vnode.widget_instance.destroy();
+    else if(isHouxitFragmentElement(vnode)) {
+      vnode.NodeList.forEach(el=> unMountVNode(el));
+      vnode.upload(el=> el.remove());
+    }else if(!isRenderlessElement(vnode)) {
+      vnode.NodeList.forEach(el=> unMountVNode(el));
+      vnode?.$element?.remove();
+    }
   }
   function generateWrapElementAction(vnode, callback){
     if(isHouxitWidgetElement(vnode)) vnode=WidgetElementUnwrap(vnode);
@@ -8268,7 +8287,8 @@ const Houxit=(function(global){
     return isPrimitive(node.prototype_);
   }
   function HouxitElementDiffing(node, vNode){
-    if(isSameHouxitElementType(node, vNode) || (deepEqualityCheck(node.prototype_, vNode.prototype_)) && primate_check(node, vNode)) return true;
+    if(isHouxitTextElement(node) && isHouxitTextElement(vNode)) return true;
+    if(isSameHouxitElementType(node, vNode) && deepEqualityCheck(node.prototype_, vNode.prototype_) && primate_check(node, vNode)) return true;
     return false;
   }
   function RerenderingTextsContents(self, node, vNode, observer, parent){
@@ -8450,18 +8470,18 @@ const Houxit=(function(global){
       controllerHydration( self , child ) ;
       child.install( controllerGlobalPlugin , { self } ) ;//build the widget and other installations
     }
-    return child.mount( _createFragment() ) ;//mounts the build to a houxit fragment
+    return child.render( _createFragment() ) ;//mounts the build to a houxit fragment
   }
   function integrateUseInstallProto(self){
     if(hasOwn(self[$$$core].opts, 'install')) self.install(self[$$$core].opts.install);
   }
   function controllerHydration( self , build ) {
     const globals=getGlobalRegistery(self)
+    installTransformersArgumentations(self, build )
     if( !len( globals.controller ) ) return build ;
     for( let genre of globals.controller.values() ) {
       build.controller( genre ) ;
     }
-    installTransformersArgumentations(self, build )
     // build.property('$parent', self.$build)
     return build;
   }
@@ -9661,7 +9681,8 @@ const Houxit=(function(global){
     return _initBuild(...arguments);
   }
   function createSSRStreamHack(vnodePlate, ssrConfig){
-    const [ options, props = {} , children = [] ] = [ ...vnodePlate ];
+     vnodePlate= initialBuildTransform(...vnodePlate);
+     vnodePlate.filesFilter.useSSRCompiler=true;
     return vnodePlate;
   }
   function renderToString(build, config){
@@ -9671,11 +9692,12 @@ const Houxit=(function(global){
     
   }
   function initSSRBuild(options, props, children){
-    createSSRStreamHack( arguments, {
+    const vNode=createSSRStreamHack( arguments, {
       type:'stream',
       render:None
-    })
-    return initBuild( ...arguments )
+    });
+    if(!isVNodeClass(vNode)) return undefined;
+    return new HouxitBuild( vNode );
   }
   function initAsyncBuild(options, propsOrChildren, childrenOrProps){
     
@@ -9860,7 +9882,7 @@ const Houxit=(function(global){
   global.escapeDecoder = escapeDecoder ;
   global.resolve = resolve ;
   global.observe = observe ;
-  global.adapter = adapter ;
+  global.effectHook = effectHook ;
   global.$$ = $$ ;
   global.generateTemplateElement = generateTemplateElement ;
   global.memMove = memMove ;
