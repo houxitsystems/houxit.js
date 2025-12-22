@@ -88,10 +88,9 @@ const Houxit=(function(global){
   const hasHyphen_bind=key=>/^\-\-[\w\-|[\]]+/.test(key);
   const hasAt_bind=key=>/^@[\w\-|[\]]+/.test(key);
   const has$$_bind=key=>/^\$\$[\w\-|[\]]+/.test(key);
-  const hasDir_bind=key=>/^dir\-\-[\w\-|[\]]+/.test(key);
   const hasAsh_bind=key=>/^\#[\w\-|[\]]+/.test(key);
   const hasSpread_bind=( key , useAccessor=false )=> ( useAccessor ? /^\.\.\.[\w$.]+/ : /^\.\.\.[\w$]+/ ).test(key);//useAccessor requests if dot notation is acceptd on match
-  const HouxitSpecialProperties="ref,key,dispatch,attach,context";
+  const isSpecialProps=prop=>_makeMap_("ref,key,dispatch,attach,context,motion", prop);
   const exists=value=> value || isNumber(value) ? true : false ;
   const hasAsterisks_bind=key=>/^\*[\w\-|[\]]+/.test(key)
   const widgetOptionType={ 
@@ -168,7 +167,7 @@ const Houxit=(function(global){
   const IS_HTML_TAG=txt=>_makeMap_(HTML_TAGS, txt);
   const WEB_COMPONENTS="template,slot";//Web components tags , also supported by the Houxit framework
   const HTML_FORM_ELEMENTS="select,textarea,input,form,progress,meter,option";
-  const Is_Form_Element=element=>IS_ELEMENT_NODE(element) && _makeMap_(HTML_FORM_ELEMENTS, element.localName);
+  const Is_Form_Element=element=>IS_ELEMENT_NODE(element) && _makeMap_(HTML_FORM_ELEMENTS, (element.localName));
   const IS_WEB_COMPONENT=txt=>_makeMap_(WEB_COMPONENTS, txt);
   const HTML_VOID_TAGS="base,link,meta,hr,br,wbr,area,img,track,embed,source,input";//HTML void tags, also supported by the Houxit framework
   const IS_HTML_VOID_TAG=txt=>_makeMap_(HTML_VOID_TAGS, txt);
@@ -202,6 +201,36 @@ const Houxit=(function(global){
       super(...arguments);
     }
   }
+  class BaseMotion{
+    constructor(){
+      
+    }
+  }
+  class Animation extends BaseMotion{
+    constructor(){
+      super();
+    }
+  }
+  class Transition extends BaseMotion{
+    constructor(){
+      super();
+    }
+  }
+  class SSRText{
+    constructor(text){
+      this.content=text;
+    }
+    content=""
+    hydrationFlushs=new Tuple()
+  }
+  class SSRFragment{
+    constructor(array){
+      this.fragment=arrSet(array);
+    }
+    fragment=[]
+    hydrationFlushs=new Tuple()
+    hx_Element=undefined
+  }
   class Dict extends BaseDict{
     constructor(){
       super(...arguments);
@@ -212,6 +241,11 @@ const Houxit=(function(global){
     constructor(callback, ...args){
     }
   }
+  const isBaseMotion=klass=>klass instanceof BaseMotion;
+  const isAnimation=klass=> klass instanceof Animation;
+  const isTransition=klass=> klass instanceof Transition;
+  const isSSRText=klass=> klass instanceof SSRText;
+  const isSSRFragment=klass=> klass instanceof SSRFragment;
   const isTemplateClass=klass=> klass instanceof BaseTemplateClass;
   const DataFunctionMap=[String, Function, Object, Array, Symbol, Number, Boolean];
   const XtructDataCallableTypes=[Set,Map,WeakMap,WeakSet, Date,WeakRef,Promise,RegExp,Proxy,BigInt,ArrayBuffer,Tuple];
@@ -386,6 +420,7 @@ const Houxit=(function(global){
   const $$renderClass=Symbol();
   const rawObjKey=Symbol()
   const $$$ModelUpdateKey = Symbol();//resolving a model directive consumption on widget 
+  const SSRHydrationSymbol=Symbol();
   const $$BuiltinWidgetKey=Symbol();
   const $buildWidgetNormalizerKey=Symbol();
   const factoryHXSelfInstance=Symbol();
@@ -497,7 +532,7 @@ const Houxit=(function(global){
   }
   const isCollection=item=>validateType(item, [Array, Set, Tuple, Arguments ]);
   const isInvalidInjectorOpt=opt=>_makeMap_("build,preBuild", opt);
-  const isAllowedComposersOpt=opt=>_makeMap_("postBuild,preMount,postMount,preUpdate,postUpdate,preDestroy,postDestroy,defineConfig,defineSignals,useSlots,useTransmit,useReceiver,useContext,useParams,onEffect,onTracked,onCatch,onSlotRender,onSlotEffect", opt);
+  const isAllowedComposersOpt=opt=>_makeMap_("postBuild,preMount,postMount,preUpdate,postUpdate,preDestroy,postDestroy,defineConfig,defineSignals,defineSlots,useTransmit,useReceiver,useContext,useParams,onEffect,onTracked,onCatch,onSlotRender,onSlotEffect", opt);
   const adaptableComposers={
     params:useParams,
     postBuild,
@@ -514,13 +549,14 @@ const Houxit=(function(global){
     onSlotRender,
     buildConfig:defineConfig,
     signals:defineSignals,
-    slots:useSlots,
+    slots:defineSlots,
     transmit:useTransmit,
     receive:useReceiver,
     context:useContext,
     install:useInstall
   }
-  const optionalAdapterrs="name,widgets,directives,mixins"
+  const optionalAdapterrs="name,widgets,directives,mixins";
+  const c_str="hx-posix-comment";
   const isAllowedAdapterOpts=opt=>_makeMap_( keys(adaptableComposers).join(','), opt);
   const isNonDuplicateFunc=opt=>_makeMap_("params,context,transmit", opt)
   function useInstall(callback){
@@ -880,7 +916,8 @@ const Houxit=(function(global){
       if(hasOwn(watchers.factoryObject, 'set')) descriptor.set=watchers.factoryObject.set;
     }else{
       descriptor.get= function(){
-        dirty_object.getter=()=>isComputed ? returnValue() : effective[accessor()]  ;
+        const getter=()=>isComputed ? returnValue() : effective[accessor()]  ;
+        dirty_object.getter=()=>getter();
         watchers.effectTrack()
         return dirty_object.getter();
       }
@@ -1605,16 +1642,16 @@ const Houxit=(function(global){
     return [ subscribers, value ];
   }
   function _trackEffectDeps(fn, ...args ){
-    if(validateCollectionArgs(arguments, {
+    if(!validateCollectionArgs(arguments, {
       count : 1,
       validators:[Function],
       name:'trackEffectDeps'
     })) return [];
-    const self = getCurrentRunningEffect({
+    const self = isHouxitBuild(this) ? this : getCurrentRunningEffect({
       name:'trackEffectDeps'
     });
     if(!isHouxitBuild(self)) return [];
-    return effectDependencyTracking(self, fn, args );
+    return effectDependencyTracking(self, fn, args )[0];
   }
   function trackEffectDeps(fn){
     return _trackEffectDeps(...arguments)
@@ -2126,16 +2163,8 @@ const Houxit=(function(global){
       //   if(deep) item =  _makeCloneVersion(item, deep) ;
       //   cValue[ validateType(value, [Set, Tuple]) ? "add" : "push" ]( item );
       // }
-    }else if(isFunction(value)){
-      if(isGlobalBuiltinType(value) || isClass(value) || (isVNodeClass(parent) && _makeMap_("GeneticProvider,prototype_", key))) return value;
-      else {
-        return new Proxy(value, {
-          apply(target, thisArg, args ){
-            return Reflect.apply(...arguments);
-          }
-        });
-      }
-    }else if(isObject(value)) {
+    }else if(isFunction(value)) return value;
+    else if(isObject(value)) {
       const isSVA= isArray(value) && len(value) === 1 && isNumber(value[0]);
       if(isSVA) {
         value=[ ...value ];
@@ -2356,22 +2385,23 @@ const Houxit=(function(global){
       $debug_log(`cannot create a TEXT_NODE element from a none primitive value.......\n\n"${text}" value`, self);
       text = "";
     }
+    const isSSR=isSSRCompiler(self);
     let hasSkip;
     let node;
     let is_hyperscript=hx_Element.is_hyperscript;
-    if(!isRerender) node=document.createTextNode(text);
+    if(!(isRerender || isSSR)) node=document.createTextNode(text);
     if(hasSpecialCharacters(text)  && !is_hyperscript) {
-      let [subscribers, textContent] = effectDependencyTracking(self, function(){
+      let [ subscribers, textContent ] = effectDependencyTracking(self, function(){
         return resolveAccessor(self, text, hx_Element);
-      })
-      if(!isRerender) node.textContent=textContent
+      });
+      if(!(isRerender || isSSR)) node.textContent=textContent
       else {
         node=textContent;
         hx_Element.$element=textContent;
       }
       if(len(subscribers) && !isRerender) hx_Element.VNodeManager.patchFlags.subscriptions.extend(subscribers);
     }
-    if(isRerender && (is_hyperscript || !hasSpecialCharacters(text))){
+    if((isRerender || isSSR) && (is_hyperscript || !hasSpecialCharacters(text))){
       node = text;
       hx_Element.$element=text;
     }
@@ -2418,6 +2448,11 @@ const Houxit=(function(global){
       $Model_Event:null,
       $Notifiers:null,
       $StarterKit:null,
+      $ssr_kit:{
+        events:new Tuple(),
+        props:{},
+        hydrationFlushs:new Tuple()
+      }
     }
     rawChildren=null
     rawProps=null
@@ -2474,6 +2509,7 @@ const Houxit=(function(global){
       updateFlags:{ 
         active:false
       },
+      posix:[],
       templateRefs:new Tuple(),
       GeneticProvider:undefined,
       vNodeClass:undefined,
@@ -2495,7 +2531,8 @@ const Houxit=(function(global){
         sourcesArray:[],
         syntaxArray:[]
       },
-      propsTraversers:new Tuple()
+      propsTraversers:new Tuple(),
+      SSRVnode:undefined
     })
     VN_Tree={
       KEYS_INDEXES:new Tuple(),
@@ -2985,14 +3022,6 @@ const Houxit=(function(global){
           animate:Any
         }
       }
-    }else if(prototype_ === Memo){
-      vnode.GeneticProvider={
-        name:"hx:memo",
-        params:{
-          test:Function
-        },
-        signals:['activated', 'deactivated']
-      }
     }else if(prototype_ === Suspence){
       vnode.GeneticProvider={
         name:'hx:suspense',
@@ -3000,6 +3029,22 @@ const Houxit=(function(global){
       }
     }
     return createRenderlessElement();
+  }
+  function built_in_memo_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
+    const widget={
+      name:'hx:memo',
+      params:{
+        max:Number,
+        test:Function
+      },
+    }
+    assign(vnode, {
+      GeneticProvider:widget,
+      prototype_:widget,
+      type:widget
+    });
+    vnode[$$BuiltinWidgetKey]="hx:memo";
+    return createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element);
   }
   function simulate_buitin_widget_syms(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
     const { prototype_ } = vnode;
@@ -3019,7 +3064,8 @@ const Houxit=(function(global){
     else if(prototype_ === Self ) return built_in_self_widget(...resArgs);
     else if(prototype_ === Build ) return built_in_Build_widget(...resArgs);
     else if(prototype_ === Portal) return built_in_portal_widget(...resArgs);
-    else return generateWidgetBasedBuiltin(...resArgs);
+    else if(prototype_ === Memo) return built_in_memo_widget(...resArgs);
+    // else return generateWidgetBasedBuiltin(...resArgs);
   }
   function createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc,  hx_Element){
     let starterKit;
@@ -3120,6 +3166,7 @@ const Houxit=(function(global){
   class HouxitNativeElement extends HouxitElement{
     constructor(vnode){
       super(...arguments);
+      this.VNodeManager.SSRVnode=new vNodeClass();
       HouxitTemplateGenerators.call(this, ...arguments);
       this.prototype_=vnode.type;
     }
@@ -3132,6 +3179,7 @@ const Houxit=(function(global){
   class HouxitWidgetElement extends HouxitElement{
     constructor(vnode){
       super(...arguments);
+      this.VNodeManager.SSRVnode=[];
       HouxitTemplateGenerators.call(this, ...arguments, true);
       this.prototype_=vnode.prototype_;
     }
@@ -3143,34 +3191,47 @@ const Houxit=(function(global){
       vnodes=arrayInverter(vnodes);
       let index=0;
       const isRerender = self ? self[$$$operands].initializedRender : undefined;
-      const fragment = !isRerender ?  _createFragment() : undefined;
-      const start_el=document.createComment("");
-      fragment?.append(start_el);
+      this.VNodeManager.SSRVnode=[];
+      const inDom=(isHydration(self) || !isSSRCompiler(self)) && inBrowserCompiler && !isRerender;
+      const isSSR=isSSRCompiler(self);
+      const isHy=isHydration(self);
+      if(!isSSR && !isRerender) this.VNodeManager.posix=[ document.createComment(c_str), document.createComment(c_str)]
+      const fragment = !isSSR && !isRerender ?  _createFragment() : isSSR ? [] : isRerender ? undefined : undefined;
+      const start_el=this.getSSRPosixEl()[0];
+      if(start_el) fragment?.[(isSSR ? 'push' : 'append')](start_el);
       for(let [ key, node ] of vnodes.entries()){
         if(!node && !fragment) continue;
-        if(isHouxitElement(node)) this.NodeList.add(node);
-        fragment?.append(node.$element);
+        if(isHouxitElement(node) && !isSSR) this.NodeList.add(node);
+        fragment?.[(isSSR ? 'push' : 'append')](smartSSRGrab(node, isSSR, isHy));
         resolve_keyed_mapping(this, node, index, self);
         index ++;
       }
-      const end_el=document.createComment("");
-      fragment?.append(end_el);
+      const end_el=this.getSSRPosixEl()[1];
+      if(end_el) fragment?.[isSSR ? 'push' : 'append'](end_el);
       evaluateKeyOnElement(this, key, self);
       if(!isRerender){
         this.VN_Tree.ELEMENTS=()=>{
           const recorder=new Tuple();
-          if(!isInDomNode(start_el)) return;
-          let node = start_el;
+          const [start, end] = this.getSSRPosixEl();
+          if(!isInDomNode(start)) return recorder;
+          let node = start;
           while(node){
             let next = node.nextSibling;
             if(!IS_COMMENT_NODE(node) && node) recorder.add(node);
-            if(node === end_el) break;
+            if(node === end) break;
             node = next;
           }
           return recorder;
         }
       }
-      this.$element=fragment;
+      this.$element=isHy && !isRerender ? new SSRFragment(fragment) : fragment;
+      if(isSSR) {
+        if(isHy) this.$element.hx_Element=this;
+        this.VNodeManager.SSRVnode=this.$element;
+      }
+    }
+    getSSRPosixEl(){
+      return this.VNodeManager.posix;
     }
     upload(callback){
       this.VN_Tree.ELEMENTS().forEach((el, ind)=> callback(el));
@@ -3186,6 +3247,7 @@ const Houxit=(function(global){
     constructor(text, self, hx_Element, fall){
       super();
       const isRerender=self[$$$operands].initializedRender;
+      const isHy=isHydration(self);
       this.is_hyperscript= hx_Element?.is_hyperscript ;
       if(hx_Element) this.LabContext=assign({}, hx_Element?.LabContext || {});
       if(!this.is_hyperscript && fall ) this.LabContext=smartDextCtxMerging(this.LabContext, fall);
@@ -3194,8 +3256,24 @@ const Houxit=(function(global){
         hx_Element.render_tracked=this.render_tracked
         hx_Element.VNodeManager.patchFlags.isHoisted=true;
       }else if(this.render_tracked && isHouxitBuild(self)) self[$$$compiler].hoistedNodelist.add(this);
-      this.prototype_=isRerender ? this.$element : this.$element.textContent;
+      this.prototype_=isRerender || isSSRCompiler(self) ? this.$element : this.$element.textContent;
+      if(isSSRCompiler(self)) {
+        this.$element=isHy ? new SSRText(this.prototype_) : this.prototype_;
+        this.VNodeManager.SSRVnode=this.$element;
+        if(isHy) this.$element.hydrationFlushs.add(element=> this.$element=element);
+      }
     }
+  }
+  function smartSSRGrab(node, isSSR, isHy){
+    let collectings= !isSSR ? node.$element : !isHouxitElement(node) ? node : node.$element;
+    if((isCollection(collectings) || isHouxitWidgetElement(node)) && isHy){
+      if(!isCollection(collectings) && isHouxitWidgetElement(node)) collectings=node.widget_instance.$build.$element;
+      else{
+        collectings=new SSRFragment(collectings);
+        collectings.hx_Element=isHouxitWidgetElement(node) ? node.widget_instance.$build : node;
+      }
+    }
+    return collectings;
   }
   function createRenderlessElement(callback=pass){
     const renderlessElement=new HouxitRenderlessElement();
@@ -3319,15 +3397,26 @@ const Houxit=(function(global){
   function _createNativeElement(virtualNode, self, hx_Element, siblings, IS_RENDERLESS, customElementsArgs, starterKit){
     let { type, props, children, key } = virtualNode;
     const argsCount=len(arguments);
+    const isSSR=isSSRCompiler(self);
+    const isHy=isHydration(self);
     let element;
     const is_hyperscript=virtualNode.is_hyperscript;
     const isRerender=self[$$$operands]?.initializedRender;
     if(!isRerender && isString(type)){
-      element=document.createElement(type);
-      if(hx_Element && isHouxitBuild(self)) {
+      element=isSSR ? hx_Element.VNodeManager.SSRVnode : document.createElement(type);
+      if(isSSR) element.type=type;
+      if(hx_Element && isHouxitBuild(self)){
         hx_Element.hx_build=self[$$$ownProperties].hx_build
-        if(self[$$$ownProperties].hx_build) element.setAttribute("data-hx_build", self[$$$ownProperties].hx_build);
+        if(self[$$$ownProperties].hx_build) {
+          if(isSSR) element.props['data-hx_build']=self[$$$ownProperties].hx_build;
+          else element.setAttribute("data-hx_build", self[$$$ownProperties].hx_build);
+        }
       }
+    }
+    if(isHy){
+      element.filesFilter.$ssr_kit.hydrationFlushs.add((element)=>{
+        hx_Element.$element=element;
+      });
     }
     const metrics ={
       is_hyperscript,
@@ -3347,24 +3436,28 @@ const Houxit=(function(global){
         const item= _$runModelBind(self, virtualNode.filesFilter['dir--raw'], hx_Element, true);
         if(item){
           const content=escapeDecoder(virtualNode.rawChildren);
-          if(!isRerender) element.innerHTML=content; 
-          else hx_Element.$element=content;
+          if(!isRerender) {
+            if(isSSR) element.props.innerHTML=content;
+            else element.innerHTML=content; 
+          }else hx_Element.$element=content;
         }
       } else {
         childNodes=_HouxitTemplateParser(children, self, true, hx_Element, assign({}, hx_Element.LabContext));
         childNodes = arrayInverter( childNodes );
         let index=0;
+        if(isSSR) element.children=[];
         for(let [key, els] of childNodes.entries()){
-          if(!els) continue;
+          if(!els || ( !isRerender && (isSSR && isSSRText(els.$element) ? !els.$element.content : !els.$element))) continue;
           hx_Element.NodeList.add(els);
-          if(!isRerender) element.append(els.$element);
+          if(isSSR) element.children.push(smartSSRGrab(els, isSSR, isHy));
+          else if(!isRerender && els.$element) element.append(els.$element);
           resolve_keyed_mapping(hx_Element, els, index, self);
           index++;
         }
       }
     }
     if(props) Props_dilation_compile(virtualNode, self, hx_Element, metrics, element);
-    if(!isRerender && virtualNode.prototype_==='slot' && !element?.name.trim()){
+    if(!isRerender && virtualNode.prototype_==='slot' && !(isSSR ? element?.props.name.trim() : element.name?.trim())){
       slotNamingTRANSITION(self, {
         value:'default'
       }, element, hx_Element, {
@@ -4081,6 +4174,7 @@ const Houxit=(function(global){
     return [ insert, remove ];
   }
   function parse_Class_Binding(self, item, element, hx_Element, patch, { is_hyperscript, $orgKey, bindings, forwardAttrs }){
+    const isSSR=isSSRCompiler(self);
     if(!is_hyperscript && len(bindings.deepKeys)){
       const value=bindings.value;
       if(value || isString(value)) item=bindings.deepKeys;
@@ -4090,12 +4184,14 @@ const Houxit=(function(global){
     const [ subs ]= patch || [];
     const transform=mapClassTypeTransform(item, new Tuple());
     for(let [index, cls] of transform.entries()){
-      cls=unwrap(cls)
-      if(!element.classList.contains(cls)) {
-        toggleClassNames(element, cls);
-      }
+      cls=unwrap(cls);
+      if(isSSR){
+        const props=hx_Element.VNodeManager.SSRVnode.props;
+        if(!hasOwn(props, 'class')) props.class=new Tuple();
+        if(!props.class.has('cls')) props.class.add(cls);
+      }else if(!element.classList.contains(cls)) toggleClassNames(element, cls);
     }
-    if(!is_hyperscript && !len(subs)) return;
+    if(!is_hyperscript || !len(subs) || isSSR) return;
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       item=_createElementPropsEffectBlock_(self, {
         element, 
@@ -4146,11 +4242,18 @@ const Houxit=(function(global){
   function parse_Style_Binding(self, item, element, metrics, hx_Element){
     const { is_hyperscript, patch, $orgKey, forwardAttrs } = metrics;
     let styleProps;
+    const isSSR=isSSRCompiler(self);
     const deepKeys=metrics.bindings.deepKeys;
     if(!is_hyperscript && len(deepKeys)) styleProps=stylePropsKeys_Normalizing(self, item, deepKeys);
     else styleProps=compileStyleProps(self, item, {});
-    entries(styleProps).forEach(([prop, style])=> element.style[unwrap(prop)]=style );
-    if(!is_hyperscript && !(patch && len(patch[0]))) return;
+    entries(styleProps).forEach(([prop, style])=> {
+      if(isSSR){
+        const props=hx_Element.VNodeManager.SSRVnode.props;
+        if(!hasOwn(props, 'style')) props.style={};
+        props.style[to_kebab_case(unwrap(prop))]=style;
+      }else element.style[unwrap(prop)]=style;
+    });
+    if(!is_hyperscript || (!patch && !len(patch?.[0]) || isSSR)) return;
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       item=_createElementPropsEffectBlock_(self, {
         element, 
@@ -4309,7 +4412,7 @@ const Houxit=(function(global){
   function validateListenSpecialEvent(self, bindings){
     const key = bindings.key;//.slice(2).toLowerCase();
     const is_dispatch_ev=key==='dispatch';
-    if(!is_dispatch_ev && isFunction(bindings.value)) bindings.value=[ bindings.value, bindings.value.options || []];
+    if(!is_dispatch_ev && isFunction(bindings.value)) bindings.value=[ bindings.value, bindings.value.options || {}];
     let response=validateCollectionArgs(bindings.value, {
       validators:is_dispatch_ev ? [ [String, Array], Function, [String, Array]] : [Function, [String, Array]],
       name:bindings.key,
@@ -4322,7 +4425,7 @@ const Houxit=(function(global){
       const func=events;
       modifiers= method;
       events=to_kebab_case(key).split('-');
-      events.shift();
+      if(to_kebab_case(key).includes('-')) events.shift();
       method=func;
     }
     bindings.deepKeys=isString(events) ? events.split(".") : isArray(events) ? events : [];
@@ -4333,6 +4436,7 @@ const Houxit=(function(global){
   }
   function HTMLAttrsMagnifier(element, bindings, hx_Element, self, metrics){
     let { is_hyperscript, isRerender, patch, vNode, forwardAttrs } = metrics ;
+    const isSSR=isSSRCompiler(self);
     let { key, value:attr, src } = bindings;
     if(!isRerender && isHTMLBooleanAttributes(key)) BooleanAttributesManager(self, element, [ key, attr], { 
       is_hyperscript,
@@ -4353,20 +4457,30 @@ const Houxit=(function(global){
       bindings,
       forwardAttrs
     }, hx_Element );
-    else if(!isRerender && isOnListener(src) || key === 'dispatch'){ 
+    else if(!isRerender && (isOnListener(src) || isInlineListener(key) || key === 'dispatch')){ 
       if(!click_handler_facading(self, [ key, attr, src ], bindings, element, hx_Element, metrics)) return;
     }else if(!isRerender && key === "ref") Special_REF_Modifier(self, element, bindings, hx_Element, metrics);
     else if(!isRerender && key === "attach") transformAttachProp(self, bindings, element, hx_Element, metrics, );
     else if(isHouxitNativeElement(hx_Element) && key === 'name' && vNode.prototype_ ==='slot') slotNamingTRANSITION(self, bindings, element, hx_Element, metrics);
     else if(key==="context") SlotContextBindingTRANSITON(self, bindings, element, hx_Element, metrics);
     else if(!isRerender){
-      try{ 
-        element.setAttribute(key, compileToRenderable(unwrap(attr)));
+      try{
+        attr=compileToRenderable(unwrap(attr));
+        if(isSSR) element.props[key]=attr;
+        else element.setAttribute(key, attr);
       }catch(err){
-        $debug_log(`Attribute Error::\n\n...unable to set node attribute "${key}\n\n ${err}`, self, true, `When setting the attribute "${key}" on "${element.outerHTML}"`, self, !is_hyperscript );
+        $debug_log(`Attribute Error::\n\n...unable to set node attribute "${key}\n\n ${err}`, self, true, `When setting the attribute "${key}" on "${isSSR ? element.type : element.outerHTML}"`, self, !is_hyperscript );
         return;
       }
     }
+  }
+  function isInlineListener(key){
+    if(key.startsWith("on")){
+      const ev=key.slice(2);
+      if(!IS_VALID_EVENT_HANDLER(ev)) return;
+      return ev;
+    }
+    return;
   }
   function click_handler_facading(self,[ key, attr, src], bindings, element, hx_Element, metrics){
     attr=unwrap(attr);
@@ -4377,6 +4491,7 @@ const Houxit=(function(global){
       $debug_log(`<${key}> listener expects a function value or an array of valid methods functions\n\nFound "${attr}" of "${getType(attr)}" type`, self, !isNull(self));
       return;
     }
+    if(isInlineListener(key)) bindings.key=isInlineListener(key);
     const options=attr.options || {};
     bindings.value=attr;
     metrics=assign({ options }, metrics);
@@ -4494,13 +4609,13 @@ const Houxit=(function(global){
     const hooksList=new Tuple(...directivesHooksMap.split(","));
     const context_obj={
       use(directive, value, modifiers){
-        attachUseCallback(self, [ ...arguments ], element, hx_Element, metrics, hooksList);
+        return attachUseCallback(self, [ ...arguments ], element, hx_Element, metrics, hooksList);
       },
       on(events, callback, modifiers){
-        attachOnListener(self, [ ...arguments ], element, hx_Element, metrics);
+        return attachOnListener(self, [ ...arguments ], element, hx_Element, metrics);
       },
       addProp(key, value){
-        attachMultiProp(self, [ ...arguments ], element, hx_Element, metrics);
+        return attachMultiProp(self, [ ...arguments ], element, hx_Element, metrics);
       }
     }
     for(let hk of hooksList.values()){
@@ -4559,7 +4674,7 @@ const Houxit=(function(global){
   function slotNamingTRANSITION(self, bindings, element, hx_Element, metrics){
     let { value }=bindings;
     const { isRerender, vNode, is_hyperscript } = metrics;
-    
+    const isSSR=isSSRCompiler(self);
     if(isRerender) {
       hx_Element.VNodeManager.element_slot_ref=value;
       return;
@@ -4575,7 +4690,9 @@ const Houxit=(function(global){
       return;
     }
     if(!isRerender){
-      element.setAttribute('name', compileToRenderable(unwrap(value)));
+      const current_value=compileToRenderable(unwrap(value));
+      if(isSSR) element.props.name=current_value;
+      else element.setAttribute('name', current_value);
       SSBs[value]={
         bindings:undefined,
         element
@@ -4585,11 +4702,13 @@ const Houxit=(function(global){
   }
   function SlotContextBindingTRANSITON(self, bindings, element, hx_Element, metrics){
     const { isRerender, is_hyperscript, patch, vnode } = metrics;
-    if(!isRerender && element.localName !== "slot"){
+    const isSSR=isSSRCompiler(self);
+    const SSRVnode=hx_Element.VNodeManager.SSRVnode
+    if(!isRerender && (isSSR ? SSRVnode.type : element.localName) !== "slot"){
       $debug_log(`"context" special property is only scoped to html "<slot>" element in Houxit\n<slot> element scope context property found on a none "<slot>" element\n\nFailed to resolve binding`);
       return;
     }
-    const slotName = isRerender ? hx_Element.VNodeManager.element_slot_ref : element.name
+    const slotName = isRerender && !isSSR ? hx_Element.VNodeManager.element_slot_ref : isSSR ? SSRVnode.props.name : element.name
     const SSBs=self[$$$compiler].scopeSlotsBindings;
     if(!isRerender && !slotName && !hasOwn(SSBs, slotName)){
       $debug_log(`To specifically bind context scope to slots, they are obliged to be contextually named\n\nIt's either this slot element was not named properly…\nOr that the "context" property precedes the special slot "name" attribute`, self, true);
@@ -4622,13 +4741,23 @@ const Houxit=(function(global){
   function IDLPropsTransform(self, props, element, metrics, hx_Element ){
     let [ key, attr ] = props;
     const { is_hyperscript, patch, $orgKey, forwardAttrs } = metrics;
+    const isSSR=isSSRCompiler(self);
     const [ subs ] =patch || [];
     if(key === 'style') return parse_Style_Binding(self, attr, element, metrics, hx_Element);
     else if(key === "className") {
       const transform=mapClassTypeTransform(attr, new Tuple());
-      element.className=element.className+" "+transform.join(" ");
-    }else element[key]=attr ;
-    if(!is_hyperscript && !len( subs )) return;
+      if(isSSR){
+        const props=hx_Element.VNodeManager.SSRVnode.props;
+        if(!hasOwn(props, 'className')) props.className="";
+        props.className=props.className+" "+transform.join(" ");
+      }else element.className=element.className+" "+transform.join(" ");
+    }else {
+      if(isSSR){
+        if(key === 'innerText' || key === 'textContent') element.props.innerText=escapeDecoder(attr);
+        else element.props[key]=attr;
+      }else element[key]=attr ;
+    }
+    if(!is_hyperscript || !len( subs ) || isSSR) return;
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       attr=_createElementPropsEffectBlock_(self, {
         element, 
@@ -4648,6 +4777,7 @@ const Houxit=(function(global){
   function Props_dilation_compile(vNode, self, hx_Element, metrics, element){
     const props=vNode.props ;
     const shatteredFlags=!isHouxitElement(hx_Element) ? hx_Element : null;
+    const isSSR=isSSRCompiler(self);
     hx_Element = !isHouxitElement(hx_Element) ? null : hx_Element;
     if(!isPObject(props)) return element;
     const is_hyperscript= metrics.is_hyperscript;
@@ -4655,7 +4785,7 @@ const Houxit=(function(global){
     metrics = { 
       isRerender: self[$$$operands]?.initializedRender,
       is_hyperscript: self ? self[$$$core].map.is_hyperscript : hx_Element ? hx_Element.is_hyperscript : undefined,
-      isW: !IS_ELEMENT_NODE(element) && validHouxitWidget(vNode.prototype_),
+      isW: !(isSSR ? isString(element.type) : IS_ELEMENT_NODE(element)) && validHouxitWidget(vNode.prototype_),
       shatteredFlags,
       ctx,
       vNode
@@ -4676,11 +4806,15 @@ const Houxit=(function(global){
   }
   function BooleanAttributesManager(self, element, [ key, attr ], { is_hyperscript, patch, $orgKey, forwardAttrs }, hx_Element){
     attr=unwrap(attr);
+    const isSSR = isSSRCompiler(self);
     if(attr || isString(attr)) {
-      if (isHTMLIDLAttributes(key)) element[key]=attr;
-      else element.setAttribute(key, attr||'');
+      if(isSSR) element.props[key]=attr;
+      else{
+        if (isHTMLIDLAttributes(key)) element[key]=attr;
+        else element.setAttribute(key, attr||'');
+      }
     }
-    if(!is_hyperscript && !len(patch[0])) return;
+    if(!is_hyperscript || !len(patch[0]) || isSSR) return;
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       attr=_createElementPropsEffectBlock_(self, {
         element, 
@@ -4810,9 +4944,11 @@ const Houxit=(function(global){
       hx_Element.VNodeManager.templateRefs.add(data);
     }
   }
-  function $$dir_HTML(self, bindings, vnode, hx_Element, metrics, text ){
+  function $$dir_HTML(self, bindings, element, hx_Element, metrics, text ){
     let { value, modifiers } = bindings;
     modifiers=new Set(modifiers);
+    const isSSR=isSSRCompiler(self);
+    const SSRVnode=hx_Element.VNodeManager.SSRVnode;
     const is_hyperscript=hx_Element.is_hyperscript;
     const item=value;
     let subscribers;
@@ -4827,8 +4963,9 @@ const Houxit=(function(global){
     const innerProp=isTrue(text) ? 'innerText' : 'innerHTML';
     if( isPrimitive(value)) {
       value=compileToRenderable(value);
-      if(!isNativeElement(vnode) && value)  self.__public_model__.$attrs[innerProp]=value;
-      else if(value) vnode[innerProp]=value;
+      if((isSSR ? isSSR(element.type) : !isNativeElement(element)) && value)  self.__public_model__.$attrs[innerProp]=value;
+      else if(isSSR && value) element.props[innerProp]=value;
+      else if(value) element[innerProp]=value;
     }
   }
   function $$dir_SLOT(self, bindings, vnode, hx_Element, metrics){
@@ -4839,7 +4976,8 @@ const Houxit=(function(global){
       return;
     }
     modifiers=new Set(modifiers);
-    const iswt=!isNativeElement(vnode) && validHouxitWidget(vnode?.prototype_);
+    const isSSR=isSSRCompiler(self);
+    const iswt=!(isSSR ? isString(vnode.type) : isNativeElement(vnode)) && validHouxitWidget(vnode?.prototype_);
     hx_Element.slot_name=key;
     const slotBindings=hx_Element?.VNodeManager.slotBindings;
     let dataBind=slotBindings ? slotBindings[key]?.bindings : undefined;
@@ -4857,7 +4995,7 @@ const Houxit=(function(global){
         }
       });
     }else if(value) hx_Element.LabContext[value]=dataBind;
-    if(!isRerender) {
+    if(!isRerender && !isSSR) {
       slotBindings[key].watchEffect((patchFlags)=>{
         const instance=hx_Element.widget_instance;
         if(patchFlags[$$$operands].slot_ctx_effect) {
@@ -4924,7 +5062,8 @@ const Houxit=(function(global){
     let options=metrics.options;
     const isRerender=self[$$$operands].initializedRender;
     const vNode=hx_Element.VNodeManager.vNodeClass
-    const isWidget=node && validHouxitWidget(vNode.prototype_) && !isNativeElement(node);
+    const isSSR=isSSRCompiler(self);
+    const isWidget=node && validHouxitWidget(vNode.prototype_) && !((isSSR && isString(node.type)) || isNativeElement(node));
     if(isString(attr)){
       try{
         const funcToken=attr;
@@ -4959,12 +5098,16 @@ const Houxit=(function(global){
         attr.options=options;
         card.callbacks.add(attr);
       }
-    }else if(!isRerender && IS_ELEMENT_NODE(node)){
+    }else if(!isRerender && (isHydration(self) && isVNodeClass(node)) || (!isSSR && IS_ELEMENT_NODE(node))){
       let index=0;
       for(let event of deepKeys.values()) {
         if(!IS_VALID_EVENT_HANDLER(event)){
           $debug_log(`"${event}" is not a valid event name`, self, true);
-        }else node.addEventListener(event, isFunction(attr) ? attr : pass, options);
+        }else {
+          const callbackListen=element=>element.addEventListener(event, isFunction(attr) ? attr : pass, options);
+          if(isHydration(self)) node.filesFilter.$ssr_kit.hydrationFlushs.add(callbackListen);
+          else if(!isSSR) callbackListen(node);
+        }
       }
     }
     return node;
@@ -5036,7 +5179,7 @@ const Houxit=(function(global){
       })
     }else value=runBinding();
     const unwraped=unwrap(value);
-    if(isFalse(unwraped) || isNull(unwraped)) return node;
+    if(!unwraped) return node;
     node.innerHTML=_stylesheet_hydration(self, node.innerHTML);
     return node;
   }
@@ -5050,6 +5193,7 @@ const Houxit=(function(global){
     let { value:item, modifiers, key, }=bindings;
     let initVal='';
     let subscribers=[];
+    const isSSR=isSSRCompiler(self);
     try{
       [ subscribers, initVal ] = effectDependencyTracking(self, function(){
         return get_Object_Value(self.__public_model__, item, true);
@@ -5058,26 +5202,30 @@ const Houxit=(function(global){
       $debug_log(`undefined reference for directive "$$model"\n\n "${item}" is not defined on widget model instance\n\n${err}`, self, true);
       return
     }
-    if(IS_ELEMENT_NODE(element)){
-      if(!Is_Form_Element(element) ){
+    if((isSSR && isString(element.type)) || IS_ELEMENT_NODE(element)){
+      if(!(isSSR ? _makeMap_(HTML_FORM_ELEMENTS, element.type) : Is_Form_Element(element) )){
         $debug_log(`Compilation Error::\n\n cannot bind a data model to  a none form element\n\n`, self, true);
         $warn("widget root element is not a form element", self);
         return;
       }
-      element.value=unwrap(initVal);//compileToRenderable(unwrap(initVal));
-      element.addEventListener(get_Model_Event(element), function($ev){
-        const value=$ev.target.value;
-        try{
-          if(initVal !== value){
-            Promise.try(()=>set_Object_Value(self.__public_model__, item, value)).catch((err)=>{
-              throw new Error(err);
-            });
-            initVal=value;
+      function flushCallback(element){
+        element.value=unwrap(initVal);//compileToRenderable(unwrap(initVal));
+        element.addEventListener(get_Model_Event(element), function($ev){
+          const value=$ev.target.value;
+          try{
+            if(initVal !== value){
+              Promise.try(()=>set_Object_Value(self.__public_model__, item, value)).catch((err)=>{
+                throw new Error(err);
+              });
+              initVal=value;
+            }
+          }catch(err){
+            $debug_log(`${err}`, self, true);
           }
-        }catch(err){
-          $debug_log(`${err}`, self, true);
-        }
-      });
+        });
+      }
+      if(isHydration(self)) element.filesFilter.$ssr_kit.hydrationFlushs.add(flushCallback);
+      else if(!isSSR) flushCallback(element);
     }else{
       
     }
@@ -5111,7 +5259,7 @@ const Houxit=(function(global){
     const NodeList= isString(render) ? __HouxitHTMLParser__(render, [] ) : render;
     return len(NodeList) && len(NodeList) > 1 ? h(Fragment, NodeList) : len(NodeList) ? NodeList.pop() : [] ;
   }
-  function scaffold(render){
+  function scaffold(render, ctx){
     render=isPFunction(render) ? render() : render;
     if(!isChildrenNode(render)){
       $debug_log(`Illegal value type passed to scaffold `);
@@ -5156,7 +5304,7 @@ const Houxit=(function(global){
     };
   }
   function _hyperscriptCompiler_() {
-    return defineVNode(propsAndChildrenGetter( ...arguments )) ;
+    return createVNode(propsAndChildrenGetter( ...arguments )) ;
   }
   function h(type, propsOrChildren, childrenOrProps){
     return _hyperscriptCompiler_(...arguments);
@@ -5211,9 +5359,11 @@ const Houxit=(function(global){
   }
   function animate(){
     
+    return new Animation();
   }
   function transite(){
     
+    return new Transition();
   }
   const garbageKey=Symbol();
   function _transformTheParamsInjectorHook(params){
@@ -5233,10 +5383,10 @@ const Houxit=(function(global){
   }
   function _composersSlotsMappingHook(slots){
     const self=getCurrentRunningEffect({
-      name:'useSlots'
+      name:'defineSlots'
     })
     if( !self && (!validateCollectionArgs(arguments, { 
-      name: "useSlots",
+      name: "defineSlots",
       count:1,
       validators:[Array]
     }))) {
@@ -5247,7 +5397,7 @@ const Houxit=(function(global){
     }
     for(const [index, sl ] of slots.entries()){
       if(!isString(sl)) {
-        $debug_log(`useSlots() adapter macro array value expects a String value\n\nat array index ..........${index}`, self, true);
+        $debug_log(`defineSlots() adapter macro array value expects a String value\n\nat array index ..........${index}`, self, true);
         continue;
       }
     }
@@ -5256,7 +5406,7 @@ const Houxit=(function(global){
     }, [], self[$$$core].slots );
     return self[$$$core].slots;
   }
-  function useSlots(slots){
+  function defineSlots(slots){
     return _composersSlotsMappingHook(...arguments);
   }
   function _defineSignalsEvents(signals){
@@ -5546,7 +5696,6 @@ const Houxit=(function(global){
   function runObjectifiedParamsValidation(self, paramsSet, objMetrics, PN){
     const [ props, param, ind ] = objMetrics;
     let response = true;
-    // log(vb(self), param, props, ind)
     if(isTrue(param.required) && hasProp(param, 'default')){
       $debug_log(`validation error  .......\n\nthe required validator should not be truthy alongside a default value\nat at\n\n"${ind}" ${PN}`, self, true);
       response = false;
@@ -5578,7 +5727,7 @@ const Houxit=(function(global){
           paramsSet[ind]=undefined;
           $debug_log(`Params validation error .....\n\nproperty validation for widget default value failed, property "${ind}" is of an invalid type\n\n"${ isArray(param.type) ? '"Matches no type in the validation list' :  'typeof '+ param.type.name+" expected"}`, self, true); 
           return false;
-        }else paramsSet[ind]=defaultValue() ;
+        }else paramsSet[ind]=defaultValue();
       }
     }
     return true;
@@ -5588,7 +5737,7 @@ const Houxit=(function(global){
     const value=props ? props[ind] :  undefined;
     if(hasOwn(props, ind) && validateType(value, param.type)){
       if(hasOwn(param, 'validator')){
-        let valRes=param.validator(value)
+        let valRes=param.validator(value);
         if(!isBoolean(valRes)){
           $debug_log(`${pn} validator option method must return a Boolean value of true/false`, self, true);
           return false;
@@ -5693,6 +5842,7 @@ const Houxit=(function(global){
   function _hydrate_props_fallthrough(opts, self, vnode, metrics){
     if(self[$$$operands].initializedRender) return vnode;
     const { forwardAttrs, forwardEvents }=self[$$$core].settings;
+    const isSSR=isSSRCompiler(self);
     const { $attrs, $events } =self.__public_model__;
     if(!((forwardAttrs || forwardEvents) && (isHouxitNativeElement(vnode) || isHouxitWidgetElement(vnode)) && (len($attrs) || len($events) ))) return vnode ;
     const forwardProps=assign({}, $attrs);
@@ -5713,7 +5863,7 @@ const Houxit=(function(global){
           forwardAttrs
         });
       }catch(err){
-        $debug_log(`Encountered a road block during attributes fallthrough forwarding on element "<${vnode.$element.localName} ... >"\n\n
+        $debug_log(`Encountered a road block during attributes fallthrough forwarding on element "<${vnode.$element[ isSSR ? 'type' : 'localName']} ... >"\n\n
           Check warning details info on attribute "${key}"`, self, true);
         return Break();
       }
@@ -5761,7 +5911,8 @@ const Houxit=(function(global){
         $debug_log(`"${key}" option is a nodejs only option, and cannot be used in houxit inbrowser compiler`, self, true);
       }else if(!isValidWidgetOption(key)) self[$$$operands]._OPTIONS[key]=opt
     }
-    if(isInitialBuild(self) && vnode.filesFilter.useSSRCompiler) self[$$$core].settings.useSSRCompiler=true;
+    if(vnode.filesFilter.useSSRCompiler) self[$$$compiler].useSSRCompiler=true;
+    if(vnode.filesFilter.isHydration) self[$$$compiler].SSRHydrationFlag=true
   }
   function _hydrateHashToSelector(selector, $Data_Hash){
     const trimmed = selector.trim();
@@ -5799,26 +5950,60 @@ const Houxit=(function(global){
     });
   }
   function _preCompile_StyleSheet(opts, self, vnode){
-    if(IS_TEXT_NODE(vnode?.$element)) return vnode;
+    const isSSR=isSSRCompiler(self);
+    if(isHouxitTextElement(vnode)) return vnode;
     const scopedConfig=self[$$$core].settings.scopedStyleSheet;
     const CssStylesheet=opts.stylesheet ? opts.stylesheet : null;
     if(CssStylesheet){
-      const styleEl=generateTemplateElement({ 
+      const styleEl=isSSR ? h('style', {
+        type:'text/css'
+      }) : generateTemplateElement({ 
         type:'style'
       }, { 
         type:'text/css'
       }, null);
       const ModifiedCssStylesheet=isTrue(scopedConfig) ? _stylesheet_hydration(self, CssStylesheet) : CssStylesheet ;
-      styleEl.textContent=ModifiedCssStylesheet;
-      if(vnode  && !IS_TEXT_NODE(vnode.$element)) vnode.$element.append(styleEl);
+      if(isSSR) styleEl.props.textContent=ModifiedCssStylesheet;
+      else styleEl.textContent=ModifiedCssStylesheet;
+      if(vnode  && !isHouxitTextElement(vnode)) {
+        if(isSSR) {
+          if(!vnode.$element.children) vnode.$element.children=[];
+          vnode.$element.children?.push(styleEl);
+        }else vnode.$element.append(styleEl);
+      }
     }
     return vnode;
   }
-  function assignSlot(self, slot, content, name, assynedSlots, renderedSlotsList, tillMount){
+  function ssrSmartDefaultToggle(props, name){
+    if(name==='default' && (props.name===name || isNull(props.name))) return true;
+    return false;
+  }
+  function isSSRCollection(vnode){
+    return isSSRFragment(vnode) || isCollection(vnode);
+  }
+  function grabSSRVNodSlots(self, vnode, name){
+    if(!isSSRCollection(vnode.$element) && isVNodeClass(vnode.$element) && vnode.$element.type === 'slot'){
+      if(name === vnode.$element.props.name || ssrSmartDefaultToggle(vnode.$element.props, name)) return vnode.$element;
+      return;
+    }else if(!isSSRCollection(vnode)) return;
+    for(let [ key, value] of vnode.$element.entries()){
+      if(isVNodeClass(value) && value.type === 'slot'){
+        if(name === value.props.name || ssrSmartDefaultToggle(value.props, name)) return value;
+      }
+    }
+    return;
+  }
+  function assignSlot(self, slot, content, name, assynedSlots, renderedSlotsList, vnode){
     if(content && isHouxitElement(content) && !hasOwn(renderedSlotsList, name)){
-      slot.replaceWith(content.$element);
+      if(isSSRCompiler(self)){
+        slot=grabSSRVNodSlots(self, vnode, name);
+        if(isArray(vnode.$element) && slot){
+          const slotIndex=vnode.$element.indexOf(slot);
+          vnode.$element[slotIndex]=content.$element;
+        }else if(slot) vnode.$element=content.$element;
+      }else slot.replaceWith(content.$element);
       assynedSlots.add(name);
-      renderedSlotsList[name]=content
+      renderedSlotsList[name]=content;
     }
   }
   function resolveSlotsFilter(self, vnode){
@@ -5828,7 +6013,11 @@ const Houxit=(function(global){
     }
     return scopedList;
   }
-  const shouldForwwardSlots=(element, slots)=>!len(slots) && IS_ELEMENT_NODE(element) && !element.innerHTML.trim() && element?.localName !== 'slot';
+  const shouldForwwardSlots=(element, slots, self)=>{
+    if(!len(slots)) return false;
+    if(isSSRCompiler(self)) return isString(element.type) && !len(element.children) && element?.type !== 'slot';
+    return IS_ELEMENT_NODE(element) && !element.innerHTML.trim() && element?.localName !== 'slot';
+  }
   function _$slotHydrationRenderer(self, opts, vnode_build){
     const slots=self[$$$core].slots;
     if(!len(slots) || !vnode_build || !isHouxitElement(vnode_build) || isHouxitTextElement(vnode_build)) return vnode_build ;
@@ -5837,14 +6026,17 @@ const Houxit=(function(global){
     const assynedSlots=new Tuple();
     for(const [ slotN, slot_el ] of entries(slot_elements)){
       if(hasOwn(slots, slotN) && !assynedSlots.has(slotN)) {
-        assignSlot(self, slot_el, slots[slotN](self), slotN, assynedSlots, renderedSlotsList);
+        assignSlot(self, slot_el, slots[slotN](self), slotN, assynedSlots, renderedSlotsList, vnode_build);
       }
     }
-    if(shouldForwwardSlots(vnode_build?.$element, slot_elements) && !len(vnode_build.NodeList)){
+    if(shouldForwwardSlots(vnode_build?.$element, slot_elements, self) && !len(vnode_build.NodeList)){
       const forwardSlot=self[$$$core].settings.forwardSlot;
       if(forwardSlot) {
         const slotContent=hasOwn(slots, 'default') ? slots.default(self) : null;
-        if(slotContent) vnode_build.$element.append(slotContent.$element);
+        if(slotContent) {
+          if(isSSRCompiler(self)) vnode_build.$element.children.append(slotContent.$element);
+          else vnode_build.$element.append(slotContent.$element);
+        }
         assynedSlots.add('default');
         renderedSlotsList['default']=slotContent;
       }
@@ -5973,6 +6165,7 @@ const Houxit=(function(global){
     defineGetter( self.__public_model__ , "$write", WRITE.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$effectHook" , EffectAdapterHook.bind( self ) ) ;
     defineGetter( self.__public_model__ , "$pushEffect" , pushEffect.bind( self ) ) ;
+    defineGetter( self.__public_model__ , "$trackEffectDeps" , _trackEffectDeps.bind( self ) ) ;
   }
   function __useModelAdapter__( props ) {
     if(!validateCollectionArgs(arguments, {
@@ -5982,7 +6175,7 @@ const Houxit=(function(global){
       required:[false],
       name:"useModel"
     })){
-      return undefined
+      return undefined;
     }
     let self = isHouxitBuild(this) ? this : getCurrentRunningEffect({
       name:"useModel",
@@ -6186,7 +6379,7 @@ const Houxit=(function(global){
   function __Generate_Widget_Hash(self){
     self[$$$ownProperties]['hx_build']="_hx_"+generateUUID(10);
   }
-  function _Data_Hydrations(self, options){
+  function Hydrate_Network_Prefixes(self, options){
     const vnode=self[$$$core].virtualNode;
     if(hasProp(options, 'buildConfig')) setConfig(self, options);
     paramsManager(self, options.params, vnode.props);
@@ -6531,19 +6724,36 @@ const Houxit=(function(global){
       return true;
     }
     endWatch(){
-      if(!len(this.subtree)) return null;
+      if(!len(this.subtree)) return [];
       const eff=this.subtree.pop();
       return eff.subscritions.list();
     }
     subscribe(subs, patch){
       subs=arrayInverter(subs, true);
-      const index=isNaN(Number(patch)) ? len(this.subtree): patch;
+      const index=isNaN(Number(patch)) ? len(this.subtree) : patch;
       if(index < 1) return;
       for(let i=0; i < index; i++){
         this.subtree[i].subscritions.extend(subs);
       }
       return true;
     }
+  }
+  function __createEffectDependencyTracker__(){
+    const tracker=new SubscriptionEffectBoard();
+    return createObj('EffectDepsTracker', {
+      watch(){
+        return tracker.createWatch();
+      },
+      end(){
+        return tracker.endWatch();
+      },
+      subscribe(subscritions, patch){
+        return tracker.subscribe(subscritions, patch);
+      }
+    });
+  }
+  function createEffDepsTracker(){
+    return __createEffectDependencyTracker__();
   }
   function Setup_State_Effect(self, obj ){
     const dependency = new  Dependency(self);
@@ -6564,20 +6774,23 @@ const Houxit=(function(global){
     const { enumerable=false, writable=false, debug=false }=desc;
     const descriptor={
       get (){
-        return value
+        return value;
       },
     }
     if(writable || debug ){
       descriptor.set=function(valueX){
         if(writable) value=valueX;
-        if(debug) $debug_log(`"${prop}" prop cannot be assigned`);
+        else if(debug) $debug_log(`"{}<${prop}>" not writable!!!`);
       }
     }
     if(isTrue(enumerable)) descriptor.enumerable=enumerable;
     return define(obj, prop, descriptor);
   }
   function isSSRCompiler(self){
-    return isHouxitBuild(self) && isTrue(self[$$$core].settings.useSSRCompiler);
+    return isHouxitBuild(self) && isTrue(self[$$$compiler].useSSRCompiler);
+  }
+  function isHydration(self){
+    return isHouxitBuild(self) && isTrue(self[$$$compiler].SSRHydrationFlag);
   }
   const registra=()=> createObj( 'Register', { 
     directives:createObj('directives'), 
@@ -6631,7 +6844,8 @@ const Houxit=(function(global){
     },
     template:undefined,
     scopeSlotsBindings:{},
-    SSRHydrationFlag:false
+    SSRHydrationFlag:false,
+    useSSRCompiler:false
   })
   const HXBuildOperandInitial=()=>({
     installers_plugin:new Tuple(),
@@ -6799,19 +7013,19 @@ const Houxit=(function(global){
     function factory(name){
       return function slotRender(def){
         if(len(arguments) && def && !isChildrenNode(def) || (isAFunction(def) && !isChildrenNode(def()))){
-          $debug_log(`Render functions default slot content requires to be a render function also`, self, true);
+          $debug_log(`Render functions default slot content must be a render function also`, self, true);
            return null;
         }else if(def && isChildrenNode(def)) {
           def=isPFunction(def) ? def(self) : def;
-          return defineVNode({
+          return createVNode({
             type:"slot", 
             props:{ 
               name 
             },
             children:def 
-          })
+          });
         }
-        return defineVNode({
+        return createVNode({
           type:"slot", 
           props:{ 
             name 
@@ -6823,7 +7037,7 @@ const Houxit=(function(global){
     if(!o_slots.has("default")) o_slots.add("default");
     for(const sn of o_slots.values()){
       if(!hasOwn(self[$$$compiler].composedSlots, sn)){
-        self[$$$compiler].composedSlots[sn]=factory(sn);;
+        self[$$$compiler].composedSlots[sn]=factory(sn);
       }
     }
   }
@@ -6857,7 +7071,7 @@ const Houxit=(function(global){
           const user_defined_callback=vnode[hookN] || pass;
           options[hookN]=function(utils){
             if(isPFunction(thisHook)) thisHook();
-            if(user_defined_callback) user_defined_callback.call(self.__public_model__, utils)
+            if(user_defined_callback) user_defined_callback.call(self.__public_model__, utils);
           }
         }
         self[$$$operands]._LIFECIRCLEHOOKS[hookN]=options[hookN]||pass;
@@ -6870,7 +7084,7 @@ const Houxit=(function(global){
     try{
       hook.call(self.__public_model__);
     }catch(err){
-      console.error(err)
+      console.error(err);
       $debug_log(`${name} hook \n\n`,self, true, `during the call of the "${name}" LifeCycle hook`, self, true);
       $warn(`${err}`);
     }
@@ -6973,7 +7187,7 @@ const Houxit=(function(global){
         return RunContext();
       });
       self.__public_model__.$observe(subscribers, ()=>{
-        data=RunContext()
+        data=RunContext();
       }, {
         flushType:'post'
       });
@@ -7131,8 +7345,9 @@ const Houxit=(function(global){
     }
   }
   function getHouxitBuildInstance(self, options, vnode){
-    if(isBuiltinWidget(vnode.prototype_)){
-      self[$$$ownProperties].builtin_widget=vnode.prototype_[$$BuiltinWidgetKey];
+    if(isBuiltinWidget(vnode)){
+      self[$$$ownProperties].builtin_widget=vnode[$$BuiltinWidgetKey];
+      delete vnode[$$BuiltinWidgetKey];
     }
     if(hasOwn(vnode, factoryHXSelfInstance)){
       self[$$$ownProperties].isSelfRecursive=true;
@@ -7231,7 +7446,7 @@ const Houxit=(function(global){
       function hook(){
         tuple.list().forEach(function(fn){
           callbackHookWithCatch(self, fn, name );
-        })
+        });
       }
       const joinder=self[$$$operands]._LIFECIRCLEHOOKS[name];
       if(isPass(joinder)) self[$$$operands]._LIFECIRCLEHOOKS[name]=hook;
@@ -7244,13 +7459,20 @@ const Houxit=(function(global){
     }
     delete self[$$$compiler][garbageKey];
   }
+  function validateMemoContent(self, children){
+    self=self[$$$core].$parent;
+    if(len(children) > 1){
+      $debug_log(`"<Memo>" expects only one child component instance`, self, true );
+    }else if(!validHouxitWidget(children[0].prototype_)){
+      $debug_log(`"<Memo>" expects a child component instance`, self, true);
+    }
+    return true;
+  }
   function HydrateBuiltInTransform(self){
     const vNode=self[$$$core].virtualNode;
-    
-  }
-  function portalSpecialHydration(self, vNode){
-    const normalizer=vNode.filesFilter.$WidgetNormalizer;
-    self[$$$core].build=normalizer.children;
+    const children=vNode.children;
+    if(!validateMemoContent(self, children)) return;
+      log(children)
   }
   function handleBuildGenerator(self, selector){
     let context
@@ -7272,7 +7494,9 @@ const Houxit=(function(global){
         $debug_log(`Error during the call of the build function`,self, true, DebugFlags.build);
         if(isXtruct(widgetBuild)){
           $debug_log(`build options method seems to be a constructor function`, self);
-        }else $debug_log(`${err}`, self);
+        }else {
+          $debug_log(`${err}`, self);
+        }
         return ;
       }
       mapGarbargeHooks(self);
@@ -7504,16 +7728,17 @@ const Houxit=(function(global){
       computed = pass;
     }
     const [ computedData, subscribers ] =composedTokenHydration(self, computed, config);
-    computedData[refInternalEffectKey].isComputed = true;
-    computedData[refInternalEffectKey].computed=( isPFunction(computed) ? computed : computed.get ).bind(self.__public_model__)  ;
-    computedData[refInternalEffectKey].subscribers.extend(subscribers)
-    computedData[refInternalEffectKey].Initial=callArrGetters(subscribers);
+    const computedEff=computedData[refInternalEffectKey];
+    computedEff.isComputed = true;
+    computedEff.computed=( isPFunction(computed) ? computed : computed.get ).bind(self.__public_model__)  ;
+    computedEff.subscribers.extend(subscribers)
+    computedEff.Initial=callArrGetters(subscribers);
     if( len( subscribers ) ) {
       self.__public_model__.$observe( subscribers , () => {
         if( isComputed( computedData ) ) {
-          computedData[refInternalEffectKey].updateFlags ++;
-          if( !computedData[refInternalEffectKey].ModelInstance ){ 
-            computedData[refInternalEffectKey].ModelInstance = self.__public_model__;
+          computedEff.updateFlags ++;
+          if( !computedEff.ModelInstance ){ 
+            computedEff.ModelInstance = self.__public_model__;
           }
         }
       }, {
@@ -7544,16 +7769,21 @@ const Houxit=(function(global){
     obs.updated_hooks.clear();
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.postUpdate, 'postUpdate');
   }
-  function render(nodeSelector){
-    const useSSRCompiler=this[$$$core].settings.useSSRCompiler;
-    let domRoot=_GenerateRoot(nodeSelector, this);
-    activateWatchObserverPlugin(this, nodeSelector);
-    if(IS_ELEMENT_NODE(domRoot) && isInitialBuild(this) && !useSSRCompiler ) domRoot.innerHTML="";
-    if(isInitialBuild(this) && !IS_ELEMENT_NODE(domRoot)){
+  function render(nodeSelector, config, HydrationFlag){
+    const isSSR=isSSRCompiler(this);
+    if(isSSR && HydrationFlag === SSRHydrationSymbol) this[$$$compiler].SSRHydrationFlag=true;
+    if(!isSSR && !inBrowserCompiler){
+      $debug_log(`Houxit failed to load Dom specific API(s) as you seem to run Houxit from a server environment.....\nuse "initSSRBuild" App builder instead.`, self, true);
+      return this;
+    }
+    let domRoot=(isHydration(this) || !isSSR) && inBrowserCompiler ? _GenerateRoot(nodeSelector, this) : null;
+    activateWatchObserverPlugin(this, nodeSelector, domRoot);
+    if(IS_ELEMENT_NODE(domRoot) && isInitialBuild(this) && !isSSR ) domRoot.innerHTML="";
+    if(!isSSR && isInitialBuild(this) && !IS_ELEMENT_NODE(domRoot)){
       $debug_log('Initial entry Point render root expects an element node', this, true);
       return this;
     }
-    if(isInitialBuild(this) && isTrue(domRoot.IS_HOUXIT_MOUNTROOT)){
+    if(!isSSR && isInitialBuild(this) && isTrue(domRoot.IS_HOUXIT_MOUNTROOT)){
       this[$$$operands].initializedRender=false;
         $debug_log(`A Houxit widget has already been mounted on this element, cannot render more than one Widget on a single root element`, this, true, `When trying to render this initialBuild instance to the target DOM`);
       this[$$$operands].initializedRender=true;
@@ -7562,16 +7792,94 @@ const Houxit=(function(global){
     adapterDOMMountingProduction(this, domRoot)
     return this;
   }
-  function activateWatchObserverPlugin(self, nodeSelector){
-    _Data_Hydrations(self, self[$$$core].opts);
+  function shouldInstallRenderEffect(self){
+    return self[$$$operands].shouldInstallRenderEffect && !isSSRCompiler(self);
+  }
+  function ignoreHydrationMismatchError(self){
+    return false;
+  }
+  function misMatchError(self, msg){
+    if(!ignoreHydrationMismatchError(self)) $debug_log(`(((Hydration Mis-Match Error)))....\n\n${msg}`, self, true);
+  }
+  function hydration_match(self, el, vNode){
+    if((IS_ELEMENT_NODE(el) && isSSRText(vNode)) || (isVNodeClass(vNode) && IS_TEXT_NODE(el))){
+      misMatchError(self, `adjacent elements mismatches during "HydrationTypeMatch" ....of (${IS_ELEMENT_NODE(el) ? "<"+el.localName+">" : '"'+el.textContent+'"'} ... ${isVNodeClass(vNode) ? "<"+vNode.type+">" : '"'+vNode.content+'"'})`);
+    }else if(IS_ELEMENT_NODE(el) && isVNodeClass(vNode)){
+      if(el.localName !== vNode.type) {
+        misMatchError(self, 'tagnames do not match ....of (<'+el.localName+'> ... <'+vNode.type+'>)');
+        return false;
+      }
+      return true;
+    }else if(IS_TEXT_NODE(el) && isSSRText(vNode)){
+      if(el.textContent !== vNode.content){
+        misMatchError(self, `textContent does not match with hydration target----of(<"${el.textContent}"> ... <"${vNode.content}">)`);
+        return false;
+      }
+      return true;
+    }else if(isSSRFragment(vNode)){
+    
+    }
+    return false;
+  }
+  function perfomSSRHydration(self, domRoot, vNodeList, iter_tools){
+    let [ generator, parentVnode, metrics, trucker ] = iter_tools || [];
+    const childList=generator || domRoot.childNodes.values();
+    const RawVnode=vNodeList;
+    vNodeList=isSSRFragment(vNodeList) ? vNodeList.fragment : vNodeList;
+    const ignoreWarn=ignoreHydrationMismatchError(self);
+    const flushs=new Tuple();
+    trucker=trucker || new Tuple();
+    if(generator) trucker.add({});
+    for(let [index, vNode] of vNodeList.entries()){
+      let el;
+      if(isVNodeClass(vNode) || isSSRText(vNode)){
+        el=childList.next().value;
+        if(!hydration_match(self, el, vNode)){
+          if(ignoreWarn) continue;
+          else break;
+        }
+        if(metrics){
+          if(!metrics?.first) metrics.first=el;
+          metrics.last=el;
+        }
+        if(generator){
+          trucker.forEach(truck=>{
+            if(!truck.first) truck.first=el;
+            truck.last=el;
+          });
+        }
+        if(!IS_HTML_VOID_TAG(vNode.type) && !isSSRText(vNode) && (vNode.children)) perfomSSRHydration(self, el, vNode.children || []);
+      }else if(isSSRFragment(vNode) || isCollection(vNode)) perfomSSRHydration(self, null, vNode, [ childList, RawVnode.hx_Element, metrics, trucker ]);
+      if(isSSRText(vNode) || isSSRFragment(vNode) || isVNodeClass(vNode))(isSSRText(vNode) || isSSRFragment(vNode) ? vNode : vNode.filesFilter.$ssr_kit).hydrationFlushs.forEach(fn=> fn(isSSRFragment(vNode) ? null : el));
+    }
+    flushs.forEach(fn=>fn());
+    if(generator) installPosixComments(RawVnode.hx_Element, trucker.pop());
+    else if(metrics && isInitialBuild(self)) installPosixComments(parentVnode, metrics);
+  }
+  function installPosixComments(hx_Element, metrics){
+    let { first, last } = metrics;
+    const start=document.createComment(c_str);
+    const end=document.createComment(c_str);
+    first.before(start);
+    last.after(end);
+    hx_Element?.VNodeManager.posix.unshift(start);
+    hx_Element?.VNodeManager.posix.push(end);
+  }
+  function activateWatchObserverPlugin(self, nodeSelector, domRoot){
+    Hydrate_Network_Prefixes(self, self[$$$core].opts);
     prefixManagement(self);
     handleBuildGenerator(self, nodeSelector);
     let initialBuild=self[$$$core].render;
     before_render_semantics(self);
     defineGetter(self, '$build', Render_Template(self, initialBuild) );
-    _Reactive_Adapter_Plugin( self.__public_model__ ,async function(){
+    if(isHydration(self)) perfomSSRHydration(self, domRoot, self.$build.$element, [ null, self.$build, {}]);
+    _Reactive_Adapter_Plugin( self.__public_model__ ,()=>tick(async function(){
+      if(isHydration(self)){
+        self[$$$compiler].useSSRCompiler=false;
+        self[$$$compiler].SSRHydrationFlag=false;
+      }
       const postEffCall=_EffectDependencyNotifier(self);
-      if(self[$$$operands].shouldInstallRenderEffect) _ReconciliationTransformTrigger(self,  nodeSelector );
+      if(shouldInstallRenderEffect(self)) _ReconciliationTransformTrigger(self,  nodeSelector );
       tick(()=> {
         try{
           postEffCall();
@@ -7579,7 +7887,7 @@ const Houxit=(function(global){
           console.error(e);
         }
       });
-    }, self, true);
+    }), self, true);
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.onTracked, 'onTracked');
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.postBuild, 'postBuild');
     tick(()=>self[$$$operands].onRenderTracked=true);
@@ -7603,7 +7911,7 @@ const Houxit=(function(global){
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.preMount, 'preMount');
     domRoot = activateBuildMount(self, domRoot, MoutRootToken);
     const el=self[$$$core].posixVNode;
-    whenMounted(self, el.$element, ()=>{
+    if(!isSSRCompiler(self)) whenMounted(self, el.$element, ()=>{
       for(const fn of self[$$$compiler].whenMountedHooks.values()){
         callbackHookWithCatch(self, fn, '')
       }
@@ -7612,7 +7920,7 @@ const Houxit=(function(global){
     self[$$$operands].hasMountProto=true;
   }
   function activateBuildMount(self, domRoot, MoutRootToken){
-    if(isInDomNode(domRoot) && IS_ELEMENT_NODE(domRoot) && isInitialBuild(self)) {
+    if(isInDomNode(domRoot) && IS_ELEMENT_NODE(domRoot) && isInitialBuild(self) && !isSSRCompiler(self)) {
       domRoot.innerHTML='';
       domRoot.append(self.$build?.$element || '');
       self.property('$root', self.$build);
@@ -7830,7 +8138,7 @@ const Houxit=(function(global){
   function mountedWarning(self, name){
     if(isTrue(self[$$$operands].hasMountProto)){
       if(!self[$$$core].map.mountWarn) {
-        $debug_log(`This "render" method has been called and calling of methods after the widget is mounted is prohibited\n\n call to the ('.${name}') method is considered an invalid houxit syntax`, self, true);
+        $debug_log(`This "render" method has been called\n\ncalling of methods after the widget is mounted is prohibited\n\n call to ('.${name}') method is considered an invalid houxit syntax`, self, true);
         self[$$$core].map.mountWarn=true;
       }
       return false;
@@ -7849,8 +8157,12 @@ const Houxit=(function(global){
     });
     return this;
   }
-  function hydrate(){
-    
+  function hydrate(nodeSelector){
+    if(!isSSRCompiler(this)){
+      $debug_log("Imcompatibility when trying to call the .hydrate on a non SSR App build");
+      return this;
+    }
+    this.render(nodeSelector, null, SSRHydrationSymbol);
     return this
   }
   function buildMethods(){
@@ -7927,13 +8239,14 @@ const Houxit=(function(global){
     
   }
   function posixVNodeTransform(self, build){
+    if(isSSRCompiler(self)) return build;
     self[$$$core].posixVNode = new HouxitTextElement("", self);
     if(build) build.$element.prepend(self[$$$core].posixVNode.$element);
     else build=self[$$$core].posixVNode;
     return build;
   }
   function Render_Template( self , initBuild ) {
-    const instance =isBuiltinWidgetBuild(self)  ? self[$$$core].virtualNode.filesFilter.INSTANCE_NORMALIZER : self;
+    const instance =isBuiltinWidgetBuild(self)  ? self[$$$core].$parent : self;
     const is_hyperscript=self[$$$core].map.is_hyperscript;
     const isRerender=self[$$$operands].initializedRender;
     const s_x=self[$$$core].effectSubscribers;
@@ -7942,8 +8255,8 @@ const Houxit=(function(global){
     if(is_hyperscript) initBuild=_HouxitTemplateParser(arrayInverter(initBuild), instance, null, null, null, {
       official:true
     });
-    if(!isRerender) self[$$$operands].shouldInstallRenderEffect= len(s_x.endWatch() || []) > 0;
     if(isArray(initBuild)) initBuild= new HouxitFragmentElement(initBuild, self, null);
+    if(!isRerender) self[$$$operands].shouldInstallRenderEffect= len(s_x.endWatch() || []) > 0;
     self[$$$compiler].template=initBuild;
     if(!isRerender) initBuild=posixVNodeTransform(self, initBuild);
     if(!isRerender && !isBuiltinWidgetBuild(self)) widgetSlotsManager(self, self[$$$core].opts, self[$$$core].virtualNode);
@@ -8065,7 +8378,7 @@ const Houxit=(function(global){
         if(tempIndexes.has(key)){//but still exists in new vNodes listings
           const vnodeTM=tempLeagues[tempK];
           let targetElem= tempK ? resolveTargetElement(vnodeTM[0], null, true) : undefined;
-          const posixElem=document.createComment("");
+          const posixElem=document.createComment(c_str);
           if(tempK && targetElem ) targetElem.after(posixElem);
           exchangeRecorder.push({
             elements:[tempLeagues[key], vnodeTM],//the position the current element is destinated
@@ -8081,7 +8394,7 @@ const Houxit=(function(global){
           else{
             const [ targetBox, targetInd]=tempLeagues[tempK];
             const targetElem=resolveTargetElement(targetBox, null, );
-            const posixElem=document.createComment("");
+            const posixElem=document.createComment(c_str);
             targetElem.before(posixElem);
             forInsertion.push({
               elements:[Rerender_Element, targetBox],
@@ -8144,7 +8457,7 @@ const Houxit=(function(global){
       const [ targetBox, targetInd ] = tempLeagues[tempK];
       const targetElem=resolveTargetElement(targetBox, null, true);
       const parent=targetElem.parentNode;
-      const posixElem=document.createComment("");
+      const posixElem=document.createComment(c_str);
       targetElem.after(posixElem);
       generateWrapElementAction(element[0], (el)=> smartMoveElement(self, parent, el, posixElem));
       observer.mutated=true;
@@ -8231,7 +8544,7 @@ const Houxit=(function(global){
     let { index, key } = metrics;
     if(!HouxitElementDiffing(hx_Element, vNode)) {
       const NewNode=__createRerenderBlock(self, vNode);
-      const posixElem=document.createComment("");
+      const posixElem=document.createComment(c_str);
       const targetElem=resolveTargetElement(hx_Element, null, true);
       targetElem.after(posixElem);
       if(parent) parent.VN_Tree.LEAGUE_TREE[key]=[NewNode, index];
@@ -8248,9 +8561,11 @@ const Houxit=(function(global){
     let targetElem;
     if(isTextOrNativeElement(target)) targetElem = target.$element;
     else{
-      if(isHouxitWidgetElement(target)) target=WidgetElementUnwrap(target)
-      if(isHouxitFragmentElement(target)) targetElem=target.VN_Tree.ELEMENTS().at( last ? len(target.VN_Tree.ELEMENTS())-1 : 0);
-      else if(isTextOrNativeElement(target)) targetElem=target.$element;
+      if(isHouxitWidgetElement(target)) target=WidgetElementUnwrap(target);
+      if(isHouxitFragmentElement(target)) {
+        const fragmented_elements=target.VN_Tree.ELEMENTS().list();
+        targetElem=fragmented_elements[last ? len(fragmented_elements)-1 : 0];
+      }else if(isTextOrNativeElement(target)) targetElem=target.$element;
     }
     return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) ? targetElem : fallback;
   }
@@ -8326,10 +8641,11 @@ const Houxit=(function(global){
   function _Resolve_Directives_Hydration(self, bindings, virtualNode, hx_Element, metrics){
     const { isRerender, is_hyperscript, vNode } = metrics;
     let { directive, value, key } = bindings;
-    if(!isHouxitDirective(directive))return _With_Custom_Directives(self, bindings, vNode, hx_Element, metrics );
+    const isSSR=isSSRCompiler(self);
+    if(!isSSR && !isHouxitDirective(directive)) return _With_Custom_Directives(self, bindings, vNode, hx_Element, metrics );
     if(directive === "provide"){
       if(!validHouxitWidget(vNode?.GeneticProvider)) {
-        $debug_log(`Illegal Provide Use: "$$provide" directive is only scoped to widget instances vnode only\n\n found on "${isNativeElement(virtualNode) ? virtualNode.outerHTML+" element" : ""}"`, self, true);
+        $debug_log(`Illegal Provide Use: "$$provide" directive is only scoped to widget instances vnode only\n\n found on "${(isSSR ? isString(virtualNode.type) : isNativeElement(virtualNode)) ? virtualNode.outerHTML+" element" : ""}"`, self, true);
         return ;
       }
       $$dir_PROVIDE(self, bindings, vNode, hx_Element, metrics);
@@ -8370,30 +8686,6 @@ const Houxit=(function(global){
     return _Houxit_token_GENERATOR_( config, Test_Callback );//type,size,
   }
   const builtInWidgetTypes="Build,Self,Motion,Provider,Suspense,Portal,Fragment,Memo";
-  const nonSBIW=ww=> _makeMap_("suspense,memo,motion,provider", ww.slice(3));
-  function Built_in_widget_Transform(self, vNode, hx_Element){
-    const type=vNode.prototype_[$$BuiltinWidgetKey].slice(3);
-    vNode.filesFilter.INSTANCE_NORMALIZER=self;
-    vNode.filesFilter.hx_Element=hx_Element
-    if(nonSBIW(vNode.prototype_[$$BuiltinWidgetKey])) NormalizingBuiltinRange(self, vNode);
-  }
-  function liquidateBuiltinGenerators(self, vNode, selfProp, prop){
-    const is_hyperscript=vNode.is_hyperscript;
-    let children=vNode.children;
-    children = !is_hyperscript ? children?.NodeList : arrayInverter(children);
-    if(!selfProp) return children;
-    const dataVnode=h(selfProp, assign({}, vNode.props || {}), children );
-    dataVnode.is_hyperscript=vNode.is_hyperscript;
-    vNode.filesFilter[prop]=dataVnode;
-  }
-  function NormalizingBuiltinRange(self, vNode){
-    let props=memMove(vNode.props);
-    const children=liquidateBuiltinGenerators(self, vNode, null);
-    vNode.filesFilter.$WidgetNormalizer={
-      children,
-      props
-    }
-  }
   const blockTagRegex=/::@_\(([\w$.\-!:\#.%?&]+)\)_/;
   function isBlockTag(tagName){
     return blockTagRegex.test(tagName);
@@ -8460,9 +8752,12 @@ const Houxit=(function(global){
     virtualNode[widgetTypeKey]=widget[widgetTypeKey];
     virtualNode.widget_instance=widget;
     virtualNode.filesFilter.slotsCompilerArgs=slotsCompilerArgs;
-    // if(isBuiltinWidget(virtualNode.prototype_)) Built_in_widget_Transform(self, virtualNode, hx_Element );
     if(isHouxitElement(hx_Element)) virtualNode[$buildHx_ElementKey]=hx_Element ;
     if(isRerender) return undefined;
+    if(isSSRCompiler(self)) {
+      virtualNode.filesFilter.useSSRCompiler=true;
+      if(isHydration(self)) virtualNode.filesFilter.isHydration=true;
+    }
     const child = new HouxitBuild( virtualNode ) ;
     integrateUseInstallProto(child);
     if(hx_Element) hx_Element.widget_instance=child;
@@ -8562,7 +8857,7 @@ const Houxit=(function(global){
         if (instance_Has_Directive(self, name) ){
           instance=normalize_Directives(self, name);
         }else{
-          $debug_log(`"resolve.directive()" macro was unable to find a directive with the provided name "${type.name}"\n\n are you sure this is a builtIn/globaly/localy registered directive`, self, true);
+          $debug_log(`"resolve.directive()" macro was unable to find a directive with the provided name "${name}"\n\n are you sure this is a builtIn/globaly/localy registered directive`, self, true);
           return;
         }
       }
@@ -8770,7 +9065,7 @@ const Houxit=(function(global){
     if(isOpeningCommentTag(tagMatch)){
       vnode= new comment();
       if(isComment){
-        child_src=child_src+tagMatch.slice(0, -1);
+        child_src+=tagMatch.slice(0, -1);
       }else{
         isComment=true;
         loaderList.push(['comment', vnode]);
@@ -8779,7 +9074,7 @@ const Houxit=(function(global){
     tagMatch=isOpeningCommentTag(tagMatch) ? tagMatch.slice(0, -1) : tagMatch;
     if(isComment) {
       isComment=true;
-      child_src=child_src+tagMatch;
+      child_src+=tagMatch;
       return {
         child_src,
         isComment,
@@ -8816,7 +9111,7 @@ const Houxit=(function(global){
       };
     }
     if(len(loaderList)) {
-      child_src=child_src+tagMatch;
+      child_src+=tagMatch;
       trackNodes.push(tagName);
       return  {
         child_src,
@@ -8858,7 +9153,7 @@ const Houxit=(function(global){
       tagMatch = isOpenEmptyTag(tagMatch) ? "<hx:fragment>" : isCloseEmptyTag(tagMatch) ? "</hx:fragment>" : tagMatch ;
       if(isOpeningCommentTag(tagMatch) || isOpeningTag(tagMatch) ) {
         if(isOpeningCommentTag(tagMatch) && len(loaderList)) {
-          child_src=child_src+tagMatch.slice(0, -1);
+          child_src+=tagMatch.slice(0, -1);
           skipComment=true;
           continue;
         }
@@ -8877,7 +9172,7 @@ const Houxit=(function(global){
       }else if(isClosingCommentTag(tagMatch) || isClosingTag(tagMatch) ){
         if(isClosingCommentTag(tagMatch) ){
           if(skipComment){
-            child_src=child_src+tagMatch.slice(2);
+            child_src+=tagMatch.slice(2);
             skipComment=false;
             continue;
           }
@@ -8891,7 +9186,7 @@ const Houxit=(function(global){
           }
           continue;
         }else if(isComment){
-          child_src=child_src+tagMatch;
+          child_src+=tagMatch;
           continue;
         }
         let [ match, tagName ]=tagMatch.match(closingTagRegex);
@@ -8903,7 +9198,7 @@ const Houxit=(function(global){
             child_src
           }, NodeList, self, config, tagMatch);
           else if(len(trackNodes) && new Set(trackNodes).has(tagName) ){
-            child_src=child_src+tagMatch;
+            child_src+=tagMatch;
             let mIndex=trackNodes.findLastIndex((f)=> f == tagName);
             if(mIndex > -1) trackNodes.splice(mIndex, 1);
             continue;
@@ -8913,7 +9208,7 @@ const Houxit=(function(global){
               trackNodes,
               child_src
             }, NodeList, self, config, "");
-          }else child_src=child_src+tagMatch;
+          }else child_src+=tagMatch;
         }
       }else if(isText(tagMatch)){
         let useObjChild=undefined;
@@ -8927,7 +9222,7 @@ const Houxit=(function(global){
             return match;
           });
         }
-        if(len(loaderList)) child_src=child_src+tagMatch;
+        if(len(loaderList)) child_src+=tagMatch;
         else NodeList.push(useObjChild ? useObjChild.srcValue : tagMatch);
       }
     }
@@ -8976,7 +9271,7 @@ const Houxit=(function(global){
       if(node.children){
         children = isPlainTextChildrenTagElements(tagName) ? node.children : _HouxitTemplateParser(node.rawChildren, null, true, null, null, );
       }
-      Vnode=defineVNode({
+      Vnode=createVNode({
         type:tagName, 
         props:len(attributes) ? attributes : null,
         children
@@ -9014,7 +9309,11 @@ const Houxit=(function(global){
         }
       }
       let value = node;
-      node=self ? new HouxitTextElement(value, self, hx_Element, LabContext) : value;
+      if(isHouxitBuild(self)){ 
+        const createElement=()=>new HouxitTextElement(value, self, hx_Element, LabContext);
+        node=createElement();
+        node.compiler_options.createElement=createElement;
+      }else node=value;
       NodeList.add(node);
       return node;
     }
@@ -9039,7 +9338,7 @@ const Houxit=(function(global){
     fall=assign({}, fall);
     const isRerender=self[$$$operands].initializedRender;
     for (let [ index, node ] of parser.entries()){
-      if(node){
+      if(isString(node) ? node.trim() : node){
         if(config.slotBindings) node = isPFunction(node) ? node(self[$$$core].map.$$$context?.()) : node;
         const filesFilter=node.filesFilter;
         if(isRerender && config?.slotBindings?.scoped_compiler){
@@ -9069,6 +9368,16 @@ const Houxit=(function(global){
     const NodeList=new Tuple();
     generateTemplateClasses(self, templateRender, hx_Element, config, NodeList, fall);
     return len(NodeList) > 1 ? NodeList.list() : len(NodeList) === 1 ? NodeList.shift() : null ;
+  }
+  function SSRNodesCollectionStrategy(self, NodeList){
+    const isSSR=isSSRCompiler(self);
+    if(!isSSR) return NodeList;
+    const ssr_list=new Tuple();
+    for(let [ index, vNode] of NodeList.entries()){
+      if(!isTextOrNativeElement(vNode) && !isHouxitFragmentElement(vNode)) continue;
+      ssr_list.add(vNode.VNodeManager.SSRVnode);
+    }
+    return ssr_list;
   }
   function controlBuiltInBlocks(self, node, blockN,  metrics, config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
@@ -9685,8 +9994,56 @@ const Houxit=(function(global){
      vnodePlate.filesFilter.useSSRCompiler=true;
     return vnodePlate;
   }
+  function _renderToStringCompiler(build, config){
+    if(!isSSRCompiler(build)){
+      $debug_log(`"renderToString" macro was called on a non SSR renderer build...\n\nplease check if you may have used "initBuild" app initializer was used instead of the "initSSRBuild"`);
+      return undefined;
+    }
+    return new Promise((resolve)=>{
+      build.render(null, config);
+      resolve(vnodesConversionPipeline(self, build.$build.$element));
+    });
+  }
   function renderToString(build, config){
-    
+    return _renderToStringCompiler(...arguments);
+  }
+  function vnodesConversionPipeline(self, vnodes){
+    let html="";
+    vnodes=arrayInverter(vnodes);
+    const isHy=isHydration(self);
+    for(let [index, node] of vnodes.entries()){
+      if((isHy ? isSSRText(node) : isString(node))) html += isHy ? node.content : node;
+      else if(isVNodeClass(node)){
+        let src="<"+node.type;
+        const ctx={};
+        if(node.props) src+=compileSSRProps(node.props, ctx);
+        src+=">";
+        if(!IS_HTML_VOID_TAG(node.type)) {
+          if(len(ctx)){
+            if(ctx.innerHTML) src+=ctx.innerHTML;
+            else if(ctx.innerText) src+=ctx.innerText;
+          }else if(node.children) src+=vnodesConversionPipeline(self, node.children);
+          src += "</"+node.type+">";
+        }
+        html+=src;
+      }else if((isHy ? isSSRFragment(node) : isCollection(node))) html += vnodesConversionPipeline(self, arrSet(isHy ? node.fragment : node));
+    }
+    return html;
+  }
+  function compileSSRProps(props, ctx){
+    let src="";
+    for(let [ key, value] of entries(props)){
+      if(key === 'class') src+=' class="'+value.list().join(" ")+'"';
+      else if(key === 'style') {
+        src+=' style="';
+        for(let [ name, style] of entries(value)){
+          src+=name+':'+style+';';
+        }
+        src+='"';
+      }else if(key === 'innerHTML' || key === 'innerText') ctx[key]=value.trim();
+      else src+=' '+key+( value.trim() ? '="'+value+'"' : '');
+    }
+    return src;
   }
   function renderToStreamPipe(){
     
@@ -9708,19 +10065,19 @@ const Houxit=(function(global){
   function defineElementOptionsValidator(options){
     const optionsName="type,props,children";
     if(!isPObject(options)){ 
-      $debug_log(`defineVNode Error:\n expects an 'object' at......\n\nparameter 1`);
+      $debug_log(`createVNode Error:\n expects an 'object' at......\n\nparameter 1`);
       return false;
     }else if(len(options) > 3){
-      $debug_log(`Options Error\n\n defineVNode does not accept more than 3 options props arguments`);
+      $debug_log(`Options Error\n\n createVNode does not accept more than 3 options props arguments`);
       return false
     }else if(!options.type && !validateType(options.type, [String, Object, Function ] )){
-      $debug_log(`Unexpected value passed to type in defineVNode\n\n"${getType(options.type)}" is an invalid type value to type option`);
+      $debug_log(`Unexpected value passed to type in createVNode\n\n"${getType(options.type)}" is an invalid type value to type option`);
       $debug_log(`NOTE : The "type" option is required`);
       return false;
     }
     for(let [ name, opt ] of entries(options)){
       if(!_makeMap_(optionsName, name)) {
-        $debug_log(`${name} is not a valid defineVNode options value`);
+        $debug_log(`${name} is not a valid createVNode options value`);
         return false;
       }else if(name === 'props' && opt && !isPObject(opt)){
         $debug_log(`Element props property expects an object value\n\nUnexpected "${getType(opt)}" value`);
@@ -9735,7 +10092,7 @@ const Houxit=(function(global){
   function createVNodeClass(type, props, children){
     return new vNodeClass(...arguments);
   }
-  function _defineVNode_ELEMENT(options){
+  function _createVNode_ELEMENT(options){
     if(!defineElementOptionsValidator(options)) return undefined;
     let { type , props , children } = options ;
     const vNode= createVNodeClass( type, props, children ) ;
@@ -9746,8 +10103,8 @@ const Houxit=(function(global){
     }
     return vNode;
   }
-  function defineVNode(options){
-    return _defineVNode_ELEMENT(options);
+  function createVNode(options){
+    return _createVNode_ELEMENT(options);
   }
   function TranslateWidgetPropsAndChildren(type, props, children){
     if(validHouxitWidget(type)){
@@ -9808,7 +10165,7 @@ const Houxit=(function(global){
 
   global.isToken = isToken ;
   global.scaffold = scaffold ;
-  global.defineVNode = defineVNode ;
+  global.createVNode = createVNode ;
   global.get_version = get_version ;//dev
   global.h = h ;
   global.shallowStream = shallowStream ;
@@ -9852,7 +10209,7 @@ const Houxit=(function(global){
   global.defineConfig = defineConfig ;
   global.useStyleSheet = useStyleSheet ;
   global.useContext = useContext ;
-  global.useSlots = useSlots ;
+  global.defineSlots = defineSlots ;
   global.useParams = useParams ;
   global.useAdapter = useAdapter ;
   global.useModel = useModel ;
@@ -9944,8 +10301,10 @@ const Houxit=(function(global){
   global.pushEffect = pushEffect ;
   global.HTMLPropsParser = HTMLPropsParser ;
   global.animate = animate ;
+  global.transite = transite ;
   global.TemplateClass = TemplateClass ;
   global.createTemplateClass = createTemplateClass ;
+  global.createEffDepsTracker = createEffDepsTracker ;
   global.isReadonlyStream = isReadonlyStream ;
   global.isStateStream = isStateStream ;
   global.isComputed = isComputed ;
