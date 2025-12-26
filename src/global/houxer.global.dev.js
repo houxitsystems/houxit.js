@@ -77,6 +77,7 @@ const Houxit=(function(global){
     if(shouldlog) console.warn(`${$warner}\n\n${msg}`);//houxit warming debugger
   }
   const isIterator=iterator=>iterator && !isArray(iterator) && isPFunction(iterator[Symbol.iterator]);
+  const isInfinity=num=>num === Infinity;
   const isIterable=iterable=>(validateType(iterable, [Object,Array,Set,Map,Tuple]) || isIterator(iterable)) && !isString(iterable);
   const enumerable =true, configurable =true, writable = true ;
   const isEmptyStr=str=>str === "";
@@ -455,7 +456,8 @@ const Houxit=(function(global){
   const isBuiltinWidgetAndType=( self, type ) => isBuiltinWidgetBuild(self) && self[$$$ownProperties].builtin_widget === type ;
   const isBuiltinMotionWidget=self=>isBuiltinWidgetAndType(self, 'hx:motion')
   const isBuiltinMemoWidget=self=>isBuiltinWidgetAndType(self, 'hx:memo');
-  const isBuiltinSuspenseWidget=self=>isBuiltinWidgetAndType(self, 'hx:suspense')
+  const isBuiltinSuspenseWidget=self=>isBuiltinWidgetAndType(self, 'hx:suspense');
+  const isBuiltinProviderWidget=self=>isBuiltinWidgetAndType(self, 'hx:provider');
   const isBuiltinWidget =widget=> hasOwn(widget, $$BuiltinWidgetKey);
   const builtinValidWidget=(widget, type)=> isBuiltinWidget(widget) && widget[$$BuiltinWidgetKey] === type ;
   const $buildHx_ElementKey=Symbol()//saving the $buildHx_ElementKey key while passing widget to houxit build.
@@ -2148,23 +2150,13 @@ const Houxit=(function(global){
     }
     return vnode.compiler_options.createElement();
   }
-  function getFunctionBoundTarget(fn){
-    
-  }
   function _makeCloneVersion(value, deep=false, metrics=[]){
     let cValue;
     const [ parent, key ] = metrics;
-    if(isHouxitElement(value)) return value// cloneVElement(value);
-    else if(isToken(value)) return value;
-    else if(isPrimitive(value) ) return value;
-    else if(isCollection(value)){
-      cValue= new value.__proto__.constructor(...arrSet(value));
-      // for(let [ prop, item] of getIterator(value)){
-      //   if(deep) item =  _makeCloneVersion(item, deep) ;
-      //   cValue[ validateType(value, [Set, Tuple]) ? "add" : "push" ]( item );
-      // }
-    }else if(isFunction(value)) return value;
+    if(validateType(value, [HouxitElement, BaseToken, Function]) || isPrimitive(value)) return value// cloneVElement(value);
+    else if(isCollection(value)) return new value.__proto__.constructor(...arrSet(value));
     else if(isObject(value)) {
+      if(isVNodeClass(parent) && (key==='prototype_' || key === 'type' || key=== 'GeneticProvider') && !isString(parent.prototype_)) return value;
       const isSVA= isArray(value) && len(value) === 1 && isNumber(value[0]);
       if(isSVA) {
         value=[ ...value ];
@@ -3031,10 +3023,24 @@ const Houxit=(function(global){
     return createRenderlessElement();
   }
   function built_in_memo_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
+    if(isNull(vnode.key)){
+      $debug_log(`<Memo> was rendered without a key.`, self, true);
+      $warn(`Memo widgets use keys to preserve identity across renders. \nPass a stable key to avoid unnecessary re-compilation.`);
+    }
     const widget={
       name:'hx:memo',
       params:{
-        max:Number,
+        max:{
+          type:Number,
+          default:Infinity,
+          validator(num){
+            if(num < 1 || isNaN(num)){
+              $debug_log(`Failed validation of <Memo>.max param\n"${num}" ${isNaN(num) ? 'is not a number' : 'is less than 1'}`);
+              return false;
+            }
+            return true;
+          }
+        },
         test:Function
       },
     }
@@ -3044,7 +3050,18 @@ const Houxit=(function(global){
       type:widget
     });
     vnode[$$BuiltinWidgetKey]="hx:memo";
-    return createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element);
+    const ELEMENT= createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element);
+    ELEMENT.prototype_=Memo;
+    return ELEMENT;
+  }
+  function built_in_suspense_widget(){
+    
+  }
+  function built_in_motion_widget(){
+    
+  }
+  function built_in_provider_widget(){
+    
   }
   function simulate_buitin_widget_syms(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
     const { prototype_ } = vnode;
@@ -3065,6 +3082,9 @@ const Houxit=(function(global){
     else if(prototype_ === Build ) return built_in_Build_widget(...resArgs);
     else if(prototype_ === Portal) return built_in_portal_widget(...resArgs);
     else if(prototype_ === Memo) return built_in_memo_widget(...resArgs);
+    else if(prototype_ === Suspence) return built_in_suspense_widget(...resArgs);
+    else if(prototype_ === Motion) return built_in_motion_widget(...resArgs);
+    else if(prototype_ === Suspence) return built_in_provider_widget(...resArgs);
     // else return generateWidgetBasedBuiltin(...resArgs);
   }
   function createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc,  hx_Element){
@@ -7405,18 +7425,17 @@ const Houxit=(function(global){
     fall = fall || {};
     if(ssc) fall= smartDextCtxMerging(fall, ssc);
     let render = pass;
-    const core_build=self[$$$core].build;
     inDomCaveatRemodeling(self);
     const update=()=>self[$$$operands].initializedRender;
     const temp_build=()=> update() ? memMove(self[$$$compiler].StarterTemplate, true ) : self[$$$core].build;
-    if(isString(core_build) || isCollection(core_build)){
+    if(isString(temp_build()) || isCollection(temp_build())){
       render = (instance)=>{
         return _HouxitTemplateParser(temp_build(), instance, false, hx_Element, fall, {
           official:true
         });
       }
       self[$$$core].render=render;
-    }else if(!core_build && selector && isInitialBuild(self)){
+    }else if(!temp_build() && selector && isInitialBuild(self)){
       self[$$$core].build=escapeReverseDecoder(_GenerateRoot(selector, self)?.innerHTML || '');
       render = instance => _HouxitTemplateParser( temp_build(), instance, false, hx_Element, fall, {
         official:true
@@ -7463,25 +7482,45 @@ const Houxit=(function(global){
     self=self[$$$core].$parent;
     if(len(children) > 1){
       $debug_log(`"<Memo>" expects only one child component instance`, self, true );
-    }else if(!validHouxitWidget(children[0].prototype_)){
+      return false;
+    }else if(!len(children) || !validHouxitWidget(children[0].prototype_)){
       $debug_log(`"<Memo>" expects a child component instance`, self, true);
+      return false
     }
     return true;
   }
-  function HydrateBuiltInTransform(self){
+  function instanciateMemoBuild(self, context){
     const vNode=self[$$$core].virtualNode;
     const children=vNode.children;
     if(!validateMemoContent(self, children)) return;
-      log(children)
+    const child=children[0];
+    const parent= self[$$$core].$parent;
+    self[$$$compiler].memo_cave={
+      storage:new Map(),
+      keys:new Tuple(),
+      caches:[]
+    }
+    const is_hyperscript=vNode.is_hyperscript;
+    self[$$$core].build=children;
+    const render=trackTemplateSource(self, null, null, context?.hx_Element, context?.props);
+    if(is_hyperscript){
+      
+    }
+    return render;
+  }
+  function HydrateBuiltInTransform(self, context){
+    if(isBuiltinMemoWidget(self)) return instanciateMemoBuild(self, context);
+    else if(isBuiltinSuspenseWidget(self));
+    else if(isBuiltinMotionWidget(self));
+    else if(isBuiltinProviderWidget(self));
+    return
   }
   function handleBuildGenerator(self, selector){
-    let context
-    let render;
-    if(isBuiltinWidgetBuild(self)) HydrateBuiltInTransform(self);
+    let context, render, parent;
     const widgetBuild=self[$$$core].build;
-    if(isFunction(widgetBuild)){
-      let responseRender;
-      let renderer;
+    if(isBuiltinWidgetBuild(self)) return HydrateBuiltInTransform(self, context);
+    else if(isFunction(widgetBuild)){
+      let responseRender, renderer;
       createGarbageCollector(self);
       const useState=!isAFunction(widgetBuild);
       try{
@@ -7505,7 +7544,7 @@ const Houxit=(function(global){
         if(hasOwn(options, 'render')) responseRender=()=>options.render.call(self.__public_model__);
         else{
           self[$$$core].build=hasOwn(options, "template") ? options.template : null ;
-          const templateRender= trackTemplateSource(self, selector, null, context?.hx_Element, context?.props || undefined );
+          const templateRender= trackTemplateSource(parent || self, selector, null, context?.hx_Element, context?.props || undefined );
           return templateRender;
         }
       }
@@ -7530,7 +7569,7 @@ const Houxit=(function(global){
       };
       return self[$$$core].render;
     }else {
-      return trackTemplateSource(self, selector, context?.hx_Element, context?.props );
+      return trackTemplateSource(parent || self, selector, context?.hx_Element, context?.props );
     }
     render= (sf, update)=>self[$$$core].render(context?.self || sf, update);
     self[$$$core].render=render
@@ -7793,7 +7832,7 @@ const Houxit=(function(global){
     return this;
   }
   function shouldInstallRenderEffect(self){
-    return self[$$$operands].shouldInstallRenderEffect && !isSSRCompiler(self);
+    return self[$$$operands].shouldInstallRenderEffect && !isSSRCompiler(self) || isBuiltinWidgetBuild(self);
   }
   function ignoreHydrationMismatchError(self){
     return false;
@@ -7862,8 +7901,7 @@ const Houxit=(function(global){
     const end=document.createComment(c_str);
     first.before(start);
     last.after(end);
-    hx_Element?.VNodeManager.posix.unshift(start);
-    hx_Element?.VNodeManager.posix.push(end);
+    if(isHouxitElement(hx_Element)) hx_Element.VNodeManager.posix=[start, end];
   }
   function activateWatchObserverPlugin(self, nodeSelector, domRoot){
     Hydrate_Network_Prefixes(self, self[$$$core].opts);
@@ -7871,9 +7909,14 @@ const Houxit=(function(global){
     handleBuildGenerator(self, nodeSelector);
     let initialBuild=self[$$$core].render;
     before_render_semantics(self);
-    defineGetter(self, '$build', Render_Template(self, initialBuild) );
+    define(self, '$build', {
+      value:Render_Template(self, initialBuild),
+      writable,
+      configurable
+    });
     if(isHydration(self)) perfomSSRHydration(self, domRoot, self.$build.$element, [ null, self.$build, {}]);
     _Reactive_Adapter_Plugin( self.__public_model__ ,()=>tick(async function(){
+      
       if(isHydration(self)){
         self[$$$compiler].useSSRCompiler=false;
         self[$$$compiler].SSRHydrationFlag=false;
@@ -8289,7 +8332,7 @@ const Houxit=(function(global){
       observers.push(observer);
       observer.update();
     }
-    if(self[$$$operands].PATCH_FLAG ){
+    if(self[$$$operands].PATCH_FLAG || isBuiltinWidgetBuild(self) ){
       observe(()=> data[$$$StreamProxyKey], function(){
         try{
           callback();
@@ -8347,7 +8390,7 @@ const Houxit=(function(global){
     }
   }
   function patchRenderNormalizerCall(self, build, EffectVNode, observer){
-    if(HouxitElementDiffing(build, EffectVNode)){
+    if(isSameHouxitElementType(build, EffectVNode) ){
       if(isHouxitFragmentElement(build)) resolvePatchAlgorithm(self, build, EffectVNode, observer);
       else renderVnodeDiffSequence(self, build, EffectVNode, observer, null, {});
       return;
@@ -8542,20 +8585,78 @@ const Houxit=(function(global){
   }
   function renderVnodeDiffSequence(self, hx_Element, vNode, observer, parent, metrics){
     let { index, key } = metrics;
+    const isbuiltin=isBuiltinWidgetBuild(self);
     if(!HouxitElementDiffing(hx_Element, vNode)) {
-      const NewNode=__createRerenderBlock(self, vNode);
+      const useCache=installMemoInstance(self, hx_Element, vNode);
+      const NewNode=useCache ? useCache.hx_Element : __createRerenderBlock(isbuiltin ? self[$$$core].$parent : self, vNode);
       const posixElem=document.createComment(c_str);
       const targetElem=resolveTargetElement(hx_Element, null, true);
       targetElem.after(posixElem);
       if(parent) parent.VN_Tree.LEAGUE_TREE[key]=[NewNode, index];
-      unMountVNode(hx_Element);
-      parent.NodeList.replace(hx_Element, NewNode);
-      posixElem.before(NewNode.$element);
+      if(isBuiltinMemoWidget(self)) generateWrapElementAction(hx_Element, el=>el.remove());
+      else unMountVNode(hx_Element);
+      if(parent) parent?.NodeList.replace(hx_Element, NewNode);
+      else if(isBuiltinWidgetBuild(self)) self.$build=NewNode;
+      if(useCache) {
+        WidgetEffectTrigger(self[$$$core].$parent, NewNode, vNode, parent, observer);
+        useCache.record.forEach(el=> posixElem.before(el));
+      } else posixElem.before(NewNode.$element);
       posixElem.remove();
       observer.mutated=true;
-      return ;
+    }else effectiveElement_REPATCH(self, hx_Element, vNode, observer, parent );
+  }
+  function installMemoInstance(self, hx_Element, EffectVNode){
+    if(!(isBuiltinMemoWidget(self) && isHouxitWidgetElement(hx_Element))) return;
+    const { storage, state, caches, keys }=self[$$$compiler].memo_cave;
+    const hx_Key=hx_Element.prototype_;
+    const Eff_Key=EffectVNode.prototype_;
+    if(!keys.has(hx_Key)) addMEMOState(self, hx_Element);
+    else if(keys.has(hx_Key)) addMEMOState(self, hx_Element, true);
+    if(keys.has(Eff_Key)) return getMEMOState(self, EffectVNode);
+  }
+  function addMEMOState(self, hx_Element, update=false){
+    const { storage, caches, keys }=self[$$$compiler].memo_cave;
+    const hx_Key=hx_Element.prototype_;
+    if(!update) {
+      const test=self.__public_model__.$params.test.data;
+      if(test && !test()) return;
+      const max=self.__public_model__.$params.max.data;
+      if(!isInfinity(max) && keys.size === max){
+        const leastKey=keys.shift();
+        unMountVNode(storage.get(leastKey).hx_Element);
+        storage.delete(leastKey);
+      }
+      keys.add(hx_Key);
     }
-    effectiveElement_REPATCH(self, hx_Element, vNode, observer, parent );
+    const record=new Tuple();
+    generateWrapElementAction(hx_Element, (el)=>{
+      record.add(el);
+    });
+    if(update) storage.get(hx_Key).record=record;
+    else storage.set(hx_Key, {
+      hx_Element,
+      record
+    });
+  }
+  function getMEMOState(self, hx_Element){
+    const { storage, caches, keys }=self[$$$compiler].memo_cave;
+    const hx_Key=hx_Element.prototype_;
+    if(!keys.has(hx_Key)) return;
+    const state=storage.get(hx_Key);
+    if(len(keys) < 2) return storage;
+    keys.delete(hx_Key);
+    keys.add(hx_Key);
+    storage.delete(hx_Key);
+    storage.set(hx_Key, state);
+    return state;
+  }
+  function deleteMEMOState(self, hx_Element){
+    const { storage, caches, keys }=self[$$$compiler].memo_cave;
+    const hx_Key=hx_Element.prototype_;
+    if(!keys.has(hx_Key)) return;
+    keys.delete(hx_Key);
+    storage.delete(hx_Key);
+    return true;
   }
   function resolveTargetElement(target, fallback, last=false){
     let targetElem;
@@ -8570,7 +8671,7 @@ const Houxit=(function(global){
     return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) ? targetElem : fallback;
   }
   function unMountVNode(vnode){
-    if(isHouxitWidgetElement(vnode))vnode.widget_instance.destroy();
+    if(isHouxitWidgetElement(vnode)) vnode.widget_instance.destroy();
     else if(isHouxitFragmentElement(vnode)) {
       vnode.NodeList.forEach(el=> unMountVNode(el));
       vnode.upload(el=> el.remove());
@@ -8587,12 +8688,25 @@ const Houxit=(function(global){
   function WidgetEffectTrigger(self, hx_Element, vNode, parent, observer){
     const is_hyperscript=self[$$$core].map.is_hyperscript;
     const traverse=hx_Element.VNodeManager.propsTraversers;
+    const instance=hx_Element.widget_instance;
     slotsTransformRender(parent, observer, hx_Element, vNode);
-    if(!len(traverse)) return;
-    traverse.forEach( trackAttrsEffect => {
-      const { $attrs, $params } = hx_Element.widget_instance.__public_model__;
+    if(len(traverse)) traverse.forEach( trackAttrsEffect => {
+      const { $attrs, $params } = instance.__public_model__;
       trackAttrsEffect( observer, [ $params, $attrs ], hx_Element.VNodeManager.vNodeClass, observer, self);
     });
+    if(isBuiltinMemoWidget(instance)){
+      const virtualNode=hx_Element.VNodeManager.vNodeClass.children;
+      const newVNode=vNode.VNodeManager.vNodeClass.children;
+      if(validateMemoContent(instance, newVNode)){
+        if(!isS(virtualNode[0].type, newVNode[0].type)){
+          instance[$$$core].Build=newVNode[0];
+          instance[$$$compiler].StarterTemplate=newVNode;
+          instance.__public_model__.$pushEffect();
+          hx_Element.VNodeManager.vNodeClass.children=newVNode;
+          // log(vb(instance))
+        }
+      }
+    }
   }
   function callArrGetters(depsArray){
     return depsArray.map( getter => isPFunction(getter) ? getter?.() : getter );
@@ -8790,11 +8904,11 @@ const Houxit=(function(global){
     }
   }
   function _createFragment(){
-    return assign(new DocumentFragment(), {
+    return inBrowserCompiler ? assign(new DocumentFragment(), {
       isHouxit_Fragment:true,
       NodeList:[],
       PATCH_FLAGS:new Set()
-    });
+    }) : new Tuple();
   }
   const devInfo="You're running the development version of houxit "+get_version().slice(7)+", make sure you switched to the minified  version with the (*.min.js) file extension when deploying to production";//development information
   function __traverseRESOLVER(name){//dynamically resolving widget name
@@ -9816,14 +9930,17 @@ const Houxit=(function(global){
   function createCustomElement(options){
     return _createCustomElement.call({}, ...arguments);
   }
-  class CustomNativeElement extends HTMLElement{
-    constructor(){
-      super();
-    }
-    compiler_options={}
-    _set_compiler_options(...compiler_options){
-      this.compiler_options=compiler_options;
-      return ;
+  function generateCustomNativeElementConstructor(){
+    if(!inBrowserCompiler) return
+    return class CustomNativeElement extends HTMLElement{
+      constructor(){
+        super();
+      }
+      compiler_options={}
+      _set_compiler_options(...compiler_options){
+        this.compiler_options=compiler_options;
+        return ;
+      }
     }
   }
   function generateCustomElementConstructor(name){
@@ -9866,6 +9983,7 @@ const Houxit=(function(global){
         delete opts[ind];
       } 
     });
+    const CustomNativeElement=generateCustomNativeElementConstructor();
     CustomNativeElement.prototype.disConnectedCallback=Hooks.disConnectedCallback || pass;
     CustomNativeElement.prototype.adoptedCallback=Hooks.adoptedCallback || pass;
     CustomNativeElement.prototype.attributeChangedCallback=Hooks.attributeChangedCallback || pass;
@@ -10001,7 +10119,7 @@ const Houxit=(function(global){
     }
     return new Promise((resolve)=>{
       build.render(null, config);
-      resolve(vnodesConversionPipeline(self, build.$build.$element));
+      resolve(vnodesConversionPipeline(build, build.$build.$element));
     });
   }
   function renderToString(build, config){
