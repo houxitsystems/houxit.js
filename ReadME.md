@@ -1,5 +1,5 @@
 ## Houxit.js
-#### The blueprint for modern web apps.
+#### The Blueprint for Modern Web Apps.
 
 Welcome to Houxit, the modern sleek and robust web framework that empowers creative and productive development while Building web apps.
 
