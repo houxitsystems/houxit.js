@@ -1,5 +1,5 @@
 ## Houxit.js
-#### The Transparent Web Framework for Perfectionists 
+#### The blueprint for modern web apps.
 
 Welcome to Houxit, the modern sleek and robust web framework that empowers creative and productive development while Building web apps.
 
