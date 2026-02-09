@@ -35,7 +35,7 @@ const Houxit=(function(global){
   const isS=Object.is;
   const hasProp=(obj, prop)=> prop in obj;
   function _makeMap_(obj, arg){
-    return isString(obj) ? new Set(obj.split(',')).has(arg) : validateType(arg, [Set, Tuple, Map ]) ? obj.has(arg) : isPObject(obj) ? hasProp(obj, arg) : isArray(obj) ? obj.includes(arg) :  false;
+    return isString(obj) ? new Set(obj.split(',')).has(arg) : isArray(obj) ? new Set(obj).has(arg) : validateType(arg, [Set, Tuple, Map ]) ? obj.has(arg) : isPObject(obj) ? hasProp(obj, arg) :  false;
   }
   const E_Obj=Object.freeze({});
   const inBrowserCompiler = typeof self !== "undefined" && typeof self === "object";
@@ -66,15 +66,21 @@ const Houxit=(function(global){
     let shouldlog=true;
     if(isHouxitBuild(self)) shouldlog=self[$$$core].settings.debug /*&& !self[$$$operands].initializedRender*/;
     if(shouldlog ) {
-      if(dictateW) console.warn(`${$warner}\n\nEncountered a problem ${txt} \n\n at  at  \n <${self && isHouxitBuild(self) ? self[$$$ownProperties].name : 'UnknownWidget' }> widget`);//houxit warming debugger
+      if(dictateW) {
+        console.warn(`${$warner}\n\nEncountered a problem ${txt} \n\n at  at  \n <${self && isHouxitBuild(self) ? self[$$$ownProperties].name : 'UnknownWidget' }> widget`);//houxit warming debugger
+      }
       console.error(`${$warner}\n\n${msg}\n\n"${msg?.stack || ''}"`);//houxit warming debugger
       // $warn(msg.stack ? msg.stack : msg, self)
     }
   }
   function $warn(msg, self){
     let shouldlog=true;
-    if(isHouxitBuild(self)) shouldlog=self[$$$core].settings.debug;
-    if(shouldlog) console.warn(`${$warner}\n\n${msg}`);//houxit warming debugger
+    if(isHouxitBuild(self)) {
+      shouldlog=self[$$$core].settings.debug;
+    }
+    if(shouldlog) {
+      console.warn(`${$warner}\n\n${msg}`);//houxit warming debugger
+    }
   }
   const isIterator=iterator=>iterator && !isArray(iterator) && isPFunction(iterator[Symbol.iterator]);
   const isInfinity=num=>num === Infinity;
@@ -296,7 +302,7 @@ const Houxit=(function(global){
     isVNodeClass(node) || isTemplateClass(node);
   }
   function isChildrenNode(val){
-    return isPrimitive(val) || isPFunction(val) || isNativeElement(val) || validateType(val, [ Array, HouxitElement, slotInstanceMap, vNodeClass, BaseTemplateClass]);
+    return isPrimitive(val) || isPFunction(val) || isNativeElement(val) || validateType(val, [ Array, HouxitElement, slotInstanceMap, vNodeClass, BaseTemplateClass, ]);
   }
   function isChildrenObjInstances(val){
     if(!isChildrenObj(val)) return false;
@@ -305,11 +311,17 @@ const Houxit=(function(global){
   function isChildrenObj(val){
     return isChildrenNode(val) && !( isPrimitive(val) || isArray(val))
   }
+  function isRerender(self){
+    return isHouxitBuild(self) && isTrue(self[$$$operands].initializedRender);
+  }
   const isBaseWidget=widget=> isPObject(widget) && widget instanceof Widget;
   const isProxy=value=>validateType(value, Proxy);
-  const validHouxitWidget=(w)=> w && ((isObject(w) && !isProxy(w) && !isStream(w)) || isFunction(w) || isHouxitBuiltinSymbolWidget(w));
+  const validHouxitWidget=(w)=> w && ((isObject(w) && !isProxy(w) && !isStream(w)) || isAsyncWidget(w) || isFunction(w) || isHouxitBuiltinSymbolWidget(w));
   const isHoistedVNode=vnode=>isHouxitElement(vnode) && isTrue(vnode.VNodeManager.patchFlags.isHoisted);
   const isStaticVnode=vnode=>isHouxitElement(vnode) && !isHoistedVNode(vnode);
+  function isAsyncFunction(fn) {
+    return isPFunction(fn) && fn?.constructor?.name === 'AsyncFunction';
+  }
   function parseScript(script, args){
     return new Function(`"use strict"; return (${script})`)(args);
   }//helps compile string values to javascript statement
@@ -427,6 +439,40 @@ const Houxit=(function(global){
   const factoryHXSelfInstance=Symbol();
   const $factoryTokenKey=Symbol();
   const $StarterKitKey=Symbol();
+  const $asyncVnodeKey=Symbol();
+  const AsyncHxElementTrackerKey=Symbol();
+  const isAsyncTrackerElement=el=>isHouxitElement(el) && hasOwn(el, AsyncHxElementTrackerKey);
+  class AsyncWidget{
+    constructor(load, config={}){
+      config=assign({
+        delay:200,
+        timeout:Infinity,
+      }, config);
+      validateAsyncWidgetConfig(config);
+      this[$asyncVnodeKey]={
+        load,
+        config,
+        cache:undefined,
+        postLoad:0
+      }
+    }
+  }
+  function validateAsyncWidgetConfig(config){
+    for(let [key, value] of entries(config)){
+      if(!_makeMap_('delay,error,fallback,timeout', key)){
+        $debug_log(`Unrecognized key "${key}" passed to 'AsyncWidget' config object`);
+      }else if(_makeMap_('delay,timeout', key) && (!isNumber(value) || isNaN(Number(value)))){
+        $debug_log(`"${key}" config prop of "AsyncWidget" expects a type of "number"`);
+      }else if(_makeMap_('error,fallback', key) && !isPFunction(value)){
+        // $debug_log(`"${key}" config prop of "AsyncWidget" expects a render function value`);
+      }else {
+        continue;
+      }
+      // delete config[key];
+    }
+  }
+  const isAsyncWidget=vnode=>vnode instanceof AsyncWidget && hasOwn(vnode, $asyncVnodeKey);
+  const isAsyncVNodeClass=vnode=>vnode instanceof vNodeClass && hasOwn(vnode.filesFilter, $asyncVnodeKey);
   const isFRKey=(key)=> $factoryTokenKey === key && isS($factoryTokenKey, key);
   const Fragment=Symbol('hx:fragment');
   const Portal=Symbol('hx:portal');
@@ -2153,10 +2199,17 @@ const Houxit=(function(global){
   function _makeCloneVersion(value, deep=false, metrics=[]){
     let cValue;
     const [ parent, key ] = metrics;
-    if(validateType(value, [HouxitElement, BaseToken, Function]) || isPrimitive(value)) return value// cloneVElement(value);
-    else if(isCollection(value)) return new value.__proto__.constructor(...arrSet(value));
-    else if(isObject(value)) {
-      if(isVNodeClass(parent) && (key==='prototype_' || key === 'type' || key=== 'GeneticProvider') && !isString(parent.prototype_)) return value;
+    if(validateType(value, [HouxitElement, BaseToken, Function]) || isPrimitive(value)) {
+      return value;// cloneVElement(value);
+    }else if(isCollection(value)) {
+      return new value.__proto__.constructor(...(arrSet(value).map((val, ky)=>{
+        return deep ? _makeCloneVersion(val, deep, [value, ky]) : val;
+      })));
+    }else if(isObject(value)) {
+      if(isVNodeClass(parent)){
+        if(_makeMap_(key, "prototype_,type,GeneticProvider,children,hx_Element"));
+        return value;
+      }
       const isSVA= isArray(value) && len(value) === 1 && isNumber(value[0]);
       if(isSVA) {
         value=[ ...value ];
@@ -2282,7 +2335,7 @@ const Houxit=(function(global){
     const { global, block } = config;
     if(hasSpecialCharacters(funcN)) funcN=escapeRegExp(funcN);
     let flags="mu";
-    if(global) flags+"g";
+    if(global) flags+="g";
     const fxRegex=new RegExp(`(${funcN} *${`\\(`})([\\S\\s]*)`, flags);
     const drafts=[];
     let draftCount=0;
@@ -2300,7 +2353,7 @@ const Houxit=(function(global){
     let compile=true;
     const isQo=val=>/['"]/.test(val);
     for(let [ key, val ] of entries(rest)){
-      value = value + val;
+      value += val;
       if(isQo(val)){
         if(!opQ){
           compile=false;
@@ -2380,18 +2433,21 @@ const Houxit=(function(global){
     const isSSR=isSSRCompiler(self);
     let hasSkip;
     let node;
-    let is_hyperscript=hx_Element.is_hyperscript;
+    const is_hyperscript=hx_Element.is_hyperscript;
     if(!(isRerender || isSSR)) node=document.createTextNode(text);
     if(hasSpecialCharacters(text)  && !is_hyperscript) {
       let [ subscribers, textContent ] = effectDependencyTracking(self, function(){
         return resolveAccessor(self, text, hx_Element);
       });
-      if(!(isRerender || isSSR)) node.textContent=textContent
-      else {
+      if(!(isRerender || isSSR)) {
+        node.textContent=textContent
+      }else {
         node=textContent;
         hx_Element.$element=textContent;
       }
-      if(len(subscribers) && !isRerender) hx_Element.VNodeManager.patchFlags.subscriptions.extend(subscribers);
+      if(len(subscribers) && !isRerender) {
+        hx_Element.VNodeManager.patchFlags.subscriptions.extend(subscribers);
+      }
     }
     if((isRerender || isSSR) && (is_hyperscript || !hasSpecialCharacters(text))){
       node = text;
@@ -2651,11 +2707,7 @@ const Houxit=(function(global){
     }
   }
   function NormalizeDirGarbage(props){
-    let has_conditional=false;
-    let has_loop=false
-    let dataRecord={};
-    let index=0
-    
+    let has_conditional=false, has_loop=false, dataRecord={}, index=0;
     for(const [key, val] of entries(props)){
       if(!has_conditional) has_conditional=isIfKey(key) || isElseKey(key) || isElseIfKey(key) ;
       if(isIfKey(key)) assign(dataRecord, {
@@ -2710,10 +2762,26 @@ const Houxit=(function(global){
       return ;
     }
     const GIC=new _$Directive_$Conditional$_Renderer(self, vnode, hx_Element, siblings, recordPatch, ctx);
-    if(hasIf) return GIC.Panel_If_Block();
-    else if(hasElseIf || hasElse) return GIC.Panel_elseif_Block(hasElse);
+    return hasIf ? GIC.Panel_If_Block() : (hasElseIf || hasElse) ? GIC.Panel_elseif_Block(hasElse) : undefined;
   }
   const isConditionalVnode=(vnode, cond)=> isHouxitElement(vnode) ? vnode.conditional_record.src === cond : false;
+  function isMemoChild(vNode){
+    return isVNodeClass(vNode) && isTrue(vNode.filesFilter.isMemoChild);
+  }
+  function warnTemplateMemo(self, vnode, siblings){
+    if(isMemoChild(vnode)){
+      if(!siblings){
+        if(!validHouxitWidget(vnode.prototype_)){
+          $debug_log(`"<Memo>" expects only a child component instance`, self, true );
+          return false;
+        }
+      }else if(len(siblings) && !isRenderlessElement(siblings[len(siblings)-1])){
+        $debug_log(`"<Memo>" expects only 1 child component instance`, self, true );
+        return false;
+      }
+    }
+    return true;
+  }
   class _$Directive_$Conditional$_Renderer{
     options=undefined;
     constructor(self, vnode, hx_Element, siblings, recordPatch, ctx){
@@ -2725,57 +2793,67 @@ const Houxit=(function(global){
         propValue, 
         srcKey, 
         self,
-        props,
+        props:memMove(vnode, true),
         vnode,
         hx_Element,
         siblings,
         ctx,
-        createElement:()=>createHouxitElement(this.vnode, self, false, hx_Element?.LabContext, siblings, ctx,  hx_Element)
+        createElement:()=>{
+          return createHouxitElement(this.vnode, self, false, hx_Element?.LabContext, siblings, ctx,  hx_Element);
+        }
       });
+      this.vnode.props=assign({}, this.vnode.props);
     };
     Panel_If_Block(){
       const { self, propValue, hx_Element, vnode, siblings, srcKey, ctx } = this ;
       let data=_$runModelBind(self, propValue, ctx);
-      this.vnode=memMove(vnode, true);
       delete this.vnode.props[srcKey];
-      if(!data) return $IfElseDirRenderLess.call(this, data, 'if');
+      if(!data){ 
+        const node=$IfElseDirRenderLess(data, 'if');
+        hx_Element?.NodeList.add(node);
+        return node;
+      }
+      if(!warnTemplateMemo(self, vnode, siblings)) return;
       const node=this.createElement();
-      node.compiler_options.createElement=createElement;
+      node.compiler_options.createElement=this.createElement;
       assign(node.conditional_record, {
         src:'if',
         res:true,
         passed:true
       });
-      if(hx_Element) hx_Element.NodeList.add(node);
+      hx_Element?.NodeList.add(node);
       return node;
     } 
     Panel_elseif_Block(isElse=false){
       const block=isElse ? 'else' : 'else-if' ;
-      const { self, propValue, hx_Element, siblings, vnode, srcKey, ctx } = this
+      const { self, propValue, hx_Element, siblings, vnode, srcKey, ctx } = this;
       let data= isElse ? false : _$runModelBind(self, propValue, ctx);
       const previous=siblings[len(siblings)-1];
       let passed;
       if(previous) passed=previous.conditional_record.passed;
-      this.vnode=memMove(vnode.props);
       delete vnode.props[srcKey];
       let node;
-      if(!len(siblings) || !previous || (!isConditionalVnode(previous, 'if') && !isConditionalVnode(previous, 'else-if'))){
-        $debug_log(`The "$$${block}" conditional rendering directive block expects a preceding "$$if" or "$$else-if" directive element\n\nMay return unexpected result\ndid you mean "$$if" directive instead?\n at>>>>>`, self, true);
-        node = this.createElement();
-        node.compiler_options.createElement=createElement;
+      if(!previous || (!isConditionalVnode(previous, 'if') && !isConditionalVnode(previous, 'else-if'))){
+        $debug_log(`The "$$${block}" conditional rendering directive block expects a preceding "$$if" or "$$else-if" directive element\n\nMay return unexpected result during production\nDid you mean "$$if" directive instead?\n at>>>>>`, self, true);
+        if(!warnTemplateMemo(self, vnode, siblings)) {
+          return;
+        }
+        node = $IfElseDirRenderLess( data, block, previous ); //this.createElement();
+        node.compiler_options.createElement=this.createElement;
       }else if(!passed && isRenderlessElement(previous) && !(previous.conditional_record.res)){
         data=isElse || data;
         if(data){
+          if(!warnTemplateMemo(self, vnode, siblings)) return;
           node = this.createElement();
-          node.compiler_options.createElement=createElement;
+          node.compiler_options.createElement=this.createElement;
           assign(node.conditional_record, {
             src:block,
             res:true,
             passed:data
           });
-        }else node = $IfElseDirRenderLess.call(this, data, block, previous );
-      }else node = $IfElseDirRenderLess.call(this, data, block, previous);
-      if(hx_Element) hx_Element.NodeList.add(node);
+        }else node = $IfElseDirRenderLess( data, block, previous );
+      }else node = $IfElseDirRenderLess(data, block, previous);
+      hx_Element?.NodeList.add(node);
       return node;
     }
   }
@@ -2786,7 +2864,7 @@ const Houxit=(function(global){
         res:false,
         passed:previous ? previous.conditional_record.passed : false ,
       });
-    })
+    });
   }
   function has_Intersect_Prop(obj1, obj2 ){
     let res=false;
@@ -2894,16 +2972,22 @@ const Houxit=(function(global){
       return;
     }
     vnode =memMove(vnode, true);
+    vnode.filesFilter.hasDir=true;
     if((hasIFWithFor && (hasIf ? ifIndex : hasElse ? elseIndex : hasElseIf ? elseIfIndex : -1 ) < forIndex) ) {
       return _$Conditional_Dir_Resolver(self, vnode,  hx_Element, siblings, ctx, conditionalArgs );
-    }else if(hasFor) return _$Directive_$For_Loop$_Renderer(self, vnode, hx_Element, siblings, ctx,  [getEx, getFor, forKey ], saveGarbageContent );
-    else if(getEx) return _$Conditional_Dir_Resolver(self, vnode, hx_Element, siblings, ctx, conditionalArgs);
+    }else if(hasFor) {
+      return _$Directive_$For_Loop$_Renderer(self, vnode, hx_Element, siblings, ctx,  [getEx, getFor, forKey ], saveGarbageContent );
+    }else if(getEx) {
+      return _$Conditional_Dir_Resolver(self, vnode, hx_Element, siblings, ctx, conditionalArgs);
+    }
     return createHouxitElement(vnode, self, is_hyperscript, ctx, siblings,null, hx_Element );
   }
   function callSetHooks(self, hooks, element, bindObj={}, hx_Element, Name="" ){
-    function Callback(){
+    return (function Callback(){
       for(let hook of hooks.values()){
-        if(isPass(hook)) continue
+        if(isPass(hook)) {
+          continue
+        }
         try{
           const bindings = hook[lifeCiycleBinding];
           const instance=isHouxitNativeElement(hx_Element) ? element : self.__public_model__;
@@ -2911,12 +2995,10 @@ const Houxit=(function(global){
         }catch(err){
           $debug_log("$$"+hook.name+"("+Name.slice(0, -5)+") >>\nUnresolved problem during the call of the "+Name.slice(0, -5) +" hook of custom "+(hook.dirName||"")+" directive\n",  self, true);
           $debug_log(err, self);
-          return element;
+          break;
         }
       }
-      return element;
-    }
-    return Callback();
+    })();
   }
   function HouxitElementLifeCircleHooks(self, element, hx_Element){
     const args=(hookN)=> [ self, hx_Element.VNodeManager.LifeCycleHooks[hookN], element, self.__public_model__, hx_Element, hookN ];
@@ -2948,7 +3030,7 @@ const Houxit=(function(global){
   }
   const frameDirectives="$$for,$$if,$$else-if,$$else";
   function built_in_fragment_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
-    const fragmented_elements=vnode.children ? _HouxitTemplateParser(vnode.children, self, null, hx_Element, ctx) : [];
+    const fragmented_elements=vnode.children ? _HouxitCoreRenderer(vnode.children, self, null, hx_Element, ctx) : [];
     const fragment=new HouxitFragmentElement(fragmented_elements, self, hx_Element, vnode.props?.key);
     return fragment;
   }
@@ -2969,14 +3051,19 @@ const Houxit=(function(global){
     return ELEMENT;
   }
   function built_in_Build_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
-    if(!debug_self_prop_warn(vnode.props, self, ["hx:build", 'self' ])) return createRenderlessElement();
+    if(!debug_self_prop_warn(vnode.props, self, ["hx:build", 'self' ])){ 
+      return createRenderlessElement();
+    }
     let props = vnode.props;
     const prototype_=(isString(props.self) && IS_VALID_TAGNAME(props.self)) || validHouxitWidget(props.self) ? props.self : isString(props.self) ? normalize_Widget(self, props.self) : null;
     props=memMove(props, true);
     delete props.self;
-    if(isNull(prototype_)) return createRenderlessElement();
+    if(isNull(prototype_)) {
+      return createRenderlessElement();
+    }
+    props=dynamicPropRemover(vnode.rawProps, 'self');
     props.key = vnode.key;
-    vnode=h(prototype_, props, memMove(vnode.children || []));
+    vnode=h(prototype_, props, memMove(vnode.children || [], is_hyperscript));
     const ELEMENT= createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc);
     return ELEMENT;
   }
@@ -2995,7 +3082,7 @@ const Houxit=(function(global){
     if(!debug_self_prop_warn(vnode.props, self, ["hx:portal", 'target'])) return createRenderlessElement();
     const portal=createPortalEntryDisplay(self, vnode.props);
     if(!portal) return createRenderlessElement();
-    const portalContent=vnode.children ? _HouxitTemplateParser(vnode.children, self, null, hx_Element, ctx) : [];
+    const portalContent=vnode.children ? _HouxitCoreRenderer(vnode.children, self, null, hx_Element, ctx) : [];
     const wrapper=new HouxitFragmentElement(portalContent, self, hx_Element, vnode.key);
     portal.append(wrapper.$element);
     wrapper.$element=_createFragment();
@@ -3014,18 +3101,13 @@ const Houxit=(function(global){
           animate:Any
         }
       }
-    }else if(prototype_ === Suspence){
-      vnode.GeneticProvider={
-        name:'hx:suspense',
-        slots:['fallback'],
-      }
     }
     return createRenderlessElement();
   }
   function built_in_memo_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
     if(isNull(vnode.key)){
-      $debug_log(`<Memo> was rendered without a key.`, self, true);
-      $warn(`Memo widgets use keys to preserve identity across renders. \nPass a stable key to avoid unnecessary re-compilation.`);
+      $debug_log(`<Memo> was rendered without a key prop.`, self, true);
+      $warn(`Memo widgets use keys to preserve identity across re-renders. \nPass a stable and unique key to avoid unnecessary re-compilation during rerender.`);
     }
     const widget={
       name:'hx:memo',
@@ -3054,8 +3136,20 @@ const Houxit=(function(global){
     ELEMENT.prototype_=Memo;
     return ELEMENT;
   }
-  function built_in_suspense_widget(){
-    
+  function built_in_suspense_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
+    const widget={
+      name:'hx:suspense',
+      slots:['fallback'],
+    }
+    assign(vnode, {
+      GeneticProvider:widget,
+      prototype_:widget,
+      type:widget
+    });
+    vnode[$$BuiltinWidgetKey]="hx:suspense";
+    const ELEMENT = createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element);
+    ELEMENT.prototype_=Suspense;
+    return ELEMENT;
   }
   function built_in_motion_widget(){
     
@@ -3070,22 +3164,37 @@ const Houxit=(function(global){
       subscriptions:new Tuple(),
       PropFlags:new Tuple()
     }
-    Props_dilation_compile(vnode, self, hx_Element, {
-      is_hyperscript,
-      ctx,
-      ssc
-    }, props_object);
-    vnode.props=props_object;
+    if(_makeMap_([Fragment, Self, Build, Portal], prototype_)){
+      if(prototype_ === Build){
+        vnode.rawProps=memMove(vnode.props, is_hyperscript);
+      }
+      Props_dilation_compile(vnode, self, hx_Element, {
+        is_hyperscript,
+        ctx,
+        ssc
+      }, props_object);
+      vnode.props=props_object;
+    }
     const resArgs=[vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element];
-    if(prototype_ === Fragment ) return built_in_fragment_widget(...resArgs);
-    else if(prototype_ === Self ) return built_in_self_widget(...resArgs);
-    else if(prototype_ === Build ) return built_in_Build_widget(...resArgs);
-    else if(prototype_ === Portal) return built_in_portal_widget(...resArgs);
-    else if(prototype_ === Memo) return built_in_memo_widget(...resArgs);
-    else if(prototype_ === Suspence) return built_in_suspense_widget(...resArgs);
-    else if(prototype_ === Motion) return built_in_motion_widget(...resArgs);
-    else if(prototype_ === Suspence) return built_in_provider_widget(...resArgs);
-    // else return generateWidgetBasedBuiltin(...resArgs);
+    if(prototype_ === Fragment ) {
+      return built_in_fragment_widget(...resArgs);
+    }else if(prototype_ === Self ) {
+      return built_in_self_widget(...resArgs);
+    }else if(prototype_ === Build ) {
+      return built_in_Build_widget(...resArgs);
+    }else if(prototype_ === Portal) {
+      return built_in_portal_widget(...resArgs);
+    }else if(prototype_ === Memo) {
+      return built_in_memo_widget(...resArgs);
+    }else if(prototype_ === Suspense) {
+      return built_in_suspense_widget(...resArgs);
+    }else if(prototype_ === Motion) {
+      return built_in_motion_widget(...resArgs);
+    }else if(prototype_ === Provider) {
+      return built_in_provider_widget(...resArgs);
+    }// else {
+      // return generateWidgetBasedBuiltin(...resArgs);
+    // }
   }
   function createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc,  hx_Element){
     let starterKit;
@@ -3104,13 +3213,28 @@ const Houxit=(function(global){
     let ELEMENT;
     const { prototype_ } = vnode;
     const args=[vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element, starterKit];
-    if(!is_hyperscript && hasDir ) ELEMENT = VNodeManager(self, vnode, null, hx_Element, siblings, saveGarbageContent, ctx, starterKit);
-    else if(isHouxitBuiltinSymbolWidget(prototype_)) ELEMENT = simulate_buitin_widget_syms(...args);
-    else if(validHouxitWidget(prototype_)) ELEMENT = new HouxitWidgetElement(...args);
-    else if(isString(prototype_)){
-      if(IS_VALID_TAGNAME(prototype_)) ELEMENT = new  HouxitNativeElement(...args);
-      else if(isCustomElementTagname(prototype_)) ELEMENT = new HouxitCustomNativeElement(...args);
-      else debug_unrecognized_tagname(prototype_, self);
+    if(!is_hyperscript && !hasDir && !vnode.filesFilter.hasDir && isMemoChild(vnode)){
+      if(!warnTemplateMemo(self, vnode, siblings)) {
+        return;
+      }
+    }
+    if(!is_hyperscript && hasDir ) {
+      ELEMENT = VNodeManager(self, vnode, null, hx_Element, siblings, saveGarbageContent, ctx, starterKit);
+    }else if(isHouxitBuiltinSymbolWidget(prototype_)) {
+      ELEMENT = simulate_buitin_widget_syms(...args);
+    }else if(validHouxitWidget(prototype_)) {
+      ELEMENT = flattenWidgetAndAsyncBuild(...args);
+    }else if(isString(prototype_)){
+      if(!warnTemplateMemo(self, vnode)) {
+        return;
+      }
+      if(IS_VALID_TAGNAME(prototype_)) {
+        ELEMENT = new  HouxitNativeElement(...args);
+      }else if(isCustomElementTagname(prototype_)) {
+        ELEMENT = new HouxitCustomNativeElement(...args);
+      }else {
+        debug_unrecognized_tagname(prototype_, self);
+      }
     }
     return ELEMENT;
   }
@@ -3121,10 +3245,154 @@ const Houxit=(function(global){
   function isCustomElementTagname(tagname){
     return isPFunction(customElements.get(tagname));
   }
-  function translateVElementNormalizer(virtualElement, self){
-    
+  function smart_render_toggler(self){
+    const initializedRender=self[$$$operands].initializedRender;
+    const toggler=()=>{
+      if(initializedRender){
+        self[$$$operands].initializedRender=true;
+      }
+    }
+    if(initializedRender){
+      self[$$$operands].initializedRender=false;
+    }
+    return toggler;
   }
-  
+  function createAsyncFallback(self, a_p, hx_Element, ssc){
+    const fallback=a_p.config.fallback;
+    let useFallback=false, useDefault=false, ELEMENT
+    if(fallback){
+      const fall_content=()=>{
+        if(a_p.resolved || a_p.failed) return;
+        if(!isChildrenNode(fallback)){
+          $debug_log(`fallback content of "asyncWidget" is not a valid Houxit element`, self, true);
+          return;
+        }
+        const toggler=smart_render_toggler(self);
+        let tree= _HouxitCoreRenderer(arrayInverter(fallback), self, null, hx_Element, ssc);
+        tree= new HouxitFragmentElement(arrayInverter(tree), self, hx_Element );
+        tree[AsyncHxElementTrackerKey]={};
+        toggler();
+        useFallback=true;
+        if(a_p.config.delay <= 0){
+          return tree;
+        }
+        const posix=resolveTargetElement(ELEMENT);
+        posix.before(tree.$element);
+        unMountVNode(ELEMENT);
+        reinstallFallbackResponses(self, tree, a_p.fallback[AsyncHxElementTrackerKey]);
+        ELEMENT=tree;
+      }
+      if(a_p.config.delay > 0) {
+        setTimeout(fall_content, a_p.config.delay);
+      }else{
+        ELEMENT=fall_content();
+      }
+    }
+    if(useFallback) return ELEMENT;
+    ELEMENT=new HouxitFragmentElement([], self, hx_Element);
+    ELEMENT[AsyncHxElementTrackerKey]={};
+    useDefault=true;
+    return ELEMENT;
+  }
+  function normalize_lazy_return(self, ELEMENT, a_p){
+    a_p.resolved=true;
+    ELEMENT[AsyncHxElementTrackerKey]={};
+    const posix=resolveTargetElement(a_p.fallback);
+    posix.before(ELEMENT.$element);
+    unMountVNode(a_p.fallback);
+    reinstallFallbackResponses(self, ELEMENT, a_p.fallback[AsyncHxElementTrackerKey]);
+  }
+  function asyncErrorElement(self, a_p, hx_Element, ssc){
+    const toggler=smart_render_toggler(self);
+    let FailedElement= _HouxitCoreRenderer(arrayInverter(a_p.config.error), self, null, hx_Element, ssc);
+    FailedElement= new HouxitFragmentElement(arrayInverter(FailedElement), self, hx_Element );
+    toggler();
+    FailedElement[AsyncHxElementTrackerKey]={};
+    const posix=resolveTargetElement(a_p.fallback);
+    posix.before(FailedElement.$element);
+    unMountVNode(a_p.fallback);
+    reinstallFallbackResponses(self, FailedElement, a_p.fallback[AsyncHxElementTrackerKey]);
+    a_p.failed=true
+  }
+  function flattenWidgetAndAsyncBuild(vnode, self, is_hyperscript=false, ctx, siblings, ssc, hx_Element, starterKit, isWidget=false){
+    const { prototype_ } = vnode;
+    if(!isAsyncWidget(prototype_)) {
+      return new HouxitWidgetElement(...arguments);
+    }
+    let widget=prototype_;
+    const a_p=widget[$asyncVnodeKey];
+    a_p.resolved=false;
+    a_p.pending=false;
+    a_p.failed=false;
+    const VN_Tree=()=>hx_Element?.VN_Tree || self?.$build?.VN_Tree;
+    if(!a_p.postLoad){
+      const future=a_p.load();
+      if(!isPromise(future)){
+        $debug_log(`asyncWidget instance load callback expects a javascript Promise instance object as a return value`, self, true);
+        return;
+      }
+      const timeout=a_p.config.timeout;
+      if(!isInfinity(timeout)){
+        setTimeout(()=>{
+          if(!a_p.resolved && !a_p.failed){
+            asyncErrorElement(self, a_p, hx_Element, ssc);
+            $debug_log(`"asyncWidget" resolving timed out`, self, true);
+          }
+        }, timeout);
+      }
+      future.then((res)=>{
+        if(isObject(res) && isUndefined(res.prototype) && hasOwn(res, 'default')) {
+          res=res.default;
+        }
+        a_p.postLoad++;
+        a_p.cache=res;
+        assign(vnode, {
+          prototype_:res,
+          GeneticProvider:res,
+          type:res
+        });
+        vnode.filesFilter[$asyncVnodeKey]={
+          prototype_,
+        }
+        try{
+          const toggler=smart_render_toggler(self);
+          let ELEMENT=new HouxitWidgetElement(...arguments);
+          toggler();
+          const awaitReady = ELEMENT.widget_instance[$$$operands].awaitReady;
+          const awaitCallback=()=>normalize_lazy_return(self, ELEMENT, a_p);
+          awaitReady ? (awaitReady.then(()=>awaitCallback()).catch(er=>{
+            $debug_log(`Failed resolving state during an "async build()" process\n\nReason::"${er.message}"`);
+          })) : awaitCallback();
+        }catch(err){
+          $debug_log(`Failed resolving state during asynchronous widget mount\n\nReason::"${err.message}"`);
+        } 
+      }).catch(e=> {
+        asyncErrorElement(self, a_p, hx_Element, ssc);
+        $debug_log(`"asyncWidget" resolving failed with reason\n\n"${e.message}"`, self, true);
+      });
+      const tree=createAsyncFallback(self, a_p, hx_Element, ssc, VN_Tree);
+      a_p.fallback=tree;
+      return tree;
+    }else {
+      widget=a_p.cache;
+      assign(vnode, {
+        prototype_:widget,
+        GeneticProvider:widget,
+        type:widget
+      });
+      const ELEMENT=new HouxitWidgetElement(...arguments);
+      ELEMENT[AsyncHxElementTrackerKey]={};
+      return ELEMENT;
+    }
+  }
+  function reinstallFallbackResponses(build, ELEMENT, fall_Element, parent){
+    const { hx_Element, key, self } = fall_Element;
+    if(self) self.$build=ELEMENT
+    else {
+      hx_Element.VN_Tree.LEAGUE_TREE[key][0]=ELEMENT
+      hx_Element.NodeList.replace(fall_Element, ELEMENT);
+    }
+  }
   function smartDextCtxMerging(context, ssc, merge=false){
     if(!(context || ssc)) return merge ? context || ssc : assign({}, context || ssc || {}); 
     context=merge ? context : assign({}, context);
@@ -3173,12 +3441,13 @@ const Houxit=(function(global){
     customElementsArgs.pop();
     const element=generateTemplateElement(vnode, self, this, siblings,
     vnode.IS_RENDERLESS, customElementsArgs, starterKit);
-    if(isRerender && isWidget && slotBindings) this.compiler_options.createSlot=()=> _HouxitTemplateParser(vnode.children, self, null, this, assign({}, hx_Element.LabContext));
+    if(isRerender && isWidget && slotBindings) this.compiler_options.createSlot=()=> _HouxitCoreRenderer(vnode.children, self, null, this, assign({}, hx_Element.LabContext));
     if(!isRerender && isHouxitNativeElement(this)) HouxitElementLifeCircleHooks(self, element, this);
     this.$element=element;
     if(!isRerender){
-      if(!isRenderlessElement(this) && hasProp( isHouxitWidgetElement(this) ?  this.widget_instance[$$$ownProperties] : this.compiler_options, 'ref_$$Prop')){
-        resolveElementToken(self, isHouxitWidgetElement(this) ? this.widget_instance[$$$ownProperties]['ref_$$Prop']  : this.compiler_options['ref_$$Prop'], isHouxitWidgetElement(this) ? this.widget_instance : this.$element, this );
+      const ref_src=isHouxitWidgetElement(this) ? this.widget_instance[$$$ownProperties]  : this.compiler_options;
+      if(!isRenderlessElement(this) &&  hasProp( ref_src, 'ref_$$Prop')){
+        resolveElementToken(self, ref_src['ref_$$Prop'], isHouxitWidgetElement(this) ? this.widget_instance : this.$element, this );
       }
     }
     evaluateKeyOnElement(this, vnode.key, self);
@@ -3217,17 +3486,22 @@ const Houxit=(function(global){
       const isHy=isHydration(self);
       if(!isSSR && !isRerender) this.VNodeManager.posix=[ document.createComment(c_str), document.createComment(c_str)]
       const fragment = !isSSR && !isRerender ?  _createFragment() : isSSR ? [] : isRerender ? undefined : undefined;
-      const start_el=this.getSSRPosixEl()[0];
-      if(start_el) fragment?.[(isSSR ? 'push' : 'append')](start_el);
+      const [start_el, end_el ]=this.getSSRPosixEl();
+      if(start_el && !isSSR) fragment?.append(start_el);
       for(let [ key, node ] of vnodes.entries()){
         if(!node && !fragment) continue;
         if(isHouxitElement(node) && !isSSR) this.NodeList.add(node);
         fragment?.[(isSSR ? 'push' : 'append')](smartSSRGrab(node, isSSR, isHy));
+        if(isAsyncTrackerElement(node)) {
+          node[AsyncHxElementTrackerKey]={
+            key,
+            hx_Element:this
+          }
+        }
         resolve_keyed_mapping(this, node, index, self);
         index ++;
       }
-      const end_el=this.getSSRPosixEl()[1];
-      if(end_el) fragment?.[isSSR ? 'push' : 'append'](end_el);
+      if(end_el && !isSSR) fragment?.append(end_el);
       evaluateKeyOnElement(this, key, self);
       if(!isRerender){
         this.VN_Tree.ELEMENTS=()=>{
@@ -3237,8 +3511,10 @@ const Houxit=(function(global){
           let node = start;
           while(node){
             let next = node.nextSibling;
-            if(!IS_COMMENT_NODE(node) && node) recorder.add(node);
-            if(node === end) break;
+            recorder.add(node);
+            if(node === end) {
+              break;
+            }
             node = next;
           }
           return recorder;
@@ -3254,7 +3530,7 @@ const Houxit=(function(global){
       return this.VNodeManager.posix;
     }
     upload(callback){
-      this.VN_Tree.ELEMENTS().forEach((el, ind)=> callback(el));
+      return this.VN_Tree.ELEMENTS().forEach((el, ind)=> callback(el));
     }
   }
   class HouxitRenderlessElement extends HouxitFragmentElement{
@@ -3268,7 +3544,7 @@ const Houxit=(function(global){
       super();
       const isRerender=self[$$$operands].initializedRender;
       const isHy=isHydration(self);
-      this.is_hyperscript= hx_Element?.is_hyperscript ;
+      this.is_hyperscript= self[$$$core].map.is_hyperscript;
       if(hx_Element) this.LabContext=assign({}, hx_Element?.LabContext || {});
       if(!this.is_hyperscript && fall ) this.LabContext=smartDextCtxMerging(this.LabContext, fall);
       this.$element=_createTextElement(self, text, this, isRerender);
@@ -3462,7 +3738,7 @@ const Houxit=(function(global){
           }else hx_Element.$element=content;
         }
       } else {
-        childNodes=_HouxitTemplateParser(children, self, true, hx_Element, assign({}, hx_Element.LabContext));
+        childNodes=_HouxitCoreRenderer(children, self, true, hx_Element, assign({}, hx_Element.LabContext));
         childNodes = arrayInverter( childNodes );
         let index=0;
         if(isSSR) element.children=[];
@@ -3471,12 +3747,20 @@ const Houxit=(function(global){
           hx_Element.NodeList.add(els);
           if(isSSR) element.children.push(smartSSRGrab(els, isSSR, isHy));
           else if(!isRerender && els.$element) element.append(els.$element);
+          if(isAsyncTrackerElement(els)) {
+            node[AsyncHxElementTrackerKey]={
+              key,
+              hx_Element
+            }
+          }
           resolve_keyed_mapping(hx_Element, els, index, self);
           index++;
         }
       }
     }
-    if(props) Props_dilation_compile(virtualNode, self, hx_Element, metrics, element);
+    if(props) {
+      Props_dilation_compile(virtualNode, self, hx_Element, metrics, element);
+    }
     if(!isRerender && virtualNode.prototype_==='slot' && !(isSSR ? element?.props.name.trim() : element.name?.trim())){
       slotNamingTRANSITION(self, {
         value:'default'
@@ -3509,17 +3793,30 @@ const Houxit=(function(global){
       hx_Element,
       isRerender:self[$$$operands]?.initializedRender,
     }
-    if(!is_hyperscript) slotsCompilerArgs.config={};
-    if(validHouxitWidget(prototype_)) buildInstance =$compilerEngine(self, virtualNode, hx_Element, slotsCompilerArgs);
+    if(!is_hyperscript) {
+      slotsCompilerArgs.config={};
+    }
+    if(validHouxitWidget(prototype_)) {
+      buildInstance =$compilerEngine(self, virtualNode, hx_Element, slotsCompilerArgs);
+    }else{
+      $debug_log(`widget initializer failed to compile...`, true, self);
+    }
     if(buildInstance){
-      if(!is_hyperscript) hx_Element.hx_build=buildInstance[$$$ownProperties].hx_build;
-      if(buildInstance[$$$ownProperties]?.slot_name) hx_Element.slot_name=buildInstance[$$$ownProperties].slot_name;
+      if(!is_hyperscript) {
+        hx_Element.hx_build=buildInstance[$$$ownProperties].hx_build;
+      }
+      if(buildInstance[$$$ownProperties]?.slot_name) {
+        hx_Element.slot_name=buildInstance[$$$ownProperties].slot_name;
+      }
     }
     return isHouxitBuild(buildInstance) ? buildInstance.$build?.$element : undefined;;
   }
   function createWidgetElement(virtualNode, metrics ){
     const { hx_Element, siblings, IS_RENDERLESS } = metrics; 
     return _createWidgetElement(virtualNode, config.hx_Element, siblings, IS_RENDERLESS );
+  }
+  function hasActiveSuspense(self){
+    
   }
   function formatExpression(objKey, keys, expression){
     keys=new Set(keys)
@@ -4523,7 +4820,7 @@ const Houxit=(function(global){
     const { element, mode, patch, bindings, is_hyperscript, $orgKey, forwardAttrs }=metrics;
     const [ subs, carrier, value ]=(patch || []);
     let [ s, transform ] = carrier?.() || [];
-    const newValue=is_hyperscript && !forwardAttrs ? vnode.props[$orgKey] : transform;
+    const newValue=unwrap(is_hyperscript && !forwardAttrs ? vnode.props[$orgKey] : transform);
     if(deepEqualityCheck(newValue, bindings.value)) return bindings.value;
     if(mode === 'class' || (mode === 'idl' && bindings.key === 'className')){
       const [ insert, remove ] = resolveClassDiffing(mapClassTypeTransform(newValue, new Tuple()), mapClassTypeTransform(bindings.value, new Tuple()));
@@ -4649,9 +4946,9 @@ const Houxit=(function(global){
     const { patch, value, params, attrs, key, $orgKey, is_hyperscript} = metrics;
     const [ subs, carrier, current_value ] = patch || [];
     const [ subsc, transform ] = carrier?.() || [];
-    const newValue = !is_hyperscript ? transform : vnode.props[$orgKey];
+    const newValue = unwrap(!is_hyperscript ? transform : vnode.props[$orgKey]);
     const mode=hasOwn(params, key) ? "params" : "attrs";
-    if(deepEqualityCheck(value, newValue)) return value;
+    if(deepEqualityCheck(unwrap(value), newValue)) return value;
     if(mode === "params") useReadonlyBypasser(params[key], params[key][refInternalEffectKey].accessor, newValue);
     else if(mode === "attrs") useReadonlyBypasser(attrs, key, newValue, true);
     return newValue;
@@ -4660,15 +4957,16 @@ const Houxit=(function(global){
     let { key, value, src, deepKeys } = bindings;
     const { is_hyperscript, patch, vNode } = metrics;
     let re_evaluate=false;
+    const isRerender=self[$$$operands].initializedRender;
     if(isOnListener(key) || key === 'dispatch') click_handler_facading(self,[ key, value, src], bindings, element, hx_Element, metrics);
     else if(key === 'attach') transformAttachProp(self, bindings, element, hx_Element, metrics)
     else if((!hasOwn(element, key))) {
       element[key]=value;
       re_evaluate=true;
     }
-    if(!re_evaluate || (!is_hyperscript && !(patch && len(patch[0])))) return;
-    const traverse=hx_Element.VNodeManager.propsTraversers;
-    traverse.add(function(token, [ params, attrs ], vnode, observers, app){
+    if(isRerender || (!re_evaluate || (!is_hyperscript && !(patch && len(patch[0]))))) return;
+    const traverse=hx_Element?.VNodeManager?.propsTraversers;
+    traverse?.add(function(token, [ params, attrs ], vnode, observers, app){
       value=__widget_props_effect(app, {
         patch,
         value:memMove(value),
@@ -4686,10 +4984,16 @@ const Houxit=(function(global){
     const bindings=validateIncomingPropsKeys(self, { key, attr }, is_hyperscript, hx_Element, metrics);
     const $orgKey=bindings.src;
     bindings.data=data;
-    if(lexical) bindings.deepKeys=deepKeys;
-    if(!is_hyperscript && bindings.directive) _Resolve_Directives_Hydration(self, bindings, element, hx_Element, metrics );
-    else if(bindings.key === 'key' && isHouxitElement(hx_Element)) hx_Element.VNodeManager.vNodeClass.key=bindings.value;
-    else ( isW ? widget_props_plugin : HTMLAttrsMagnifier )(element, bindings, hx_Element, self, metrics );
+    if(lexical) {
+      bindings.deepKeys=deepKeys;
+    }
+    if(!is_hyperscript && bindings.directive){ 
+      _Resolve_Directives_Hydration(self, bindings, element, hx_Element, metrics );
+    }else if(bindings.key === 'key' && isHouxitElement(hx_Element)){ 
+      hx_Element.VNodeManager.vNodeClass.key=bindings.value;
+    }else{ 
+      ( isW ? widget_props_plugin : HTMLAttrsMagnifier )(element, bindings, hx_Element, self, metrics );
+    }
   }
   function slotNamingTRANSITION(self, bindings, element, hx_Element, metrics){
     let { value }=bindings;
@@ -4798,7 +5102,6 @@ const Houxit=(function(global){
     const props=vNode.props ;
     const shatteredFlags=!isHouxitElement(hx_Element) ? hx_Element : null;
     const isSSR=isSSRCompiler(self);
-    hx_Element = !isHouxitElement(hx_Element) ? null : hx_Element;
     if(!isPObject(props)) return element;
     const is_hyperscript= metrics.is_hyperscript;
     const ctx=metrics.ctx;
@@ -5315,7 +5618,9 @@ const Houxit=(function(global){
       props = childrenOrProps ;
       lab.add( 'childrenOrProps' ) ;
     }
-    if( !lab.has( 'propsOrChildren' ) && isChildrenNode( propsOrChildren ) ) childrenOrProps = propsOrChildren ;
+    if( !lab.has( 'propsOrChildren' ) && isChildrenNode( propsOrChildren ) ){
+      childrenOrProps = propsOrChildren ;
+    }
     lab.clear();
     return {
       type,
@@ -5346,8 +5651,8 @@ const Houxit=(function(global){
             model=modelX;
             return true;
           }
-        })
-      }else if(isPObject(options)) {
+        });
+      }else if(isPObject(options)){
         for(const [key, value] of entries(options)){
           this[key]=value;
         }
@@ -5389,7 +5694,7 @@ const Houxit=(function(global){
   function _transformTheParamsInjectorHook(params){
     const self=getCurrentRunningEffect({
       name:'useParams'
-    })
+    });
     if(!self && !(validateCollectionArgs(arguments, {
       name:"useParams",
       validators:[[Array, Object]],
@@ -5864,9 +6169,13 @@ const Houxit=(function(global){
     const { forwardAttrs, forwardEvents }=self[$$$core].settings;
     const isSSR=isSSRCompiler(self);
     const { $attrs, $events } =self.__public_model__;
-    if(!((forwardAttrs || forwardEvents) && (isHouxitNativeElement(vnode) || isHouxitWidgetElement(vnode)) && (len($attrs) || len($events) ))) return vnode ;
+    if(!((forwardAttrs || forwardEvents) && (isHouxitNativeElement(vnode) || isHouxitWidgetElement(vnode)) && (len($attrs) || len($events) ))) {
+      return vnode ;
+    }
     const forwardProps=assign({}, $attrs);
-    if(len($events) && forwardEvents) forwardProps.attach=({on})=> iterate($events).each((value, key)=> on(key, value));
+    if(len($events) && forwardEvents) {
+      forwardProps.attach=({on})=> iterate($events).each((value, key)=> on(key, value));
+    }
     const w_props={};
     if(forwardAttrs) iterate(forwardProps).each((attr, key)=>{
       try{
@@ -5898,7 +6207,9 @@ const Houxit=(function(global){
   const initBuildInstaceKey=Symbol("<<<!@---initBuild---@>>>");
   const widgetTypeKey=Symbol("[[[widget-typing-system]]]");
   function registerTemplateClasses(self, options, vnode){
-    if(!hasOwn(options, 'templateClasses')) return;
+    if(!hasOwn(options, 'templateClasses')) {
+      return;
+    }
     for(let [key, klass] of entries(options.templateClasses)){
       if(!(isPFunction(klass)|| isTemplateClass(klass))){
         $debug_log(`"${key}" templateClasse property value expects a plain function`, self, true);
@@ -5921,18 +6232,25 @@ const Houxit=(function(global){
       delete vnode[widgetTypeKey];
     }
     for(const [ key, opt] of entries(options)){
-      if(isHouxitProp(key)) pass;
-      else if(isValidWidgetOption(key) && !isNodeJSOnlyOption(key) && !validateType(opt, widgetOptionType[key])){
+      if(isHouxitProp(key)) {
+        pass;
+      }else if(isValidWidgetOption(key) && !isNodeJSOnlyOption(key) && !validateType(opt, widgetOptionType[key])){
         if(isClassBasedBuild(self) && key === 'model' && !isPObject(opt) || !isClassBasedBuild(self) ){
           $debug_log(`${key} option is of an invalid type, \n\n "${key}" option cannot be of a "${getType(opt)}" type`, self, true);
           return;
         }
       }else if(isNodeJSOnlyOption(key) && inBrowserCompiler) {
         $debug_log(`"${key}" option is a nodejs only option, and cannot be used in houxit inbrowser compiler`, self, true);
-      }else if(!isValidWidgetOption(key)) self[$$$operands]._OPTIONS[key]=opt
+      }else if(!isValidWidgetOption(key)) {
+        self[$$$operands]._OPTIONS[key]=opt;
+      }
     }
-    if(vnode.filesFilter.useSSRCompiler) self[$$$compiler].useSSRCompiler=true;
-    if(vnode.filesFilter.isHydration) self[$$$compiler].SSRHydrationFlag=true
+    if(vnode.filesFilter.useSSRCompiler) {
+      self[$$$compiler].useSSRCompiler=true;
+    }
+    if(vnode.filesFilter.isHydration) {
+      self[$$$compiler].SSRHydrationFlag=true;
+    }
   }
   function _hydrateHashToSelector(selector, $Data_Hash){
     const trimmed = selector.trim();
@@ -5953,14 +6271,28 @@ const Houxit=(function(global){
       }
       return split.join(` ${sep} `)
     }
-    if(trimmed.startsWith('@g ')) return trimmed.slice(2);
-    if(trimmed.includes(',')) return $make_Tape(',');
-    if(trimmed.includes('+')) return _Manage_Hash_Class(trimmed, '+')
-    if(trimmed.includes('~')) return _Manage_Hash_Class(trimmed, '~')
-    if(trimmed.includes('>')) return _Manage_Hash_Class(trimmed, '>')
-    if(!trimmed.startsWith('@') && !trimmed.startsWith('body') && !trimmed.includes(':')  ) return trimmed ? `${trimmed}${$Data_Hash}` : trimmed;
-    else if(trimmed.includes('::')) return _Manage_Hash_Class(trimmed, '::');
-    else if(trimmed.includes(':') && !trimmed.startsWith('@') && !trimmed.startsWith(':')) return _Manage_Hash_Class(trimmed, ':')
+    if(trimmed.startsWith('@g ')) {
+      return trimmed.slice(2);
+    }
+    if(trimmed.includes(',')) {
+      return $make_Tape(',');
+    }
+    if(trimmed.includes('+')) {
+      return _Manage_Hash_Class(trimmed, '+');
+    }
+    if(trimmed.includes('~')) {
+      return _Manage_Hash_Class(trimmed, '~');
+    }
+    if(trimmed.includes('>')) {
+      return _Manage_Hash_Class(trimmed, '>');
+    }
+    if(!trimmed.startsWith('@') && !trimmed.startsWith('body') && !trimmed.includes(':')  ) {
+      return trimmed ? `${trimmed}${$Data_Hash}` : trimmed;
+    }else if(trimmed.includes('::')) {
+      return _Manage_Hash_Class(trimmed, '::');
+    }else if(trimmed.includes(':') && !trimmed.startsWith('@') && !trimmed.startsWith(':')) {
+      return _Manage_Hash_Class(trimmed, ':');
+    }
     return modified;
   };
   const selectorPattern = /([^\r\n{]+)\s*{/g;
@@ -5971,7 +6303,9 @@ const Houxit=(function(global){
   }
   function _preCompile_StyleSheet(opts, self, vnode){
     const isSSR=isSSRCompiler(self);
-    if(isHouxitTextElement(vnode)) return vnode;
+    if(isHouxitTextElement(vnode)) {
+      return vnode;
+    }
     const scopedConfig=self[$$$core].settings.scopedStyleSheet;
     const CssStylesheet=opts.stylesheet ? opts.stylesheet : null;
     if(CssStylesheet){
@@ -5983,19 +6317,28 @@ const Houxit=(function(global){
         type:'text/css'
       }, null);
       const ModifiedCssStylesheet=isTrue(scopedConfig) ? _stylesheet_hydration(self, CssStylesheet) : CssStylesheet ;
-      if(isSSR) styleEl.props.textContent=ModifiedCssStylesheet;
-      else styleEl.textContent=ModifiedCssStylesheet;
+      if(isSSR) {
+        styleEl.props.textContent=ModifiedCssStylesheet;
+      } else {
+        styleEl.textContent=ModifiedCssStylesheet;
+      }
       if(vnode  && !isHouxitTextElement(vnode)) {
         if(isSSR) {
-          if(!vnode.$element.children) vnode.$element.children=[];
+          if(!vnode.$element.children) {
+            vnode.$element.children=[];
+          }
           vnode.$element.children?.push(styleEl);
-        }else vnode.$element.append(styleEl);
+        }else {
+          vnode.$element.append(styleEl);
+        }
       }
     }
     return vnode;
   }
   function ssrSmartDefaultToggle(props, name){
-    if(name==='default' && (props.name===name || isNull(props.name))) return true;
+    if(name==='default' && (props.name===name || isNull(props.name))){
+      return true;
+    }
     return false;
   }
   function isSSRCollection(vnode){
@@ -6835,7 +7178,6 @@ const Houxit=(function(global){
     GeneticProvider:opts,
     virtualNode:vnode,
     utils:createObj('Utils'), 
-    posixVNode:undefined,
     settings:createObj('settings', Compiler_Config_Options), 
     slots: new Slots(), 
     rootNodesList:[],
@@ -6872,7 +7214,8 @@ const Houxit=(function(global){
     _OBSERVERS:new Set(), 
     _LIFECIRCLEHOOKS:createObj('_LIFECIRCLEHOOKS'), 
     _OPTIONS:createObj('_OPTIONS'),  
-    garbageWatch:false, 
+    garbageWatch:false,
+    awaitReady:null,
     initializedRender:false , 
     PATCH_FLAG:0, 
     onRenderTracked:false,
@@ -7122,7 +7465,7 @@ const Houxit=(function(global){
     const $$$context=()=>self[$$$core].map.$$$context?.();
     for(let [key, value] of children.entries()){
       if(isNull(value)) continue;
-      value = isPFunction(value) ? value($$$context().value) : value;
+      value = isPFunction(value) ? value($$$context()?.value) : value;
       if(isSlotInstance(value)){
         for(let [slotN, slotRender] of entries(value.slots)){
           slotRender=slotRender.call(($$$context().value), slotBindings[slotN]?.bindings);
@@ -7130,7 +7473,7 @@ const Houxit=(function(global){
             $debug_log(`Element Recognition Error: unrecognised element/value passed to render`, self, true);
             return;
           }
-          slotRender=arrayInverter(_HouxitTemplateParser(arrayInverter( slotRender ), patchFlags, null, hx_Element, null, config));
+          slotRender=arrayInverter(_HouxitCoreRenderer(arrayInverter( slotRender ), patchFlags, null, hx_Element, null, config));
           if(slotN !=='default' && except.has(slotN) ){
             $debug_log(`Duplicate Slot Error: slot content with the name mapping "${slotN}" has already be defined\n\nUntraced slotting mapping\n"${slotN}" slot Duplicate found`, self, true);
             return;
@@ -7144,7 +7487,7 @@ const Houxit=(function(global){
         }
       }else{
         except.add("default");
-        const slotRender=_HouxitTemplateParser(value, patchFlags, null, hx_Element, null, config);
+        const slotRender=_HouxitCoreRenderer(value, patchFlags, null, hx_Element, null, config);
         arrayInverter(slotRender).forEach((hx_el)=> {
           hx_el.slot_name="default";
           renderSlotList.push(hx_el);
@@ -7189,7 +7532,7 @@ const Houxit=(function(global){
     let childrenRender;
     if(isRerender && EVNode?.compiler_options.createSlot) childrenRender=EVNode.compiler_options.createSlot();
     else if(is_hyperscript) childrenRender=normalizeHyperscriptSlotting(self, children, hx_Element, patchFlags, isRerender, config);
-    else childrenRender= _HouxitTemplateParser(children, patchFlags, null, hx_Element, context, config )
+    else childrenRender= _HouxitCoreRenderer(children, patchFlags, null, hx_Element, context, config )
     return [ arrayInverter(childrenRender), patchFlags, hx_Element, {
       slotBindings:config.slotBindings,
       hx_Element,
@@ -7426,20 +7769,26 @@ const Houxit=(function(global){
     if(ssc) fall= smartDextCtxMerging(fall, ssc);
     let render = pass;
     inDomCaveatRemodeling(self);
-    const update=()=>self[$$$operands].initializedRender;
-    const temp_build=()=> update() ? memMove(self[$$$compiler].StarterTemplate, true ) : self[$$$core].build;
-    if(isString(temp_build()) || isCollection(temp_build())){
-      render = (instance)=>{
-        return _HouxitTemplateParser(temp_build(), instance, false, hx_Element, fall, {
-          official:true
+    const isRerender=()=>self[$$$operands].initializedRender;
+    const starter=()=>self[$$$compiler].StarterTemplate;
+    const temp_build=()=> isRerender() ? memMove(starter(), true ) : self[$$$core].build;
+    const temp=temp_build();
+    if(isString(temp) || isCollection(temp)){
+      render = (instance)=> {
+        return _HouxitCoreRenderer(temp_build(), instance, false, hx_Element, fall, {
+          official:true,
+          self
         });
       }
       self[$$$core].render=render;
-    }else if(!temp_build() && selector && isInitialBuild(self)){
+    }else if(!temp && selector && isInitialBuild(self) && !isSSRCompiler(self) && inBrowserCompiler){
       self[$$$core].build=escapeReverseDecoder(_GenerateRoot(selector, self)?.innerHTML || '');
-      render = instance => _HouxitTemplateParser( temp_build(), instance, false, hx_Element, fall, {
-        official:true
-      });
+      render = instance => {
+        return _HouxitCoreRenderer( temp_build(), instance, false, hx_Element, fall, {
+          official:true,
+          self
+        });
+      }
       self[$$$core].render=render;
     }
     self[$$$core].map.is_hyperscript=false;
@@ -7480,46 +7829,88 @@ const Houxit=(function(global){
   }
   function validateMemoContent(self, children){
     self=self[$$$core].$parent;
-    if(len(children) > 1){
+    if(len(children) > 1 || (!len(children) || !validHouxitWidget(children[0].prototype_))){
       $debug_log(`"<Memo>" expects only one child component instance`, self, true );
       return false;
-    }else if(!len(children) || !validHouxitWidget(children[0].prototype_)){
-      $debug_log(`"<Memo>" expects a child component instance`, self, true);
-      return false
     }
     return true;
+  }
+  function markAsMemoChild(self, children){
+    children.forEach((vNode)=>{
+      if(isVNodeClass(vNode)) vNode.filesFilter.isMemoChild=true;
+      else if(isArray(vNode)) markAsMemoChild(self, vNode);
+    });
   }
   function instanciateMemoBuild(self, context){
     const vNode=self[$$$core].virtualNode;
     const children=vNode.children;
-    if(!validateMemoContent(self, children)) return;
-    const child=children[0];
-    const parent= self[$$$core].$parent;
-    self[$$$compiler].memo_cave={
-      storage:new Map(),
-      keys:new Tuple(),
-      caches:[]
+    if(!len(children)){
+      $debug_log(`"<Memo>" expects atleast one child component instance`, self, true );
+      return
     }
     const is_hyperscript=vNode.is_hyperscript;
+    if(!is_hyperscript){
+      markAsMemoChild(self, children);
+    }
+    if(is_hyperscript && !validateMemoContent(self, children)) return;
+    const child=children[0];
+    const parent= self[$$$core].$parent;
+    self[$$$compiler].memoVault={
+      storage:new Map(),
+      keys:new Tuple(),
+      caches:[],
+      stableID:undefined
+    }
     self[$$$core].build=children;
     const render=trackTemplateSource(self, null, null, context?.hx_Element, context?.props);
-    if(is_hyperscript){
-      
+    return render;
+  }
+  function createSuspenseScope(self, context){
+    const vNode=self[$$$core].virtualNode;
+    const children=vNode.children;
+    const parent= self[$$$core].$parent;
+    self[$$$compiler].SuspenseBoundary={
+      errorElement:undefined,
+      loadingElement:undefined,
+      timeout:Infinity,
+      delay:200,
+      state:{
+        pending:false,
+        failed:false,
+        resolved:false,
+        postLoad:0
+      }
     }
+    self[$$$core].build=children;
+    const render=trackTemplateSource(self, null, null, context?.hx_Element, context?.props);
     return render;
   }
   function HydrateBuiltInTransform(self, context){
     if(isBuiltinMemoWidget(self)) return instanciateMemoBuild(self, context);
-    else if(isBuiltinSuspenseWidget(self));
+    else if(isBuiltinSuspenseWidget(self)) return createSuspenseScope(self, context);
     else if(isBuiltinMotionWidget(self));
     else if(isBuiltinProviderWidget(self));
     return
   }
   function handleBuildGenerator(self, selector){
     let context, render, parent;
-    const widgetBuild=self[$$$core].build;
+    let widgetBuild=self[$$$core].build;
+    const isRerender=self[$$$operands].initializedRender;
     if(isBuiltinWidgetBuild(self)) return HydrateBuiltInTransform(self, context);
     else if(isFunction(widgetBuild)){
+      if(!isRerender && isAsyncFunction(widgetBuild)){
+        self[$$$core].build=()=>[];
+       return new Promise((resolve)=>{
+          installCurrentRunningEffect(self);
+          resolve(widgetBuild.call(undefined, self.__public_model__.$params, getComposersContext(self), $$houxitPower ), )
+        }).then((builder)=>{
+          reinstatePreviousRunningEffect();
+          self[$$$core].build=function (){
+            return builder;
+          }
+          handleBuildGenerator(self, selector);
+        });
+      }
       let responseRender, renderer;
       createGarbageCollector(self);
       const useState=!isAFunction(widgetBuild);
@@ -7808,27 +8199,45 @@ const Houxit=(function(global){
     obs.updated_hooks.clear();
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.postUpdate, 'postUpdate');
   }
+  function finisherLazyRender(self, nodeSelector, domRoot, wait=false){
+    const isSSR=isSSRCompiler(self);
+    activateWatchObserverPlugin(self, nodeSelector, domRoot, wait);
+    if(IS_ELEMENT_NODE(domRoot) && isInitialBuild(self) && !isSSR ) domRoot.innerHTML="";
+    if(!isSSR && isInitialBuild(self) && !IS_ELEMENT_NODE(domRoot)){
+      $debug_log('Initial entry Point render root expects an element node', self, true);
+      return ;
+    }
+    if(!isSSR && isInitialBuild(self) && isTrue(domRoot.IS_HOUXIT_MOUNTROOT)){
+      $debug_log(`A Houxit widget has already been mounted on self element, cannot render more than one Widget on a single root element`, self, true, `When trying to render this initialBuild instance to the target DOM`);
+      return ;
+    }
+    adapterDOMMountingProduction(self, domRoot)
+  }
   function render(nodeSelector, config, HydrationFlag){
     const isSSR=isSSRCompiler(this);
     if(isSSR && HydrationFlag === SSRHydrationSymbol) this[$$$compiler].SSRHydrationFlag=true;
     if(!isSSR && !inBrowserCompiler){
-      $debug_log(`Houxit failed to load Dom specific API(s) as you seem to run Houxit from a server environment.....\nuse "initSSRBuild" App builder instead.`, self, true);
+      $debug_log(`Houxit failed to load Dom specific API(s) as it seems you are running Houxit from a server environment.....\nuse "initSSRBuild" App builder instead.`, self, true);
       return this;
     }
     let domRoot=(isHydration(this) || !isSSR) && inBrowserCompiler ? _GenerateRoot(nodeSelector, this) : null;
-    activateWatchObserverPlugin(this, nodeSelector, domRoot);
-    if(IS_ELEMENT_NODE(domRoot) && isInitialBuild(this) && !isSSR ) domRoot.innerHTML="";
-    if(!isSSR && isInitialBuild(this) && !IS_ELEMENT_NODE(domRoot)){
-      $debug_log('Initial entry Point render root expects an element node', this, true);
-      return this;
-    }
-    if(!isSSR && isInitialBuild(this) && isTrue(domRoot.IS_HOUXIT_MOUNTROOT)){
-      this[$$$operands].initializedRender=false;
-        $debug_log(`A Houxit widget has already been mounted on this element, cannot render more than one Widget on a single root element`, this, true, `When trying to render this initialBuild instance to the target DOM`);
-      this[$$$operands].initializedRender=true;
-      return this;
-    }
-    adapterDOMMountingProduction(this, domRoot)
+    pre_build_facading(this);
+    const buildFacade=handleBuildGenerator(this, nodeSelector);
+    this.$build=Render_Template(this, this[$$$core].render);
+    // if(ha)
+    // log(vb(this),buildFacade, isPromise(buildFacade), this.$build, hasOwn(this.$build, AsyncHxElementTrackerKey))
+    if(isPromise(buildFacade)){
+      this[$$$operands].awaitReady=buildFacade;
+      buildFacade.then(()=>{
+        const lazyBuild=Render_Template(this, this[$$$core].render);
+        const posix=resolveTargetElement(this.$build);
+        posix.before(lazyBuild.$element);
+        unMountVNode(this.$build);
+        this.$build=lazyBuild;
+        finisherLazyRender(this, nodeSelector, domRoot, true );
+        // log(lazyBuild, 'async build() wait is over', vb(self))
+      });
+    }else finisherLazyRender(this, nodeSelector, domRoot);
     return this;
   }
   function shouldInstallRenderEffect(self){
@@ -7868,32 +8277,50 @@ const Houxit=(function(global){
     const ignoreWarn=ignoreHydrationMismatchError(self);
     const flushs=new Tuple();
     trucker=trucker || new Tuple();
-    if(generator) trucker.add({});
+    if(generator) {
+      trucker.add({});
+    }
     for(let [index, vNode] of vNodeList.entries()){
       let el;
       if(isVNodeClass(vNode) || isSSRText(vNode)){
         el=childList.next().value;
         if(!hydration_match(self, el, vNode)){
-          if(ignoreWarn) continue;
-          else break;
+          if(ignoreWarn) {
+            continue;
+          }else {
+            break;
+          }
         }
         if(metrics){
-          if(!metrics?.first) metrics.first=el;
+          if(!metrics?.first) {
+            metrics.first=el;
+          }
           metrics.last=el;
         }
         if(generator){
           trucker.forEach(truck=>{
-            if(!truck.first) truck.first=el;
+            if(!truck.first) {
+              truck.first=el;
+            }
             truck.last=el;
           });
         }
-        if(!IS_HTML_VOID_TAG(vNode.type) && !isSSRText(vNode) && (vNode.children)) perfomSSRHydration(self, el, vNode.children || []);
-      }else if(isSSRFragment(vNode) || isCollection(vNode)) perfomSSRHydration(self, null, vNode, [ childList, RawVnode.hx_Element, metrics, trucker ]);
-      if(isSSRText(vNode) || isSSRFragment(vNode) || isVNodeClass(vNode))(isSSRText(vNode) || isSSRFragment(vNode) ? vNode : vNode.filesFilter.$ssr_kit).hydrationFlushs.forEach(fn=> fn(isSSRFragment(vNode) ? null : el));
+        if(!IS_HTML_VOID_TAG(vNode.type) && !isSSRText(vNode) && (vNode.children)) {
+          perfomSSRHydration(self, el, vNode.children || []);
+        }
+      }else if(isSSRFragment(vNode) || isCollection(vNode)){
+        perfomSSRHydration(self, null, vNode, [ childList, RawVnode.hx_Element, metrics, trucker ]);
+      }
+      if(isSSRText(vNode) || isSSRFragment(vNode) || isVNodeClass(vNode)){
+        (isSSRText(vNode) || isSSRFragment(vNode) ? vNode : vNode.filesFilter.$ssr_kit).hydrationFlushs.forEach(fn=> fn(isSSRFragment(vNode) ? null : el));
+      }
     }
     flushs.forEach(fn=>fn());
-    if(generator) installPosixComments(RawVnode.hx_Element, trucker.pop());
-    else if(metrics && isInitialBuild(self)) installPosixComments(parentVnode, metrics);
+    if(generator) {
+      installPosixComments(RawVnode.hx_Element, trucker.pop());
+    }else if(metrics && isInitialBuild(self)) {
+      installPosixComments(parentVnode, metrics);
+    }
   }
   function installPosixComments(hx_Element, metrics){
     let { first, last } = metrics;
@@ -7903,20 +8330,15 @@ const Houxit=(function(global){
     last.after(end);
     if(isHouxitElement(hx_Element)) hx_Element.VNodeManager.posix=[start, end];
   }
-  function activateWatchObserverPlugin(self, nodeSelector, domRoot){
+  function pre_build_facading(self){
     Hydrate_Network_Prefixes(self, self[$$$core].opts);
     prefixManagement(self);
-    handleBuildGenerator(self, nodeSelector);
+  }
+  function activateWatchObserverPlugin(self, nodeSelector, domRoot, wait){
     let initialBuild=self[$$$core].render;
     before_render_semantics(self);
-    define(self, '$build', {
-      value:Render_Template(self, initialBuild),
-      writable,
-      configurable
-    });
     if(isHydration(self)) perfomSSRHydration(self, domRoot, self.$build.$element, [ null, self.$build, {}]);
     _Reactive_Adapter_Plugin( self.__public_model__ ,()=>tick(async function(){
-      
       if(isHydration(self)){
         self[$$$compiler].useSSRCompiler=false;
         self[$$$compiler].SSRHydrationFlag=false;
@@ -7953,8 +8375,7 @@ const Houxit=(function(global){
     }
     callbackHookWithCatch(self, self[$$$operands]._LIFECIRCLEHOOKS.preMount, 'preMount');
     domRoot = activateBuildMount(self, domRoot, MoutRootToken);
-    const el=self[$$$core].posixVNode;
-    if(!isSSRCompiler(self)) whenMounted(self, el.$element, ()=>{
+    if(!isSSRCompiler(self)) whenMounted(self, self.$build, ()=>{
       for(const fn of self[$$$compiler].whenMountedHooks.values()){
         callbackHookWithCatch(self, fn, '')
       }
@@ -8202,7 +8623,7 @@ const Houxit=(function(global){
   }
   function hydrate(nodeSelector){
     if(!isSSRCompiler(this)){
-      $debug_log("Imcompatibility when trying to call the .hydrate on a non SSR App build");
+      $debug_log("Incompatibility when trying to call the .hydrate on a non SSR App build");
       return this;
     }
     this.render(nodeSelector, null, SSRHydrationSymbol);
@@ -8258,7 +8679,7 @@ const Houxit=(function(global){
   }
   function whenMounted(self, build, callback) {
     return new Promise((resolve, reject) => {
-      const el = isHouxitElement(build) ? build.$element : build;
+      const el = isHouxitElement(build) ? resolveTargetElement(build) : build;
       if (document.body.contains(el)) {     // Check if it's already in the DOM
         resolve(el);
         return;
@@ -8281,28 +8702,37 @@ const Houxit=(function(global){
   function useMountWatcher(self, build, config){
     
   }
-  function posixVNodeTransform(self, build){
-    if(isSSRCompiler(self)) return build;
-    self[$$$core].posixVNode = new HouxitTextElement("", self);
-    if(build) build.$element.prepend(self[$$$core].posixVNode.$element);
-    else build=self[$$$core].posixVNode;
-    return build;
-  }
   function Render_Template( self , initBuild ) {
-    const instance =isBuiltinWidgetBuild(self)  ? self[$$$core].$parent : self;
+    let instance=self;
+    if(isBuiltinWidgetBuild(self)) {
+      instance=self[$$$core].$parent;
+    }
     const is_hyperscript=self[$$$core].map.is_hyperscript;
     const isRerender=self[$$$operands].initializedRender;
     const s_x=self[$$$core].effectSubscribers;
-    if(!isRerender) s_x.createWatch();
-    if(isPFunction(initBuild)) initBuild = initBuild( instance );
-    if(is_hyperscript) initBuild=_HouxitTemplateParser(arrayInverter(initBuild), instance, null, null, null, {
-      official:true
-    });
-    if(isArray(initBuild)) initBuild= new HouxitFragmentElement(initBuild, self, null);
-    if(!isRerender) self[$$$operands].shouldInstallRenderEffect= len(s_x.endWatch() || []) > 0;
+    if(!isRerender) {
+      s_x.createWatch();
+    }
+    if(isPFunction(initBuild)) {
+      initBuild = initBuild( instance );
+    }
+    if(is_hyperscript) {
+      initBuild=_HouxitCoreRenderer(arrayInverter(initBuild), instance, null, null, null, {
+        official:true,
+      });
+    }
+    if(isArray(initBuild) || !initBuild) {
+      initBuild= new HouxitFragmentElement(initBuild || [], instance, null);
+    }
+    if(!isRerender) {
+      self[$$$operands].shouldInstallRenderEffect= len(s_x.endWatch() || []) > 0;
+    }
     self[$$$compiler].template=initBuild;
-    if(!isRerender) initBuild=posixVNodeTransform(self, initBuild);
-    if(!isRerender && !isBuiltinWidgetBuild(self)) widgetSlotsManager(self, self[$$$core].opts, self[$$$core].virtualNode);
+    if(!isRerender) {
+      if(!isBuiltinWidgetBuild(self)) {
+        widgetSlotsManager(self, self[$$$core].opts, self[$$$core].virtualNode);
+      }
+    }
     initBuild = self[$$$compiler].templateProcessor( instance , initBuild) ;
     return initBuild ;
   }
@@ -8373,7 +8803,7 @@ const Houxit=(function(global){
     }) ;
   }
   function RenderEffect_$Warn(self, err){
-    $debug_log(`----unable to complete the rerender effect circle patch\n\nthis is likely a probable bug/error in the houxit's compiler level;\nplease report any problem —— and open an issue on our github repo`, self, true);
+    $debug_log(`----unable to complete the rerender effect circle patch\n\nthis is likely a probable bug/error in the houxit's compiler level;\nplease report any problem —— and open an issue in our github repo`, self, true);
     $debug_log(`${err}`, self)
     console.error(err);
   }
@@ -8573,55 +9003,89 @@ const Houxit=(function(global){
     if(isHouxitNativeElement(hx_Element) && !IS_HTML_VOID_TAG(hx_Element.prototype_)) resolvePatchAlgorithm(self, hx_Element, vNode, observer, pass, false);
     if(isHouxitNativeElement(hx_Element)){
       const traverse=hx_Element.VNodeManager.propsTraversers;
-      if(!len(traverse)) return;
-      traverse.forEach( trackAttrsEffect => trackAttrsEffect( observer, vNode.VNodeManager.vNodeClass));
+      if(!len(traverse)) {
+        return;
+      }
+      traverse.forEach( hydratePropsEffect => hydratePropsEffect( observer, vNode.VNodeManager.vNodeClass));
     }
   }
   function __createRerenderBlock(self, vnode){
-    self[$$$operands].initializedRender=false;
+    if(isRenderlessElement(vnode)) {
+      return vnode;
+    }
+    const toggler=smart_render_toggler(self);
     const NewNode=vnode.compiler_options.createElement();
-    self[$$$operands].initializedRender=true;
+    toggler();
     return NewNode;
   }
   function renderVnodeDiffSequence(self, hx_Element, vNode, observer, parent, metrics){
     let { index, key } = metrics;
     const isbuiltin=isBuiltinWidgetBuild(self);
+    const is_hyperscript=self[$$$core].map.is_hyperscript;
     if(!HouxitElementDiffing(hx_Element, vNode)) {
-      const useCache=installMemoInstance(self, hx_Element, vNode);
-      const NewNode=useCache ? useCache.hx_Element : __createRerenderBlock(isbuiltin ? self[$$$core].$parent : self, vNode);
+      const useCache=installMemoInstance(self, hx_Element, vNode, is_hyperscript);
+      const NewNode= useCache?.hx_Element || __createRerenderBlock(isbuiltin ? self[$$$core].$parent : self, vNode);
       const posixElem=document.createComment(c_str);
       const targetElem=resolveTargetElement(hx_Element, null, true);
       targetElem.after(posixElem);
-      if(parent) parent.VN_Tree.LEAGUE_TREE[key]=[NewNode, index];
-      if(isBuiltinMemoWidget(self)) generateWrapElementAction(hx_Element, el=>el.remove());
-      else unMountVNode(hx_Element);
-      if(parent) parent?.NodeList.replace(hx_Element, NewNode);
-      else if(isBuiltinWidgetBuild(self)) self.$build=NewNode;
+      if(parent) {
+        parent.VN_Tree.LEAGUE_TREE[key]=[NewNode, index];
+        parent?.NodeList.replace(hx_Element, NewNode);
+      }else {
+        self.$build=NewNode;
+      }
+      if(isBuiltinMemoWidget(self)) {
+        generateWrapElementAction(hx_Element, el=>{
+          el.remove();
+        });
+      } else {
+        unMountVNode(hx_Element);
+      }
       if(useCache) {
         WidgetEffectTrigger(self[$$$core].$parent, NewNode, vNode, parent, observer);
         useCache.record.forEach(el=> posixElem.before(el));
-      } else posixElem.before(NewNode.$element);
+      } else {
+        posixElem.before(NewNode.$element);
+      }
       posixElem.remove();
       observer.mutated=true;
-    }else effectiveElement_REPATCH(self, hx_Element, vNode, observer, parent );
+    }else {
+      effectiveElement_REPATCH(self, hx_Element, vNode, observer, parent );
+    }
   }
-  function installMemoInstance(self, hx_Element, EffectVNode){
-    if(!(isBuiltinMemoWidget(self) && isHouxitWidgetElement(hx_Element))) return;
-    const { storage, state, caches, keys }=self[$$$compiler].memo_cave;
+  function complyWithMemoStableCheck(self, hx_Element, EffectVNode){
+    const { storage, state, caches, keys, stableID }=self[$$$compiler].memoVault;
     const hx_Key=hx_Element.prototype_;
     const Eff_Key=EffectVNode.prototype_;
-    if(!keys.has(hx_Key)) addMEMOState(self, hx_Element);
-    else if(keys.has(hx_Key)) addMEMOState(self, hx_Element, true);
+    if(isRenderlessElement(hx_Element) && isHouxitWidgetElement(EffectVNode)){
+      return keys.has(Eff_Key) ? getMEMOState(self, EffectVNode) : undefined;
+    }else if(isHouxitWidgetElement(hx_Element) && isRenderlessElement(EffectVNode)){
+      addMEMOState(self, hx_Element, keys.has(hx_Key));
+      return;
+    }
+    addMEMOState(self, hx_Element, keys.has(hx_Key));
+    if(keys.has(Eff_Key)) return getMEMOState(self, EffectVNode);
+  }
+  function installMemoInstance(self, hx_Element, EffectVNode, is_hyperscript){
+    if(!isBuiltinMemoWidget(self)) return;
+    const { storage, state, caches, keys }=self[$$$compiler].memoVault;
+    const hx_Key=hx_Element.prototype_;
+    const Eff_Key=EffectVNode.prototype_;
+    if(!is_hyperscript){
+      return complyWithMemoStableCheck(self, hx_Element, EffectVNode, is_hyperscript);
+    }
+    addMEMOState(self, hx_Element, keys.has(hx_Key));
     if(keys.has(Eff_Key)) return getMEMOState(self, EffectVNode);
   }
   function addMEMOState(self, hx_Element, update=false){
-    const { storage, caches, keys }=self[$$$compiler].memo_cave;
+    const { storage, caches, keys }=self[$$$compiler].memoVault;
     const hx_Key=hx_Element.prototype_;
+    update = keys.has(hx_Key) && update;
     if(!update) {
       const test=self.__public_model__.$params.test.data;
       if(test && !test()) return;
       const max=self.__public_model__.$params.max.data;
-      if(!isInfinity(max) && keys.size === max){
+      if(!isInfinity(max) && !isNaN(Number(max)) && keys.size === max){
         const leastKey=keys.shift();
         unMountVNode(storage.get(leastKey).hx_Element);
         storage.delete(leastKey);
@@ -8632,28 +9096,29 @@ const Houxit=(function(global){
     generateWrapElementAction(hx_Element, (el)=>{
       record.add(el);
     });
-    if(update) storage.get(hx_Key).record=record;
-    else storage.set(hx_Key, {
-      hx_Element,
-      record
-    });
+    if(update) {
+      storage.get(hx_Key).record=record;
+    }else {
+      storage.set(hx_Key, {
+        hx_Element,
+        record
+      });
+    }
   }
-  function getMEMOState(self, hx_Element){
-    const { storage, caches, keys }=self[$$$compiler].memo_cave;
-    const hx_Key=hx_Element.prototype_;
-    if(!keys.has(hx_Key)) return;
-    const state=storage.get(hx_Key);
-    if(len(keys) < 2) return storage;
-    keys.delete(hx_Key);
-    keys.add(hx_Key);
-    storage.delete(hx_Key);
-    storage.set(hx_Key, state);
+  function getMEMOState(self, EffectVNode){
+    const { storage, caches, keys }=self[$$$compiler].memoVault;
+    const Eff_Key=EffectVNode.prototype_;
+    if(!keys.has(Eff_Key)) return;
+    const state=storage.get(Eff_Key);
+    if(len(keys) < 2) return state;
+    keys.delete(Eff_Key);
+    keys.add(Eff_Key);
     return state;
   }
   function deleteMEMOState(self, hx_Element){
-    const { storage, caches, keys }=self[$$$compiler].memo_cave;
+    const { storage, caches, keys }=self[$$$compiler].memoVault;
     const hx_Key=hx_Element.prototype_;
-    if(!keys.has(hx_Key)) return;
+    if(!keys.has(hx_Key)) return false;
     keys.delete(hx_Key);
     storage.delete(hx_Key);
     return true;
@@ -8663,21 +9128,19 @@ const Houxit=(function(global){
     if(isTextOrNativeElement(target)) targetElem = target.$element;
     else{
       if(isHouxitWidgetElement(target)) target=WidgetElementUnwrap(target);
-      if(isHouxitFragmentElement(target)) {
-        const fragmented_elements=target.VN_Tree.ELEMENTS().list();
-        targetElem=fragmented_elements[last ? len(fragmented_elements)-1 : 0];
-      }else if(isTextOrNativeElement(target)) targetElem=target.$element;
+      if(isHouxitFragmentElement(target)) targetElem=target.VNodeManager?.posix[ last ? 1 : 0 ];
+      else if(isTextOrNativeElement(target)) targetElem=target.$element;
     }
-    return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) ? targetElem : fallback;
+    return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) || IS_COMMENT_NODE(targetElem) ? targetElem : fallback;
   }
   function unMountVNode(vnode){
     if(isHouxitWidgetElement(vnode)) vnode.widget_instance.destroy();
     else if(isHouxitFragmentElement(vnode)) {
-      vnode.NodeList.forEach(el=> unMountVNode(el));
       vnode.upload(el=> el.remove());
-    }else if(!isRenderlessElement(vnode)) {
       vnode.NodeList.forEach(el=> unMountVNode(el));
+    }else if(!isRenderlessElement(vnode)) {
       vnode?.$element?.remove();
+      vnode.NodeList.forEach(el=> unMountVNode(el));
     }
   }
   function generateWrapElementAction(vnode, callback){
@@ -8690,22 +9153,28 @@ const Houxit=(function(global){
     const traverse=hx_Element.VNodeManager.propsTraversers;
     const instance=hx_Element.widget_instance;
     slotsTransformRender(parent, observer, hx_Element, vNode);
-    if(len(traverse)) traverse.forEach( trackAttrsEffect => {
-      const { $attrs, $params } = instance.__public_model__;
-      trackAttrsEffect( observer, [ $params, $attrs ], hx_Element.VNodeManager.vNodeClass, observer, self);
-    });
+    if(len(traverse)) {
+      traverse.forEach( hydratePropsEffect => {
+        const { $attrs, $params } = instance.__public_model__;
+        hydratePropsEffect( observer, [ $params, $attrs ], hx_Element.VNodeManager.vNodeClass, observer, self);
+      });
+    }
     if(isBuiltinMemoWidget(instance)){
       const virtualNode=hx_Element.VNodeManager.vNodeClass.children;
       const newVNode=vNode.VNodeManager.vNodeClass.children;
-      if(validateMemoContent(instance, newVNode)){
+      if(is_hyperscript && validateMemoContent(instance, newVNode)){
         if(!isS(virtualNode[0].type, newVNode[0].type)){
           instance[$$$core].Build=newVNode[0];
           instance[$$$compiler].StarterTemplate=newVNode;
           instance.__public_model__.$pushEffect();
           hx_Element.VNodeManager.vNodeClass.children=newVNode;
-          // log(vb(instance))
         }
+      }else if(!is_hyperscript){
+        instance.__public_model__.$pushEffect();
       }
+    }else if(isBuiltinWidgetBuild(instance)){
+      instance[$$$compiler].StarterTemplate=vNode.VNodeManager.vNodeClass.children;
+      instance.__public_model__.$pushEffect();
     }
   }
   function callArrGetters(depsArray){
@@ -8839,11 +9308,11 @@ const Houxit=(function(global){
     return true;
   }
   function $compilerEngine ( self , virtualNode , hx_Element, slotsCompilerArgs ) {
-    let { rawChildren, GeneticProvider:widget } =virtualNode
+    let { rawChildren, GeneticProvider:widget, props } =virtualNode
     const is_hyperscript= self ? self[$$$core]?.map.is_hyperscript : virtualNode.is_hyperscript;
     const isRerender=self ? self[$$$operands].initializedRender : null;
     const propsElements={};
-    const { hasDir:hasSlot, getKey:getSlot, getDir:getSlotValue } =dirExistenceCheck(virtualNode.props || {}, "$$slot");
+    const { hasDir:hasSlot, getKey:getSlot, getDir:getSlotValue } =dirExistenceCheck(props || {}, "$$slot");
     if(hasSlot) {
       const bindings=validateIncomingPropsKeys(self, {
         key:getSlot,
@@ -8856,7 +9325,7 @@ const Houxit=(function(global){
         isRerender
       });
     }
-    if(virtualNode.props && self) {
+    if(len(props) && self) {
       Props_dilation_compile(virtualNode, self, hx_Element, {
         is_hyperscript
       }, propsElements);
@@ -8870,21 +9339,29 @@ const Houxit=(function(global){
     if(isRerender) return undefined;
     if(isSSRCompiler(self)) {
       virtualNode.filesFilter.useSSRCompiler=true;
-      if(isHydration(self)) virtualNode.filesFilter.isHydration=true;
+      if(isHydration(self)) {
+        virtualNode.filesFilter.isHydration=true;
+      }
     }
+    const child=initializedRenderBuild(self, hx_Element, virtualNode);
+    return child.render( _createFragment() ) ;//mounts the build to a houxit fragment
+  }
+  function initializedRenderBuild(self, hx_Element, virtualNode){
     const child = new HouxitBuild( virtualNode ) ;
     integrateUseInstallProto(child);
     if(hx_Element) hx_Element.widget_instance=child;
     if( self ) {
       controllerHydration( self , child ) ;
-      child.install( controllerGlobalPlugin , { self } ) ;//build the widget and other installations
+      child.install( controllerGlobalPlugin, { self } ) ;//build the widget and other installations
     }
-    return child.render( _createFragment() ) ;//mounts the build to a houxit fragment
+    return child;
   }
   function integrateUseInstallProto(self){
-    if(hasOwn(self[$$$core].opts, 'install')) self.install(self[$$$core].opts.install);
+    if(hasOwn(self[$$$core].opts, 'install')){
+      self.install(self[$$$core].opts.install);
+    }
   }
-  function controllerHydration( self , build ) {
+  function controllerHydration( self, build ) {
     const globals=getGlobalRegistery(self)
     installTransformersArgumentations(self, build )
     if( !len( globals.controller ) ) return build ;
@@ -9379,11 +9856,13 @@ const Houxit=(function(global){
       if(config.slotBindings && !node.is_hyperscript) hx_Element.VNodeManager.slotBindings=config.slotBindings;
       const createElement=()=>createHouxitElement(node, self, false, assign({}, hx_Element?.LabContext), NodeList, assign({}, fall),  hx_Element );
       Vnode=createElement();
-      Vnode.compiler_options.createElement=createElement;
+      if(!isPFunction(Vnode.compiler_options.createElement)){ 
+        Vnode.compiler_options.createElement=createElement;
+      }
     }else{
       let children=null;
       if(node.children){
-        children = isPlainTextChildrenTagElements(tagName) ? node.children : _HouxitTemplateParser(node.rawChildren, null, true, null, null, );
+        children = isPlainTextChildrenTagElements(tagName) ? node.children : _HouxitCoreRenderer(node.rawChildren, null, true, null, null, );
       }
       Vnode=createVNode({
         type:tagName, 
@@ -9442,13 +9921,14 @@ const Houxit=(function(global){
       NodeList[isArray(childNodes) ? 'extend' : 'add' ](childNodes);
     }else if(isCollection(node)){
       const FragmentNodes=new Tuple();
-      generateTemplateClasses(self, arrSet(node), hx_Element, config, FragmentNodes, fall);
+      renderTemplateClasses(self, arrSet(node), hx_Element, config, FragmentNodes, fall);
+
       childNodes=new HouxitFragmentElement(FragmentNodes.list(), self, null)
       NodeList.add(childNodes);
     }
     return childNodes;
   }
-  function generateTemplateClasses(self, parser, hx_Element, config, NodeList, fall ){
+  function renderTemplateClasses(self, parser, hx_Element, config, NodeList, fall ){
     fall=assign({}, fall);
     const isRerender=self[$$$operands].initializedRender;
     for (let [ index, node ] of parser.entries()){
@@ -9471,16 +9951,24 @@ const Houxit=(function(global){
       }
     }
   }
-  function _HouxitTemplateParser(html, self, parent, hx_Element, fall, config={}){
+  function _HouxitCoreRenderer(html, self, parent, hx_Element, fall, config={}){
     if(!html && !validateType(html, [String, Array, Object])) return null;
+    const is_hyperscript=self[$$$core].map.is_hyperscript;
     const isRerender=self[$$$operands]?.initializedRender;
-    const templateRender= isString(html) ? __HouxitHTMLParser__(html, [], {
+    let templateRender= isString(html) ? __HouxitHTMLParser__(html, [], {
       trim:true,
       is_hyperscript:isHouxitBuild(self) && config.is_hyperscript
     }, self) : isObject(html) ? [ html ] : isArray(html) ? html : [] ;
-    if(config.official && !self[$$$compiler].StarterTemplate) self[$$$compiler].StarterTemplate=templateRender;
+    if(config.official && !isRerender) {
+      if(!is_hyperscript && isBuiltinMemoWidget(config.self)){
+        config.self[$$$compiler].StarterTemplate=templateRender;
+      }else{
+        self[$$$compiler].StarterTemplate=templateRender;
+      }
+      templateRender=memMove(templateRender, true);
+    }
     const NodeList=new Tuple();
-    generateTemplateClasses(self, templateRender, hx_Element, config, NodeList, fall);
+    renderTemplateClasses(self, templateRender, hx_Element, config, NodeList, fall);
     return len(NodeList) > 1 ? NodeList.list() : len(NodeList) === 1 ? NodeList.shift() : null ;
   }
   function SSRNodesCollectionStrategy(self, NodeList){
@@ -9525,7 +10013,7 @@ const Houxit=(function(global){
   function blockClassTransformer(self, node, blockN,  metrics , [children, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics
     if(!variableDeclarationRegex.test(exp)){
-      $debug_log(`template "@class" block declaration failure \n\ndoes not meet required name and args syntax`, self, true);
+      $debug_log(`template "@class" block declaration failure \n\ndoes not meet required name and args syntax rules`, self, true);
       return;
     }
     let [ match, var_name, var_params]= exp.match(variableDeclarationRegex);
@@ -9577,7 +10065,7 @@ const Houxit=(function(global){
               sourcesArray:[...args]
             }
           });
-          return _HouxitTemplateParser(memMove(children, true), self, null, hx_Element, ssc, config );
+          return _HouxitCoreRenderer(memMove(children, true), self, null, hx_Element, ssc, config );
         }
       }
     }
@@ -9707,8 +10195,9 @@ const Houxit=(function(global){
       return template;
     }
     function factoryRender(option, config){
-      return _HouxitTemplateParser(children, self, true, hx_Element, option, config);
+      return _HouxitCoreRenderer(children, self, true, hx_Element, option, config);
     }
+    if(!warnTemplateMemo(self, node, NodeList)) return;
     iterate(unwrap(Loop_Data.obj), Loop_Data.loopType).each((value, key, index)=>{
       const options=assign(fall||{}, {});
       const config={};
@@ -9722,12 +10211,12 @@ const Houxit=(function(global){
         count:index
       }, options );
       const source=factoryRender(options, config);
+      if(!warnTemplateMemo(self, node, source)) return;
       if(isCollection(source)){
         for(let [ ind, vnode] of getIterator(source)){
           template.push(vnode);
         }
       }else template.push(source);
-      
     });
     return template;
   }
@@ -9751,6 +10240,7 @@ const Houxit=(function(global){
       keywordLists:[]
     }
     for(const [index, vNode] of children.entries()){
+      if(!warnTemplateMemo(self, vNode, NodeList)) return;
       const res=conditionalBlockCompile(self, vNode, metrics, config, NodeList, vNode.props?.exp);
       if(!res) break;
     }
@@ -9781,7 +10271,7 @@ const Houxit=(function(global){
       return true;
     }
     if(!config.props.status) return true;
-    const vNodes=_HouxitTemplateParser(vNode, self, true, hx_Element, fall, config);
+    const vNodes=_HouxitCoreRenderer(vNode, self, true, hx_Element, fall, config);
     iterate(arrayInverter( vNodes)).each((node)=> NodeList.add(node));
     return true;
   }
@@ -9835,7 +10325,7 @@ const Houxit=(function(global){
         $debug_log(`context data passed to factoryRender expects a plain object`, self);
       }
       fall=smartDextCtxMerging(fall||{}, ctx);
-      return _HouxitTemplateParser(children, self, true, hx_Element, fall);
+      return _HouxitCoreRenderer(children, self, true, hx_Element, fall);
     }
     const template = factoryRender()
     const block=normalize_Block(self, blockN );
@@ -9846,7 +10336,7 @@ const Houxit=(function(global){
   function createKlassBoilerPlate(callback, ...args){
     return function factory(self, parent, hx_Element, fall, config){
       const boilerPlate=callback(...args);
-      return _HouxitTemplateParser( boilerPlate, self, parent, hx_Element, fall, config={});
+      return _HouxitCoreRenderer( boilerPlate, self, parent, hx_Element, fall, config={});
     }
   }
   function __createTemplateClass_Parser(fn, name){
@@ -10038,12 +10528,16 @@ const Houxit=(function(global){
     
     return opts;
   }
-  async function _asyncWidget(opts){
-    opts=await defineWidget(opts);
-    opts=await setAsyncSettings(opts);
-    return await opts;
+  function _asyncWidget(callback, config){
+    if(!validateCollectionArgs(arguments, {
+      name:'asyncWidget',
+      min:1,
+      max:2,
+      validators:[Function, Object]
+    })) return;
+    return new AsyncWidget(callback, config);
   }
-  function asyncWidget(opts){
+  function asyncWidget(load, config){
     return _asyncWidget(...arguments)
   }
   function defineWidget(opts, config ){
@@ -10281,9 +10775,10 @@ const Houxit=(function(global){
   transform_Elements_build();
   _$compiler_engine_hydrator();
 
+  global.createVNode = createVNode ;
+  global.Suspense = Suspense ;
   global.isToken = isToken ;
   global.scaffold = scaffold ;
-  global.createVNode = createVNode ;
   global.get_version = get_version ;//dev
   global.h = h ;
   global.shallowStream = shallowStream ;
@@ -10300,7 +10795,6 @@ const Houxit=(function(global){
   global._$runModelBind = _$runModelBind ;
   global.Memo = Memo ;
   global.postUpdate = postUpdate ;
-  global.Suspense = Suspense ;
   global.initSSRBuild = initSSRBuild ;
   global.log = log ;//dev
   global.readonlyStream = readonlyStream ;
