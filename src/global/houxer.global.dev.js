@@ -62,12 +62,12 @@ const Houxit=(function(global){
   const $warner=`<<< Houxit Exception >>> ..... >>>>>>>`;
   const characters=/[!"#%&'()*+,./;<=>@[\\\]\^`{|}~\s]+/;
   const stringsMonitorRegex=/"(.*?)"|'(.*?)'|`+(.*?\s)`+/gm;
-  function $debug_log(msg, self, dictateW=false, txt=''){
-    let shouldlog=true;
+  function debugHandler(msg, self, dictateW=false, txt=''){
+    let DEBUG_ENV=true;
     if(isHouxitBuild(self)) {
-      shouldlog=self[$$$core].settings.debug /*&& !self[$$$operands].initializedRender*/;
+      DEBUG_ENV=self[$$$core].settings.debug /*&& !self[$$$operands].initializedRender*/;
     }
-    if(shouldlog ) {
+    if(DEBUG_ENV ) {
       if(dictateW) {
         console.warn(`${$warner}\n\nEncountered a problem ${txt} \n\n at  at  \n <${self && isHouxitBuild(self) ? self[$$$ownProperties].name : 'UnknownWidget' }> widget`);//houxit warming debugger
       }
@@ -76,11 +76,11 @@ const Houxit=(function(global){
     }
   }
   function $warn(msg, self){
-    let shouldlog=true;
+    let DEBUG_ENV=true;
     if(isHouxitBuild(self)) {
-      shouldlog=self[$$$core].settings.debug;
+      DEBUG_ENV=self[$$$core].settings.debug;
     }
-    if(shouldlog) {
+    if(DEBUG_ENV) {
       console.warn(`${$warner}\n\n${msg}`);//houxit warming debugger
     }
   }
@@ -90,9 +90,13 @@ const Houxit=(function(global){
   const enumerable =true, configurable =true, writable = true ;
   const isEmptyStr=str=>str === "";
   const $Error=(msg,self)=>{
-    let shouldlog=true;
-    if(self) shouldlog=self[$$$compiler].config.debug
-    if(isTrue(shouldlog)) console.error(`${$warner}\n\n ${msg}`);//houxit warming debugger
+    let DEBUG_ENV=true;
+    if(self) {
+      DEBUG_ENV=self[$$$compiler].config.debug;
+    }
+    if(isTrue(DEBUG_ENV)) {
+      console.error(`${$warner}\n\n ${msg}`);//houxit warming debugger
+    }
   }
   const hasHyphen_bind=key=>/^\-\-[\w\-|[\]]+/.test(key);
   const hasAt_bind=key=>/^@[\w\-|[\]]+/.test(key);
@@ -167,7 +171,9 @@ const Houxit=(function(global){
   const isPrimaryKeyOption=opt=>_makeMap_(opt, primaryKeyOptions);
   const isArgument=arg=>_toStringCall(arg) === "[object Arguments]";
   function len(obj){
-    if(!obj) return 0;
+    if(!obj) {
+      return 0;
+    }
     obj=unwrap(obj);
     return validateType(obj, [ String , Array, Arguments ] ) ? obj.length : validateType(obj, [ Set, Map, Tuple ]) ? obj.size : isObject(obj) ? keys(obj).length : isNumber(obj) ? obj : -1 ;
   }
@@ -196,9 +202,11 @@ const Houxit=(function(global){
   const MATHML_TAGS = "malignmark,menclose,annotation,annotation-xml,maction,merror,maligngroup,mfenced,mn,mo,mmultiscripts,mfrac,semantics,none,mlongdiv,mlabeledtr,mfraction,mtr,mglyph,mi,mover,munder,munderover,mpadded,mphantom,mspace,mroot,mprescripts,msline,mrow,ms,mscarries,mscarry,msgroup,msqrt,mstack,mtd,mtext,mtable,mstyle,msub,msubsup,msrow,msup";
   const IS_MATHML_TAG=tag=>_makeMap_(MATHML_TAGS, tag);
   const IS_VALID_TAGNAME=(txt)=>{
-    if(IS_HTML_TAG(txt)||IS_WEB_COMPONENT(txt)||IS_HTML_VOID_TAG(txt) || IS_SVG_TAG(txt) || IS_MATHML_TAG(txt)) return true;
+    if(IS_HTML_TAG(txt)||IS_WEB_COMPONENT(txt)||IS_HTML_VOID_TAG(txt) || IS_SVG_TAG(txt) || IS_MATHML_TAG(txt)) {
+      return true;
+    }
     if(IS_HTML_DEPRECATED_TAG(txt) || IS_SVG_DEPRRCATED_TAG(txt)){
-      $debug_log(`"${txt}" is an html/svg deprecated tag, and should not be used in new projects\n\nhouxit does not allow the compilation of obselete
+      debugHandler(`"${txt}" is an html/svg deprecated tag, and should not be used in new projects\n\nhouxit does not allow the compilation of obselete
       elements`);
     }
     return false;
@@ -260,9 +268,13 @@ const Houxit=(function(global){
   const XtructDataCallableTypes=[Set,Map,WeakMap,WeakSet, Date,WeakRef,Promise,RegExp,Proxy,BigInt,ArrayBuffer,Tuple];
   const isGlobalBuiltinType=type=>_makeMap_(DataFunctionMap, type) || _makeMap_(XtructDataCallableTypes, type);
   function isDomSpecialConstructor(value){
-    if(!inBrowserCompiler) return false;
+    if(!inBrowserCompiler) {
+      return false;
+    }
     const domSpecialConstructors=[ Element];
-    if(new Set(domSpecialConstructors).has(value)) return true;
+    if(new Set(domSpecialConstructors).has(value)) {
+      return true;
+    }
     return isNativeElement(value) || value instanceof Element;
   }
   const Data_Flags="NodeList,PATCH_FLAGS,PATCH-TYPE-TUPLE";
@@ -307,7 +319,9 @@ const Houxit=(function(global){
     return isPrimitive(val) || isPFunction(val) || isNativeElement(val) || validateType(val, [ Array, HouxitElement, slotInstanceMap, vNodeClass, BaseTemplateClass, ]);
   }
   function isChildrenObjInstances(val){
-    if(!isChildrenObj(val)) return false;
+    if(!isChildrenObj(val)) {
+      return false;
+    }
     return isHouxitElement(val) || isHouxitBuild(val) || isNativeElement(val)  || isSlotInstance(val) || isVNodeClass(val) || isTemplateClass(val);
   }
   function isChildrenObj(val){
@@ -333,8 +347,8 @@ const Houxit=(function(global){
       return true;
     }catch(err){
       if(isTrue(warn)){
-        $debug_log(`Statement not passage in mustache/binding context\n\nContext expects a single expression\n\n"${block}"`);
-        $debug_log(err);
+        debugHandler(`Statement not passage in mustache/binding context\n\nContext expects a single expression\n\n"${block}"`);
+        debugHandler(err);
       }
       return false
     }
@@ -372,31 +386,42 @@ const Houxit=(function(global){
   const validTokenConfigOptions="onTrack,onEffect,isComputed,isReadonly,isShallow"
   const isProxySkipped=prop=>_makeMap_(proxySkipped, prop);
   function createObj(name, props){
-    if(len(arguments) === 1 && isPObject(name)) props=name;
-    if(props && !isPObject(props)) props=null;
+    if(len(arguments) === 1 && isPObject(name)) {
+      props=name;
+    }
+    if(props && !isPObject(props)) {
+      props=null;
+    }
     let objXtruct=Function('name',`
      return name ? class ${name}{} : Object ;
     `)
     objXtruct=objXtruct(name);
     objXtruct= new objXtruct();
-    if(props) assign(objXtruct, props);
+    if(props) {
+      assign(objXtruct, props);
+    }
     return objXtruct;
   }
   const canRender=value=>isPrimitive(value) && !isNull(value);
   function compileToRenderable(value){
     value=unwrap(value);
-    if(canRender(value)) return String(value);
-    else if(isPFunction(value)) return value();
-    else if(validateType(value, [Array, Date, Function])) return value.toString();
-    else if(!isNull(value) && !isPObject(value)) return JSON.stringify(value);
+    if(canRender(value)) {
+      return String(value);
+    }else if(isPFunction(value)) {
+      return value();
+    }else if(validateType(value, [Array, Date, Function])) {
+      return value.toString();
+    }else if(!isNull(value) && !isPObject(value)) {
+      return JSON.stringify(value);
+    }
     return "";
   }
-  const arrowFNRegex=/^(\(([\w$,.\[\]\{\} ]*)\)|[\w$]+)[ ]*=>[ ]*[{]?\s*/;
+  const arrowFNRegex=/^(async[ ]+)?(\(([\w$,.\[\]\{\} ]*)\)|[\w$]+)[ ]*=>[ ]*[{]?\s*/;
   const functionFNRegex=/^(async[ ]+)?(function)?([*]?([ ]*)[\w$]*)?\(([\w$]*)?\)[ ]*\{\s*/m;
-  const isAFunction=(fn)=> isPFunction(fn) && arrowFNRegex.test(fn.toString());
+  const isArrowFunction=(fn)=> isPFunction(fn) && arrowFNRegex.test(fn.toString());
   const isFNString=str => isString(str) && isTrue(arrowFNRegex.test(str) || functionFNRegex.test(str));
   const boundFNRegex=/^bound [\w$]*$/;
-  const isBFunction=func=>isPFunction(func) && !isAFunction(func) && boundFNRegex.test(func.name);
+  const isBFunction=func=>isPFunction(func) && !isArrowFunction(func) && boundFNRegex.test(func.name);
   const objectDestructureRegex=/^{(.*?)}$/;
   const arrayDestructureRegex=/^\[(.*?)\]$/;
   const isDestructureSyntax=syntax=>objectDestructureRegex.test(syntax) || arrayDestructureRegex.test(syntax) ;
@@ -462,11 +487,11 @@ const Houxit=(function(global){
   function validateAsyncWidgetConfig(config){
     for(let [key, value] of entries(config)){
       if(!_makeMap_('delay,error,fallback,timeout', key)){
-        $debug_log(`Unrecognized key "${key}" passed to 'AsyncWidget' config object`);
+        debugHandler(`Unrecognized key "${key}" passed to 'AsyncWidget' config object`);
       }else if(_makeMap_('delay,timeout', key) && (!isNumber(value) || isNaN(Number(value)))){
-        $debug_log(`"${key}" config prop of "AsyncWidget" expects a type of "number"`);
+        debugHandler(`"${key}" config prop of "AsyncWidget" expects a type of "number"`);
       }else if(_makeMap_('error,fallback', key) && !isPFunction(value)){
-        // $debug_log(`"${key}" config prop of "AsyncWidget" expects a render function value`);
+        // debugHandler(`"${key}" config prop of "AsyncWidget" expects a render function value`);
       }else {
         continue;
       }
@@ -496,7 +521,9 @@ const Houxit=(function(global){
   }
   function isHouxitBuiltinSymbolWidget(widget){
     for(const sym of values(BUILT_IN_WIDGETS)){
-      if(widget === sym ) return true;
+      if(widget === sym ) {
+        return true;
+      }
     }
     return false;
   }
@@ -512,14 +539,14 @@ const Houxit=(function(global){
   const widgetSpecialAttrProps = new Set([ $$$$dir__ref$$$$ , dir$$__render, $$$context , $$$ModelUpdateKey ]);
   const isSelfRecursiveWidget=build=> isHouxitBuild(build) && build[$$$ownProperties].isSelfRecursive === (true);
   const isSpecProp = prop => widgetSpecialAttrProps.has(prop);
-  const isBuiltinBlocks=block=>_makeMap_("if,else,else:if,for,const,class,new,debugger,html", block);
-  const isBuiltinVoidBlocks=block=>_makeMap_("else,else:if,const,new,debugger,html", block);
+  const isBuiltinBlocks=block=>_makeMap_("if,else,else:if,for,const,class,new,debugger,html,await", block);
+  const isBuiltinVoidBlocks=block=>_makeMap_("else,else:if,const,new,debugger,html,await", block);
   function is_rerender(self){
     return isHouxitBuild(self) && isTrue(self[$$$operands].initializedRender);
   }
   function createRenderFN(self, fn){
     if(!isPFunction(fn)){
-      $debug_log(`parameter 2 of "createRenderFN" macro expects a plain Function`);
+      debugHandler(`parameter 2 of "createRenderFN" macro expects a plain Function`);
       return pass
     }
     let callback=Function('self', 'fn',`
@@ -546,21 +573,27 @@ const Houxit=(function(global){
     return unToken(isFunction(fn) ? fn() : fn );
   }
   function isElementType(element, type){
-    if(type === 'text') return IS_TEXT_NODE(element);
+    if(type === 'text') {
+      return IS_TEXT_NODE(element);
+    }
     return isNativeElement(element) && IS_ELEMENT_NODE(element) && element.localName === type;
   }
   const rawObjectStoreMap=new WeakSet();
   function markRaw(obj){
     if(isPrimitive(obj)){
-      $debug_log(`Non mutatable values been marked as raw:: "${typeof obj}" cannot be set to raw data to hide from reactive effect assembling`);
+      debugHandler(`Non mutatable values been marked as raw:: "${typeof obj}" cannot be set to raw data to hide from reactive effect assembling`);
       return obj;
     }
-    if(isPrimitive(obj) || isRaw(obj)) return obj;
+    if(isPrimitive(obj) || isRaw(obj)) {
+      return obj;
+    }
     rawObjectStoreMap.add(obj)
     return obj
   }
   function isRaw(obj){
-    if(isPrimitive(obj)) return false;
+    if(isPrimitive(obj)) {
+      return false;
+    }
     return rawObjectStoreMap.has(obj);
   }
   function getCharcodes(value){
@@ -617,11 +650,15 @@ const Houxit=(function(global){
       count:1,
       validators:[Function],
       name:"useInstall()"
-    })) return;
+    })) {
+      return;
+    }
     const self=getCurrentRunningEffect({
       name:'useInstall()'
     });
-    if(!isHouxitBuild(self)) return;
+    if(!isHouxitBuild(self)) {
+      return;
+    }
     (self, callback);
     if(irresponsibleInstallWarn(self, callback, "useInstall()" )){
       self[$$$operands].installers_plugin.add(callback);
@@ -630,7 +667,7 @@ const Houxit=(function(global){
   }
   function irresponsibleInstallWarn(self, callback, ns){
     if(isInitialBuild(self)){
-      $debug_log(`Irresponsible use of "${ns}" in an initBuild widget instance`, self, true);
+      debugHandler(`Irresponsible use of "${ns}" in an initBuild widget instance`, self, true);
       return false
     }
     return true
@@ -643,7 +680,9 @@ const Houxit=(function(global){
       count:1,
       validators:[ Object ]
     })
-    if(!response) return [ pass, pass ]
+    if(!response) {
+      return [ pass, pass ];
+    }
     const self=getCurrentRunningEffect({
       name:'useOptions'
     })
@@ -651,14 +690,16 @@ const Houxit=(function(global){
       name:"useOptions",
       validators:[Object],
       count:1
-    } ))) return {};
+    } ))) {
+      return {};
+    }
     for(const [ key, value ] of entries(instance)){
       if(!isValidWidgetOption(key)) {
         self[$$$operands]._OPTIONS[key]=value
       }else if(isAllowedAdapterOpts(key)){
         adaptableComposers[key](value);
       }else if(isInvalidInjectorOpt(key)){
-        $debug_log(`invalid option "${key}" passed to options Adapter: not a valid  adapter.\n\nuse the options API macros instead`, self);
+        debugHandler(`invalid option "${key}" passed to options Adapter: not a valid  adapter.\n\nuse the options API macros instead`, self);
       }else{
         self[$$$core].opts[key]=value;
       }
@@ -702,9 +743,13 @@ const Houxit=(function(global){
           }
         }
       }else{ 
-        if(key === 'class') origin[key]=mapClassTypeTransform(item, new Tuple());
-        else if(key === 'style') origin[key] = compileStyleProps(null, item, {});
-        else origin[key]=item;
+        if(key === 'class') {
+          origin[key]=mapClassTypeTransform(item, new Tuple());
+        }else if(key === 'style'){ 
+          origin[key] = compileStyleProps(null, item, {});
+        }else {
+          origin[key]=item;
+        }
       }
     }
     return origin;
@@ -739,41 +784,48 @@ const Houxit=(function(global){
   }
   function validateCollectionArgs(args, config=argumentsValidator){
     args = [ ...args ];
-    if(!isS(argumentsValidator, config)) config={ 
-      ...config, 
-      ...argumentsValidator
-    };
-    else return true;
+    if(!isS(argumentsValidator, config)) {
+      config={ 
+        ...config, 
+        ...argumentsValidator
+      };
+    }else {
+      return true;
+    }
     const { name, max, validators, self, required, min, count, validator }=config;
     /* a string 'name', number max, array validator, houxit self instance and indexes of required arguments */
     if(isNumber(max) && len(args) > max) {
-      $debug_log(max === 0 ? `${name} Adapter does not accept any Argument` : `Parameter arguments received at ${name} macro exceds validator arguments maximum count\n\n"${name}()" expects only maximum of "${max}" arguments`, self);
+      debugHandler(max === 0 ? `${name} Adapter does not accept any Argument` : `Parameter arguments received at ${name} macro exceds validator arguments maximum count\n\n"${name}()" expects only maximum of "${max}" arguments`, self);
       return false;
     }
     if( min && len(args) < min ) {
-      $debug_log(`"${name}" function expects atleast "${min}" minimum of arguments\n\n${len(args)} received`, self);
+      debugHandler(`"${name}" function expects atleast "${min}" minimum of arguments\n\n${len(args)} received`, self);
       return false;
     }
     if(!isUndefined(count) && !len(args) === count){
-      $debug_log(`"${name}" method expects only ${count} number of arguments\n${len(args)} passed`, self);
+      debugHandler(`"${name}" method expects only ${count} number of arguments\n${len(args)} passed`, self);
       return false;
     }
-    if(!validator(...args)) return false;
+    if(!validator(...args)) {
+      return false;
+    }
     if(len(required)){
       for(let [ index, check ] of required.entries()){
         if((!len(args) >= Number(index) && isUndefined(args[index]))){
-          $debug_log(`Argument at index ${index} of ${name} expects a required positional parameter\n\nparameter not provided or is undefined :: use "null" instead if you tend to skip or not context an argument value `, self);
+          debugHandler(`Argument at index ${index} of ${name} expects a required positional parameter\n\nparameter not provided or is undefined :: use "null" instead if you tend to skip or not context an argument value `, self);
           return false;
         }
       }
     }
     if(isArray(validators) && len(validators) && len(args)){
       for(let [ key, item ] of args.entries()){
-        if(!key > len(validators)) break;
+        if(!key > len(validators)) {
+          break;
+        }
         const validator = validators[key] || Any ;
         let response=validateType(item, validator )
         if(isFalse(response)) {
-          $debug_log(`unexpected argument value type received at ${key} index of the "${name}" adapter\n\nInvalid input type`, self);
+          debugHandler(`unexpected argument value type received at ${key} index of the "${name}" adapter\n\nInvalid input type`, self);
           return false;
         }
       }
@@ -797,16 +849,16 @@ const Houxit=(function(global){
     }
     let { name, props, self,  } = config ;
     if(!isObject(config)){
-      $debug_log(`configuration parameter at argument 2 of validatorProps expects a plain javascript object`);
+      debugHandler(`configuration parameter at argument 2 of validatorProps expects a plain javascript object`);
       return;
     }else if(!isPObject(value) || hasOwn(value, 'props') && !isPObject(value.props)){
-      $debug_log(`unexpected value received at "${name}, validation for ${isPObject(value) ? '{}.prop' : '{}'}" adapter\n\nInvalid input type :: expects a plain Object`, self);
+      debugHandler(`unexpected value received at "${name}, validation for ${isPObject(value) ? '{}.prop' : '{}'}" adapter\n\nInvalid input type :: expects a plain Object`, self);
       return false;
     }
     const propsSet = {};
     for(let [ param, ind ] of entries(config.props) ){
       if(!isPObject(param)){
-        $debug_log(`Properties validator expects a plain object\n
+        debugHandler(`Properties validator expects a plain object\n
         For the "${ind}" prop validation`);
         return false;
       }
@@ -814,8 +866,11 @@ const Houxit=(function(global){
         ...param,
         ...validatorProps
       }
-      if(!runObjectifiedParamsValidation(null, propsSet, [ value, param, ind ], 'prop')) return false;
-      else if(!paramsValidationCircle(null, propsSet, [value, param, ind ],'prop')) return false;
+      if(!runObjectifiedParamsValidation(null, propsSet, [ value, param, ind ], 'prop')) {
+        return false;
+      }else if(!paramsValidationCircle(null, propsSet, [value, param, ind ],'prop')) {
+        return false;
+      }
     }
     return true;
   }
@@ -826,7 +881,9 @@ const Houxit=(function(global){
       required:[true, true ],
       name:'validateCollection'
     })
-    if(!response) return false;
+    if(!response) {
+      return false;
+    }
     return validateCollectionArgs(collection, config );
   }
   function validateCollection( collection, config ){
@@ -836,7 +893,9 @@ const Houxit=(function(global){
     return validatePropsInput(...arguments )
   }
   function vb(self){
-    if(!isHouxitBuild(self)) return ;
+    if(!isHouxitBuild(self)) {
+      return ;
+    }
     return {
       operands:self[$$$operands],
       ownProperties:self[$$$ownProperties],
@@ -873,7 +932,9 @@ const Houxit=(function(global){
         validators:[Any, Object],
         name:'deepTranform'
       })
-      if(!res) return value;
+      if(!res) {
+        return value;
+      }
       return _createReactiveProxyCollectons(value,  watchers, config?.isShallow || false, config || {});
     }
     return function deepTranform(value, config){
@@ -901,7 +962,7 @@ const Houxit=(function(global){
     for (let desc of ['get', 'set'].values()){
       if(hasOwn(config, desc)) {
         if(!isFunction(config[desc])){
-          $debug_log(`"${desc}" property descriptor at "factoryToken" is of an invalid data type\ntype of 'Function' expected`);
+          debugHandler(`"${desc}" property descriptor at "factoryToken" is of an invalid data type\ntype of 'Function' expected`);
           return freeze();
         }
         factoryObject[desc]=config[desc];
@@ -911,15 +972,23 @@ const Houxit=(function(global){
     return config;
   }
   function refLifeCircleHooksConfig(watchers, config){
-    if(config.onTracked) watchers.onTrackedHook=()=>{
-      if(watchers.trackZoom) return;
-      watchers.trackZoom=true;
-      tick(config.onTracked.bind(this)).then(()=> watchers.trackZoom=false);
+    if(config.onTracked) {
+      watchers.onTrackedHook=()=>{
+        if(watchers.trackZoom) {
+          return;
+        }
+        watchers.trackZoom=true;
+        tick(config.onTracked.bind(this)).then(()=> watchers.trackZoom=false);
+      }
     };
-    if(config.onEffect) watchers.onEffectHook=()=>{
-      if(watchers.effectZoom) return;
-      watchers.effectZoom=true;
-      tick(config.onEffect.bind(this)).then(()=> watchers.effectZoom=false);
+    if(config.onEffect) {
+      watchers.onEffectHook=()=>{
+        if(watchers.effectZoom) {
+          return;
+        }
+        watchers.effectZoom=true;
+        tick(config.onEffect.bind(this)).then(()=> watchers.effectZoom=false);
+      }
     }
   }
   function Token_X_ReactiveEffectObject(){
@@ -978,7 +1047,7 @@ const Houxit=(function(global){
       }
       descriptor.set=function(value, prop){
         if(isReadonly && !isReadonlyBypasser(value)){
-          $debug_log(`Cannot reassign/mutate a "readonly" token value\n\n___MUTATION FAILED___\n........".${prop}" property assignment \n\nFailed writing to a readonly \n.........>>>bypassKey verification failure occured...`);
+          debugHandler(`Cannot reassign/mutate a "readonly" token value\n\n___MUTATION FAILED___\n........".${prop}" property assignment \n\nFailed writing to a readonly \n.........>>>bypassKey verification failure occured...`);
           return false;
         }
         value=unwrap(isReadonly ? value[bypassSymbol] : value) ;
@@ -995,7 +1064,9 @@ const Houxit=(function(global){
     const accessor=()=>watchers.accessor;
     config =( isPObject(config) ? config :  {}) ;
     const isFactoryToken=hasOwn(config, $factoryTokenKey);
-    if(isFactoryToken) config = fineTuneFactoryTokenCompile.call(this, effective, watchers, config);
+    if(isFactoryToken) {
+      config = fineTuneFactoryTokenCompile.call(this, effective, watchers, config);
+    }
     if(isS(config, freeze())) {
       return;
     }
@@ -1070,7 +1141,9 @@ const Houxit=(function(global){
         return true;
       }
     });
-    if(hasOwn(fn, 'init')) fn.init(watchers);
+    if(hasOwn(fn, 'init')) {
+      fn.init(watchers);
+    }
     return true; //call the effectTrigger callback with a function parameter
   }
   class reactive__Token extends BaseToken{
@@ -1092,7 +1165,9 @@ const Houxit=(function(global){
     data:token
   }, config];
   function _createReactiveProxyCollectons(iterable, watcher, isShallow, config ) {
-    if(isDomSpecialConstructor(iterable) || !isIterable(iterable) ) return iterable;
+    if(isDomSpecialConstructor(iterable) || !isIterable(iterable) ){
+      return iterable;
+    }
     if(!isStream(iterable) && !isToken(iterable)){ 
       iterable = _createStream(iterable, config, watcher );
     }
@@ -1112,7 +1187,7 @@ const Houxit=(function(global){
   function __Houxit__Tokenizer__Machine___( target , config={} ) {
     if(!isToken(target)) {
       if(isComputedMacro(target)){
-        $debug_log(`Unaccepted computed token cache passed to a Token\n....Will not compile...`);
+        debugHandler(`Unaccepted computed token cache passed to a Token\n....Will not compile...`);
         return target;
         // target = hydrateComputedTokenTransform(self, target, true);
       }
@@ -1138,7 +1213,9 @@ const Houxit=(function(global){
       validators:[Function],
       name:"factoryToken"
     })
-    if(!response) return;
+    if(!response) {
+      return;
+    }
     const target = new Token({ 
       data:undefined
     }, {
@@ -1182,10 +1259,14 @@ const Houxit=(function(global){
   }
   const arrSet=setData=>isSet( setData ) || isArgument(setData) || isArray(setData) ? [...setData] : isTuple(setData) ? setData.list() : setData ;
   function setValueIndex(setData , value){
-    if(!isSet(setData) && !len(setData) && !setData.has(value)) return NaN;
+    if(!isSet(setData) && !len(setData) && !setData.has(value)) {
+      return NaN;
+    }
     let index=0
     for(let data of setData.values()){
-      if(data === value) return index;
+      if(data === value) {
+        return index;
+      }
       index++;
     }
   }
@@ -1208,8 +1289,9 @@ const Houxit=(function(global){
         if( validateType(data, [Set, Tuple,Array, Map])) {
           rv=data[name](arg);
         }else if(isPObject(data)){
-          if('define' === name) rv=define(data, ...arguments );
-          else if('delete' === name ) {
+          if('define' === name) {
+            rv=define(data, ...arguments );
+          }else if('delete' === name ) {
             delete data[arg];
             rv = true;
           }
@@ -1240,22 +1322,26 @@ const Houxit=(function(global){
       validators:[ Any, [Model]],
       name : 'useAgent'
     });
-    if(!response) return [ dataRead , pass];
+    if(!response) {
+      return [ dataRead , pass];
+    }
     if(isHouxitBuild(this) && !isChar(data)){
-      $debug_log(`data path at positional argument 1 expects a string/symbol value of an existing model path\n\n.>...$useAgent`);
+      debugHandler(`data path at positional argument 1 expects a string/symbol value of an existing model path\n\n.>...$useAgent`);
       return [ dataRead, pass ];
     }else if(isModelInstance(ModelInstance) && !isChar(data)){
-      $debug_log(`data property at positional argument 1 of "useAgent" expects a string/symbol value\n\nMust be a model valid path`);
+      debugHandler(`data property at positional argument 1 of "useAgent" expects a string/symbol value\n\nMust be a model valid path`);
       return [dataRead, pass];
     }
     const self= isHouxitBuild(this) ? this : isModelInstance(ModelInstance) ? {
       __public_model__ : ModelInstance
     } : null;
     ModelInstance= self ? self.__public_model__ : null;
-    if(self && !isHouxitBuild(self)) delete self.__public_model__;
+    if(self && !isHouxitBuild(self)) {
+      delete self.__public_model__;
+    }
     let prop=isModelInstance(ModelInstance) ? data : isToken(data) ? data[refInternalEffectKey].accessor : "";
     if( isModelInstance(ModelInstance) && !object_Has_Path(ModelInstance, prop)){
-      $debug_log(`"${prop}" property is not a valid model property`, );
+      debugHandler(`"${prop}" property is not a valid model property`, );
       return[dataRead, pass];
     }
     data = isModelInstance(ModelInstance) && exists(prop) ? _$runModelBind( ModelInstance , prop ||  "" ) : data;
@@ -1275,7 +1361,7 @@ const Houxit=(function(global){
         try{
           mutation(mutateArgs);
         }catch(err){
-          $debug_log(`Encountered an error during the call of the writer callback\n\n${err}`);
+          debugHandler(`Encountered an error during the call of the writer callback\n\n${err}`);
           return false;
         }
       }else if(!isPFunction(mutation)){
@@ -1300,10 +1386,12 @@ const Houxit=(function(global){
       count:1,
       validators:[Object]
     });
-    if(!response) return false
+    if(!response) {
+      return false;
+    }
     for (const [prop, value] of entries(props)){
       if(!object_Has_Path(this.__public_model__, prop)){
-        $debug_log(`"${prop}" not found in model instance\n\n..............at......"$write"`, this, true);
+        debugHandler(`"${prop}" not found in model instance\n\n..............at......"$write"`, this, true);
         return false
       }
       this.__public_model__.$useAgent(prop)[1]( ({ write})=> write(value));
@@ -1349,9 +1437,13 @@ const Houxit=(function(global){
         const response = callback(i, index);
         index++;
         if(isIterateController(response)){
-          if(response._type === "continue") continue;
-          else if(response._type === "break") break;
-          else if(response._type === 'return') return response.value;
+          if(response._type === "continue") {
+            continue;
+          }else if(response._type === "break") {
+            break;
+          }else if(response._type === 'return') {
+            return response.value;
+          }
         }
       }
     }else{
@@ -1360,9 +1452,13 @@ const Houxit=(function(global){
           const response = callback(item, key, index);
           index++;
           if(isIterateController(response)){
-            if(response._type === "continue") continue;
-            else if(response._type === "break") break
-            else if(response._type === 'return') return response.value;
+            if(response._type === "continue") {
+              continue;
+            }else if(response._type === "break") {
+              break
+            }else if(response._type === 'return') {
+              return response.value;
+            }
           }
         }
       }else{
@@ -1370,9 +1466,13 @@ const Houxit=(function(global){
           const response = callback(key, item, index);
           index++;
           if(isIterateController(response)){
-            if(response._type === "continue") continue;
-            else if(response._type === "break") break
-            else if(response._type === 'return') return response.value;
+            if(response._type === "continue") {
+              continue;
+            }else if(response._type === "break") {
+              break;
+            }else if(response._type === 'return') {
+              return response.value;
+            }
           }
         }
       }
@@ -1386,9 +1486,10 @@ const Houxit=(function(global){
       max:2,
       validators:[Object, String]
     })) return false;
-    if(!type || !_makeMap_("of,in", type)) type='of';
-    else if(!isIterable(value) && !isNumber(value)){
-      $debug_log(`No iterable .value prop received at parameter 1 object of the "iterate" helper macro`);
+    if(!type || !_makeMap_("of,in", type)) {
+      type='of';
+    }else if(!isIterable(value) && !isNumber(value)){
+      debugHandler(`No iterable .value prop received at parameter 1 object of the "iterate" helper macro`);
       return false;
     }
     const useOF=type && type.trim() === 'of';
@@ -1418,9 +1519,14 @@ const Houxit=(function(global){
     });
     if(!response) return;
     const metrics = config.metrics || []
-    if(hasOwn(config, 'metrics')) delete config.metrics
-    if(isReactiveToken(value)) return toReadonlyToken(value);
-    else if(isReadonlyToken(value)) return value;
+    if(hasOwn(config, 'metrics')) {
+      delete config.metrics;
+    }
+    if(isReactiveToken(value)) {
+      return toReadonlyToken(value);
+    }else if(isReadonlyToken(value)) {
+      return value;
+    }
     let [ mutate=false, key ]=metrics;
     config.isReadonly=true;
     return preventX(new readonly__Token({
@@ -1438,11 +1544,18 @@ const Houxit=(function(global){
       max:2,
       validators:[ Any, Object ]
     });
-    if(!response) return;
+    if(!response) {
+      return;
+    }
     const metrics = config.metrics || []
-    if(hasOwn(config, 'metrics')) delete config.metrics
-    if(isToken(value) && !isShallowToken(value)) return toShallowToken(value);
-    else if(isShallowToken(value)) return value;
+    if(hasOwn(config, 'metrics')) {
+      delete config.metrics;
+    }
+    if(isToken(value) && !isShallowToken(value)) {
+      return toShallowToken(value);
+    }else if(isShallowToken(value)) {
+      return value;
+    }
     let [ mutate=false, key ]=metrics;
     config.isShallow=true;
     return preventX(new reactive__Token({
@@ -1456,7 +1569,9 @@ const Houxit=(function(global){
     return value instanceof BaseToken;
   }
   function unwrap(value){
-    if(!isToken(value)) return value;
+    if(!isToken(value)) {
+      return value;
+    }
     return value[ value[refInternalEffectKey].accessor ];
   }
   function unToken(ref){
@@ -1470,7 +1585,9 @@ const Houxit=(function(global){
       name:'toToken',
       required:[true, true ]
     })
-    if(!res || !object) return undefined;
+    if(!res || !object) {
+      return;
+    }
     return token(object[path], config);
   }
   function toToken(object, path){
@@ -1495,35 +1612,50 @@ const Houxit=(function(global){
     return isReadonlyToken(value) && value[refInternalEffectKey].isComputed;
   }
   function fromReadonlyToken(ref, config){
-    if(!isToken(ref)) return token(ref, config);
-    if(isReadonlyToken(ref)) return token(unwrap(ref), config);
+    if(!isToken(ref)) {
+      return token(ref, config);
+    }
+    if(isReadonlyToken(ref)) {
+      return token(unwrap(ref), config);
+    }
     return ref;
   }
   function toShallowToken(ref, config={}){
-    if(!isShallowToken(ref)) return shallowToken(unwrap(ref), config );
+    if(!isShallowToken(ref)) {
+      return shallowToken(unwrap(ref), config );
+    }
     return ref;
   }
   function toReadonlyToken(ref, config={}){
-    if(!isReadonlyToken(ref)) return readonly(unwrap(ref), config );
+    if(!isReadonlyToken(ref)) {
+      return readonly(unwrap(ref), config );
+    }
     return ref;
   }
   function isStateToken(ref){
     return isToken(ref) && isTrue(ref[refInternalEffectKey].isStateToken)
   }
   function cleanupSubscribers(subs){
-    if(!len(subs)) return;
-    if(validateType(subs, [ Set, Tuple ])) subs.clear();
-    else if(isArray(subs)) subs.splice(0);
+    if(!len(subs)) {
+      return;
+    }
+    if(validateType(subs, [ Set, Tuple ])) {
+      subs.clear();
+    }else if(isArray(subs)) {
+      subs.splice(0);
+    }
   }
   function _mountTokenEffect(token, self, force=false ){
     if(!isToken(token)){
-      $debug_log(`Token Effect Mount: Effect value  is not a token/stream value\n\n((Failed to mount effect reactive on a non token input...))`, self, true);
+      debugHandler(`Token Effect Mount: Effect value  is not a token/stream value\n\n((Failed to mount effect reactive on a non token input...))`, self, true);
       return false;
     }
     if(isHouxitBuild(self) && (!isStateToken(token) || force)){
       function refMount(_){
         self.__public_model__.$pushEffect();
-        if(!isStateToken(token)) token[refInternalEffectKey].isStateToken=true;
+        if(!isStateToken(token)) {
+          token[refInternalEffectKey].isStateToken=true;
+        }
       }
       refMount.init=function(eff){
         eff.self=self;
@@ -1568,8 +1700,11 @@ const Houxit=(function(global){
     return true;
   }
   function _mountReactiveWatcher(value, self, force){
-    if(isToken(value)) return _mountTokenEffect(...arguments);
-    else if(isStream(value)) return _mountProxyStream(...arguments);
+    if(isToken(value)) {
+      return _mountTokenEffect(...arguments);
+    }else if(isStream(value)) {
+      return _mountProxyStream(...arguments);
+    }
     return false;
   }
   function mountEffect(value, self, force){
@@ -1582,11 +1717,15 @@ const Houxit=(function(global){
       validators:[BaseToken, Boolean],
       name:'mountToken'
     });
-    if(!res) return false
+    if(!res) {
+      return false;
+    }
     const self=getCurrentRunningEffect({
       name:'mountToken'
     });
-    if(!isHouxitBuild(self)) return false;
+    if(!isHouxitBuild(self)) {
+      return false;
+    }
     return _mountTokenEffect(token, self, force)
   }
   function mountToken(token, force){
@@ -1598,15 +1737,18 @@ const Houxit=(function(global){
       validators:[[Object,Array,Set,Tuple,Map]],
       name:'mountStream'
     });
-    if(!res) return false
-    else if(!isStream(obj)){
-      $debug_log(`object pased to the mountStream function is not a stream value `);
+    if(!res) {
+      return false;
+    }else if(!isStream(obj)){
+      debugHandler(`object pased to the mountStream function is not a stream value `);
       return false;
     }
     const self=getCurrentRunningEffect({
       name:'mountStream'
     });
-    if(!isHouxitBuild(self)) return false;
+    if(!isHouxitBuild(self)) {
+      return false;
+    }
     return _mountProxyStream(obj, self);
   }
   function mountStream(obj){
@@ -1622,7 +1764,9 @@ const Houxit=(function(global){
       count:1,
       name:'isStream'
     });
-    if(!stream || !res && !validateType(stream, [Object, Set, Tuple, Map, Array])) return false;
+    if(!stream || !res && !validateType(stream, [Object, Set, Tuple, Map, Array])) {
+      return false;
+    }
     const ReactiveMap=stream[$$$StreamProxyKey];
     return hasOwn(stream, $$$StreamProxyKey) && isWeakMap(ReactiveMap) && isREffObj(ReactiveMap.get(stream));
   }
@@ -1646,13 +1790,17 @@ const Houxit=(function(global){
   }
   function genericStreamTransform(stream, config, types){
     if(isPrimitive(stream)){
-      $debug_log(`Value Exception\nFailed to convert a primitive Value to a streamable object\n\nExpects a plain object or a collection`);
+      debugHandler(`Value Exception\nFailed to convert a primitive Value to a streamable object\n\nExpects a plain object or a collection`);
       return ;
     }else {
       types = new Tuple(...types);
-      if(types.contains('readonly', 'shallow') && isShallowReadonlyStream(stream)) return stream;
-      else if(types.has('readonly') && isReadonlyStream(stream)) return stream;
-      else if(types.has('shallow') && isShallowStream(stream)) return stream;
+      if(types.contains('readonly', 'shallow') && isShallowReadonlyStream(stream)) {
+        return stream;
+      }else if(types.has('readonly') && isReadonlyStream(stream)) {
+        return stream;
+      }else if(types.has('shallow') && isShallowStream(stream)) {
+        return stream;
+      }
     }
     if(isStream(stream)) {
       stream = stream[$$$StreamProxyKey].get(stream).origin
@@ -1714,11 +1862,15 @@ const Houxit=(function(global){
       count : 1,
       validators:[Function],
       name:'trackEffectDeps'
-    })) return [];
+    })) {
+      return [];
+    }
     const self = isHouxitBuild(this) ? this : getCurrentRunningEffect({
       name:'trackEffectDeps'
     });
-    if(!isHouxitBuild(self)) return [];
+    if(!isHouxitBuild(self)) {
+      return [];
+    }
     return effectDependencyTracking(self, fn, args )[0];
   }
   function trackEffectDeps(fn){
@@ -1733,12 +1885,14 @@ const Houxit=(function(global){
       max:2,
       validators:[ Function, Object ]
     })
-    if(!response) return pass;
+    if(!response) {
+      return pass;
+    }
     const self=getCurrentRunningEffect({
       name:'adapter'
     });
     if(!self ){
-      $debug_log(`adapter called out of scope`);
+      debugHandler(`adapter called out of scope`);
       return pass;
     }
     return EffectAdapterHook.call(self, ...arguments);
@@ -1748,10 +1902,10 @@ const Houxit=(function(global){
   }
   function EffectAdapterHook(fn, config={}){
     if(!isPFunction(fn)){
-      $debug_log(`"effectHook" at parameter 1 argument expects a plain function`, this, true);
+      debugHandler(`"effectHook" at parameter 1 argument expects a plain function`, this, true);
       return ;
     }else if(len(arguments) > 1 && !isPObject(config)){
-      $debug_log(`config parameter 2 argument of effectHook expects a plain object`);
+      debugHandler(`config parameter 2 argument of effectHook expects a plain object`);
       return;
     }
     config.initial=false;
@@ -1765,7 +1919,9 @@ const Houxit=(function(global){
           callback[effectHookValueKey]=returnValue;
           stoper(callback);
         }
-      }else stoper();
+      }else {
+        stoper();
+      }
     }
     return function stopEffect(...args){
       return stopEffect(...args);
@@ -1823,7 +1979,7 @@ const Houxit=(function(global){
   }
   function isFrozenWarn(isFrozen, action, type){
     if(isFrozen){
-      $debug_log(`cannot perfom ${action} on ${type}\n\ninstance may have been frozen or sealed from future possible mutations`);
+      debugHandler(`cannot perfom ${action} on ${type}\n\ninstance may have been frozen or sealed from future possible mutations`);
       return false;
     }
     return true;
@@ -1851,7 +2007,7 @@ const Houxit=(function(global){
       },
       set(NS){
         if(!isTSO(NS)){
-          $debug_log(`Mutation Exception\nCannot mutate the size property of a Tuple Object\n`);
+          debugHandler(`Mutation Exception\nCannot mutate the size property of a Tuple Object\n`);
           return false;
         }
         size=NS.value;
@@ -1883,7 +2039,9 @@ const Houxit=(function(global){
       if(key !== ind ) {
         tuple[key]=ind;
       }
-      if(ind > len(newList)-1) delete tuple[ind];
+      if(ind > len(newList)-1) {
+        delete tuple[ind];
+      }
       ind ++;
     }
   }
@@ -1895,7 +2053,9 @@ const Houxit=(function(global){
       count:1,
       validators:[Function],
       name:"Tuple.filter()"
-    })) return;
+    })) {
+      return;
+    }
     return new Tuple( ...this.list().filter(fn) );
   }
   BaseTuple.prototype.filter=function filter(fn){
@@ -1905,7 +2065,9 @@ const Houxit=(function(global){
     return this.list().find(...arguments)
   }
   BaseTuple.prototype.shift=function shift(){
-    if(!(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.shift()', 'tuple'))) return false;
+    if(!(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.shift()', 'tuple'))) {
+      return false;
+    }
     let firstValue;
     if(this.size > 0){
       firstValue=this[$$tupleStore].array.shift();
@@ -1939,7 +2101,9 @@ const Houxit=(function(global){
     return len(arguments) && this.has(value) ? this.list().indexOf(value) : -1 ;
   }
   BaseTuple.prototype.add=function add(value){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.add()', 'tuple'))) return false
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.add()', 'tuple'))) {
+      return false;
+    }
     if(len(arguments) && !this.has(value)){
       this[$$tupleStore].unique.add(value);
       this[$$tupleStore].array.push(value);
@@ -1950,7 +2114,9 @@ const Houxit=(function(global){
     return false;
   }
   BaseTuple.prototype.delete=function Tuple_delete(value){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.delete()', 'tuple'))) return false;
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.delete()', 'tuple'))) {
+      return false;
+    }
     if(this.has(value)) {
       const index=this.indexOf(value);
       return this.splice(this.indexOf(value), 1);
@@ -1958,32 +2124,44 @@ const Houxit=(function(global){
     return false;
   }
   BaseTuple.prototype.replace=function replace(oldV, newV){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'replace()', 'tuple'))) return false
-    if(!this.has(oldV) && this.has(newV)) return false;
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'replace()', 'tuple'))) {
+      return false;
+    }
+    if(!this.has(oldV) && this.has(newV)) {
+      return false;
+    }
     return this.splice(this.indexOf(oldV), 1, newV );
   }
   BaseTuple.prototype.prepend=function prepend(value){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.prepend()', 'tuple'))) return false
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.prepend()', 'tuple'))) {
+      return false;
+    }
     if(!this.has(value)) {
       this[$$tupleStore].array.unshift(value)
       this[$$tupleStore].unique.add(value);
       this.size=setTupleSize(this.size+1);
       instanciate_tuple_indexes(this);
-      return true
+      return true;
     }
-    return false
+    return false;
   }
   BaseTuple.prototype.splice=function splice(start, deleteCount, ...insertElements){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.splice()', 'tuple'))) return false;
-    if(!len(arguments)) return false;
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.splice()', 'tuple'))) {
+      return false;
+    }
+    if(!len(arguments)) {
+      return false;
+    }
     if(!validateCollectionArgs(arguments, {
       min:0,
       max:Infinity,
       validators:[Number, Number],
       name:"Tuple.splice()",
-    })) return false;
+    })) {
+      return false;
+    }
     if(len(arguments)>1 && (start + deleteCount-1) > this.size){
-      $debug_log(`deleteCount argument 2 count at "Tuple.splice()" exceeds the tuple size`);
+      debugHandler(`deleteCount argument 2 count at "Tuple.splice()" exceeds the tuple size`);
       return false;
     }
     if(len(arguments) === 1){
@@ -2011,10 +2189,15 @@ const Houxit=(function(global){
         }
       }
       for(const value of insertElements.values()){
-        if(this.has(value)) insertElements.splice(insertElements.indexOf(value), 1);
-        else this[$$tupleStore].unique.add(value);
+        if(this.has(value)) {
+          insertElements.splice(insertElements.indexOf(value), 1);
+        }else {
+          this[$$tupleStore].unique.add(value);
+        }
       }
-      if(len(insertElements)) this[$$tupleStore].array.splice(start, deleteCount, ...insertElements );
+      if(len(insertElements)) {
+        this[$$tupleStore].array.splice(start, deleteCount, ...insertElements );
+      }
     }
     this.size=setTupleSize(len(this.list()));
     instanciate_tuple_indexes(this);
@@ -2025,7 +2208,7 @@ const Houxit=(function(global){
   }
   BaseTuple.prototype.exchange=function exchange(value1, value2){
     if(!(this.has(value1) && this.has(value2))){
-      $debug_log(`argument ${!this.has(value1) ? "1" : "2"} not a member of this tuple`);
+      debugHandler(`argument ${!this.has(value1) ? "1" : "2"} not a member of this tuple`);
       return false;
     }
     const index1=this.indexOf(value1);
@@ -2041,10 +2224,12 @@ const Houxit=(function(global){
       min:1,
       max:2,
       validators:[Collections, Number]
-    })) return false;
-    else if(!len(sort) || !this.size) return;
-    else if(start > this.size-1){
-      $debug_log(`Tuple.arrange()'s start parameter 2 exceeds the tuple size\n"${start}"`);
+    })) {
+      return false;
+    }else if(!len(sort) || !this.size) {
+      return;
+    }else if(start > this.size-1){
+      debugHandler(`Tuple.arrange()'s start parameter 2 exceeds the tuple size\n"${start}"`);
       return false;
     }
     const flowTuple=new Tuple();
@@ -2053,8 +2238,11 @@ const Houxit=(function(global){
       if(!sortSet.has(val)) this.delete(val);
     });
     for(let [ ind, sort_value ] of getIterator(sort)){
-      if(this.has(sort_value)) this[$$tupleStore].array.splice(this.indexOf(sort_value), 1);
-      else this[$$tupleStore].unique.add(sort_value);
+      if(this.has(sort_value)) {
+        this[$$tupleStore].array.splice(this.indexOf(sort_value), 1);
+      }else {
+        this[$$tupleStore].unique.add(sort_value);
+      }
       flowTuple.add(sort_value)
     }
     this[$$tupleStore].array.splice(start, len(flowTuple), ...arrSet(flowTuple));
@@ -2063,12 +2251,18 @@ const Houxit=(function(global){
     return true;
   }
   BaseTuple.prototype.clear=function clear(){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.clear()', 'tuple'))) return false
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.clear()', 'tuple'))) {
+      return false;
+    }
     return this.splice(0);
   }
   BaseTuple.prototype.pop=function pop(){
-    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.pop()', 'tuple'))) return false;
-    if(this.size <= 0) return undefined;;
+    if(isFalse(isFrozenWarn(this[$$tupleStore].isFrozen, 'Tuple.pop()', 'tuple'))) {
+      return false;
+    }
+    if(this.size <= 0) {
+      return undefined;
+    }
     const value = this[$$tupleStore].array.pop();
     this[$$tupleStore].unique.delete(value);
     this.size=setTupleSize(len(this.list()));
@@ -2080,13 +2274,15 @@ const Houxit=(function(global){
       count:1,
       validators:[Number],
       name:"Tuple.at()"
-    })) return;
+    })) {
+      return;
+    }
     index=Number(index);
     if(isNaN(index)){
-      $debug_log(`index passed to Tuple.at() is not a number`);
+      debugHandler(`index passed to Tuple.at() is not a number`);
       return undefined;
     }else if(index < 0 && index > this.size){
-      $debug_log(`index exceded Tuple limit.........\n"at()"`);
+      debugHandler(`index exceded Tuple limit.........\n"at()"`);
       return null
     }
     return this.list()[index];
@@ -2100,7 +2296,9 @@ const Houxit=(function(global){
       validators:[Collections],
       name:'Tuple.extend()'
     })
-    if(!res) return false;
+    if(!res) {
+      return false;
+    }
     for(let [index, value] of getIterator(collection)){
       this.add(value);
     }
@@ -2110,9 +2308,13 @@ const Houxit=(function(global){
     return this.list().forEach(...arguments);
   }
   BaseTuple.prototype.contains = function contains(...args){
-    if(!len(args)) return false;
+    if(!len(args)) {
+      return false;
+    }
     for (let item of args.values()){
-      if(!this.has(item)) return false;
+      if(!this.has(item)) {
+        return false;
+      }
     }
     return true;
   }
@@ -2130,45 +2332,72 @@ const Houxit=(function(global){
   function reinstatePreviousRunningEffect(){
     if(previousRunningEffectBuild) {
       currentRunningEffectBuild = previousRunningEffectBuild;
-    }else currentRunningEffectBuild = undefined;
+    }else {
+      currentRunningEffectBuild = undefined;
+    }
   }
   function getCurrentRunningEffect(binding){
     const self=currentRunningEffectBuild;
     const { name, silently } = binding;
     if(!isHouxitBuild(self)){
-      if(!silently) $debug_log(`"${name}()" Adapter method cannot be called outside of a build widget or function widget body.\n\n"${name}()" may have been called from an asynchronous thread from the origin or outside of the build option method/function based widget\n\nCheck if the widget instance build method is an arrow function`);
+      if(!silently) debugHandler(`"${name}()" Adapter method cannot be called outside of a build widget or function widget body.\n\n"${name}()" may have been called from an asynchronous thread from the origin or outside of the build option method/function based widget\n\nCheck if the widget instance build method is an arrow function`);
       return false;
     }
     return self;
   }
   class SuspenseBoundary{
     constructor(self, vNode){
-      
+      assign(this, {
+        $owner:self,
+        vNode
+      });
     }
     fallbackElement=undefined
     errorElement=undefined
-    activeElemebt=undefined
-    createPosix(self){
-      return new HouxitFragmentElement([], self)
-    }
+    activeElement=undefined
     timeout=Infinity
     delay=200
+    triggerResolved=pass
     state={
-      pending:true,
+      pending:false,
       failed:false,
       resolved:false,
       postLoad:0
     }
+    hooks={
+      pending:pass,
+      resolved:pass,
+      failed:pass,
+      error:pass,
+      awaitHooks:new Tuple()
+    }
     metrics={
+      $owner:undefined,
+      vNodes:undefined,
       priorities:[],
       vacuums:0,
       cashe:undefined,
-      res:undefined
+      res:undefined,
+      useFallback:true
     }
     promise=undefined
     ref=undefined;
     instance=undefined
-    activeAwaits=0
+    get activeAwaits(){
+      return this.state.postLoad;
+    }
+    set activeAwaits(nvalue){
+      const postLoad=this.state.postLoad;
+      if(nvalue > postLoad){
+        iterate(this.hooks.awaitHooks).each((callback)=> callback());
+      }else if(nvalue < postLoad){
+        if(postLoad===0){
+          this.triggerResolved();
+        }
+      }
+      this.state.postLoad=nvalue;
+      return true;
+    }
     loadChain=new Tuple()
   }
   function _createAgent(value, config){
@@ -2184,7 +2413,7 @@ const Houxit=(function(global){
     }
     const self=getCurrentRunningEffect({
       name:'createAgent'
-    })
+    });
     if(!self) {
       return [ pass, pass ];
     }
@@ -2197,7 +2426,7 @@ const Houxit=(function(global){
   }
   function deferWatch(getter){
     if(!isPFunction(getter)){
-      $debug_log(`deferWatch expects a getter function`);
+      debugHandler(`deferWatch expects a getter function`);
       return 
     }
   }
@@ -2239,22 +2468,27 @@ const Houxit=(function(global){
     return true
   }
   function isEQNode(node1, node2){
-    if(!isSameNodeType(node1, node2)) return false;
-    else if(!node1.outerHTML === node2.outerHTML) return false;
-    else if(!len(node1.attributes) === len(node2.attributes)) return false;
-    else if (len(node1.attributes) === len(node2.attributes)){
+    if(!isSameNodeType(node1, node2)) {
+      return false;
+    }else if(!node1.outerHTML === node2.outerHTML) {
+      return false;
+    }else if(!len(node1.attributes) === len(node2.attributes)) {
+      return false;
+    }else if (len(node1.attributes) === len(node2.attributes)){
       const node2Attrs=node2.attributes;
       for(let [key, attr ] of entries(node1.attributes)){
         const { name , value } = attr;
         const { name:node2N, value:node2V } = node2Attrs[key];
-        if(!name === node2N && !value === node2V) return false;
+        if(!name === node2N && !value === node2V) {
+          return false;
+        }
       }
     }
     return true;
   }
   function cloneVElement(vnode){
     if(!isHouxitElement(vnode)){
-      $debug_log(`cloneVElement() macro expects a houxit virtual node as it's first argument`);
+      debugHandler(`cloneVElement() macro expects a houxit virtual node as it's first argument`);
       return;
     }
     return vnode.compiler_options.createElement();
@@ -2361,10 +2595,12 @@ const Houxit=(function(global){
   }
   function _$compiler_engine_hydrator(){
     global=createObj('Houxit');
-    if(inBrowserCompiler) window.Houxit=global;
+    if(inBrowserCompiler) {
+      window.Houxit=global;
+    }
   }
   const exceptions=createObj('Exceptions',{
-    SE:(self)=>$debug_log(``, self, isHouxitBuild(self))
+    SE:(self)=>debugHandler(``, self, isHouxitBuild(self))
   });
   const ConfigValidator={
     debug:Boolean, 
@@ -2518,7 +2754,7 @@ const Houxit=(function(global){
       let res=false;
       for(let typeF of type.values()){
         if(!isFunction(typeF) && !isBaseType(typeF) && !isNull(typeF) && !isEmptyStr(typeF)){
-          $debug_log(`type check value is not a function or class constructor type\n\n found "${typeF}"`); 
+          debugHandler(`type check value is not a function or class constructor type\n\n found "${typeF}"`); 
           return false;
         }
         res=validateType(val, typeF);
@@ -2552,7 +2788,7 @@ const Houxit=(function(global){
   }
   function _createTextElement(self, text, hx_Element, isRerender){
     if(!isPrimitive(text)){
-      $debug_log(`cannot create a TEXT_NODE element from a none primitive value.......\n\n"${text}" value`, self);
+      debugHandler(`cannot create a TEXT_NODE element from a none primitive value.......\n\n"${text}" value`, self);
       text = "";
     }
     const isSSR=isSSRCompiler(self);
@@ -2742,7 +2978,7 @@ const Houxit=(function(global){
   function tagMachErr(self, metrics){
     let [ op, cl, p1 ] = metrics;
     if(!isTagMatch(op, cl) ) {
-      $debug_log(`Unmaching tags for "for" directive loop data keys mapping\n opening tag does not match a closing tag\n\n found ${p1} Unmaching`, self, true);
+      debugHandler(`Unmaching tags for "for" directive loop data keys mapping\n opening tag does not match a closing tag\n\n found ${p1} Unmaching`, self, true);
       return false;
     }
   }
@@ -2792,7 +3028,7 @@ const Houxit=(function(global){
     }else if(DestructuredRegex.test(str)){
       str=str.replace(DestructuredRegex, (match, structs,  op, items, cl, type, value)=>{
         if(!isTagMatch(op, cl) ) {
-          $debug_log(`Unmaching tags for "for" ${isBlock ? 'block' : 'directive'} loop data keys mapping\n opening tag does not match a closing tag\n\n found at${match}`, self, true);
+          debugHandler(`Unmaching tags for "for" ${isBlock ? 'block' : 'directive'} loop data keys mapping\n opening tag does not match a closing tag\n\n found at${match}`, self, true);
           return;
         }
         Loop_Data.obj=value;
@@ -2812,7 +3048,7 @@ const Houxit=(function(global){
         Loop_Data.obj=value;
       })
     }else{
-      $debug_log(`Usupported Loop format in 'for' ${isBlock ? 'block' : 'directive'}\n\n"${str}" loop syntax is invalid or is not recognised`, self, true);
+      debugHandler(`Usupported Loop format in 'for' ${isBlock ? 'block' : 'directive'}\n\n"${str}" loop syntax is invalid or is not recognised`, self, true);
       return;
     }
     return Loop_Data
@@ -2824,19 +3060,18 @@ const Houxit=(function(global){
     }
     let dataObject;
     try{
-      dataObject=_$runModelBind(self, data.obj, hx_Element);
-      dataObject=unwrap(dataObject);
+      dataObject=unwrap(_$runModelBind(self, data.obj, hx_Element));
     }catch(error){
-      $debug_log(`Trouble accessing '${data.obj}' object for for loop\n\nnot found on instance or is undefined\n\n${error}`, self, true);
+      debugHandler(`Trouble accessing '${data.obj}' object for for loop\n\nnot found on instance or is undefined\n\n${error}`, self, true);
       return;
     }
     if(!isIterable(dataObject) && !isNumber(dataObject)){
-      $debug_log(`Undefined scope for for, \n\n${data.obj} not iterable`, self, true);
+      debugHandler(`Undefined scope for for, \n\n${data.obj} not iterable`, self, true);
       return ;
     }
     const Valid_LoopType="of,in";
     if(data.type && !_makeMap_(Valid_LoopType, data.type)){
-      $debug_log(`((Iteration issue))\n\n"${data.type}" is not an iterator\n "of" or "in" only supported by Houxit`, self, true);
+      debugHandler(`((Iteration issue))\n\n"${data.type}" is not an iterator\n "of" or "in" only supported by Houxit`, self, true);
       return;
     }
     return { 
@@ -2897,15 +3132,15 @@ const Houxit=(function(global){
     }
     return count;
   }
-  function _$Conditional_Dir_Resolver(self, vnode, hx_Element, siblings, ctx, recordPatch){
+  function _$Conditional_Dir_Resolver(self, vnode, hx_Element, siblings, ctx, recordPatch, config){
     const [ hasIf, hasElseIf , hasElse ] = recordPatch[3];
     const condCount=hasMultiConditionals(hasIf, hasElse, hasElseIf);
     if(condCount > 1){
-      $debug_log(`((directive))>.....Overloaded Conditional directive found on element instance\n\n
+      debugHandler(`((directive))>.....Overloaded Conditional directive found on element instance\n\n
         "${hasIf ? "$$if" : hasElseIf ? "$$else-if" : "$$else" }"\nfailed to determine>>>>`, self, true);
       return ;
     }
-    const GIC=new _$Directive_$Conditional$_Renderer(self, vnode, hx_Element, siblings, recordPatch, ctx);
+    const GIC=new _$Directive_$Conditional$_Renderer(self, vnode, hx_Element, siblings, recordPatch, ctx, config);
     return hasIf ? GIC.Panel_If_Block() : (hasElseIf || hasElse) ? GIC.Panel_elseif_Block(hasElse) : undefined;
   }
   const isConditionalVnode=(vnode, cond)=> isHouxitElement(vnode) ? vnode.conditional_record.src === cond : false;
@@ -2916,11 +3151,11 @@ const Houxit=(function(global){
     if(isMemoChild(vnode)){
       if(!siblings){
         if(!validHouxitWidget(vnode.prototype_)){
-          $debug_log(`"<Memo>" expects only a child component instance`, self, true );
+          debugHandler(`"<Memo>" expects only a child component instance`, self, true );
           return false;
         }
       }else if(len(siblings) && !isRenderlessElement(siblings[len(siblings)-1])){
-        $debug_log(`"<Memo>" expects only 1 child component instance`, self, true );
+        debugHandler(`"<Memo>" expects only 1 child component instance`, self, true );
         return false;
       }
     }
@@ -2928,7 +3163,7 @@ const Houxit=(function(global){
   }
   class _$Directive_$Conditional$_Renderer{
     options=undefined;
-    constructor(self, vnode, hx_Element, siblings, recordPatch, ctx){
+    constructor(self, vnode, hx_Element, siblings, recordPatch, ctx, config){
       let { type, props, children, key } = vnode;
       const [ hasEx , propValue , srcKey ]=recordPatch;
       const LabContext=hx_Element ? assign({}, hx_Element.LabContext) : {};
@@ -2937,11 +3172,12 @@ const Houxit=(function(global){
         propValue, 
         srcKey, 
         self,
-        props:memMove(vnode, true),
+        props:memMove(vnode.props, true),
         vnode,
         hx_Element,
         siblings,
         ctx,
+        config,
         createElement:()=>{
           return createHouxitElement(this.vnode, self, false, hx_Element?.LabContext, siblings, ctx,  hx_Element);
         }
@@ -2949,7 +3185,7 @@ const Houxit=(function(global){
       this.vnode.props=assign({}, this.vnode.props);
     };
     Panel_If_Block(){
-      const { self, propValue, hx_Element, vnode, siblings, srcKey, ctx } = this ;
+      const { config, self, propValue, hx_Element, vnode, siblings, srcKey, ctx } = this ;
       let data=_$runModelBind(self, propValue, ctx);
       delete this.vnode.props[srcKey];
       if(!data){ 
@@ -2957,9 +3193,17 @@ const Houxit=(function(global){
         hx_Element?.NodeList.add(node);
         return node;
       }
-      if(!warnTemplateMemo(self, vnode, siblings)) return;
-      const node=this.createElement();
-      node.compiler_options.createElement=this.createElement;
+      if(!warnTemplateMemo(self, vnode, siblings)) {
+        return;
+      }
+      let node;
+      if(config.suspenseFlag){
+        node=this.vnode;
+        node.conditional_record={};
+      }else{
+        node=this.createElement();
+        node.compiler_options.createElement=this.createElement;
+      }
       assign(node.conditional_record, {
         src:'if',
         res:true,
@@ -2970,7 +3214,7 @@ const Houxit=(function(global){
     } 
     Panel_elseif_Block(isElse=false){
       const block=isElse ? 'else' : 'else-if' ;
-      const { self, propValue, hx_Element, siblings, vnode, srcKey, ctx } = this;
+      const { config, self, propValue, hx_Element, siblings, vnode, srcKey, ctx } = this;
       let data= isElse ? false : _$runModelBind(self, propValue, ctx);
       const previous=siblings[len(siblings)-1];
       let passed;
@@ -2980,7 +3224,7 @@ const Houxit=(function(global){
       delete vnode.props[srcKey];
       let node;
       if(!previous || (!isConditionalVnode(previous, 'if') && !isConditionalVnode(previous, 'else-if'))){
-        $debug_log(`The "$$${block}" conditional rendering directive block expects a preceding "$$if" or "$$else-if" directive element\n\nMay return unexpected result during production\nDid you mean "$$if" directive instead?\n at>>>>>`, self, true);
+        debugHandler(`The "$$${block}" conditional rendering directive block expects a preceding "$$if" or "$$else-if" directive element\n\nMay return unexpected result during production\nDid you mean "$$if" directive instead?\n at>>>>>`, self, true);
         if(!warnTemplateMemo(self, vnode, siblings)) {
           return;
         }
@@ -2992,8 +3236,13 @@ const Houxit=(function(global){
           if(!warnTemplateMemo(self, vnode, siblings)) {
             return;
           }
-          node = this.createElement();
-          node.compiler_options.createElement=this.createElement;
+          if(config.suspenseFlag){
+            node=vnode;
+            node.conditional_record={};
+          }else{
+            node = this.createElement();
+            node.compiler_options.createElement=this.createElement;
+          }
           assign(node.conditional_record, {
             src:block,
             res:true,
@@ -3034,10 +3283,10 @@ const Houxit=(function(global){
   }
   function destructWarn(ref, object, self){
     if(ref && objectDestructureRegex.test(ref) && !isObject(object)){
-      $debug_log(`Invalid object destructuring from a none object value\n\nillegal destructuring found at "${object}" on "$$<...>" directive definition\nTarget value is not an object`, self, true);
+      debugHandler(`Invalid object destructuring from a none object value\n\nillegal destructuring found at "${object}" on "$$<...>" directive definition\nTarget value is not an object`, self, true);
       return false;
     }else if(ref && arrayDestructureRegex.test(ref) && !isArray(object)){
-      $debug_log(`Invalid array destructuring from a none array value\n\nillegal destructuring found at "${object}" on $$*** directive definition\nTarget value is not an array iterable`, self, true);
+      debugHandler(`Invalid array destructuring from a none array value\n\nillegal destructuring found at "${object}" on $$*** directive definition\nTarget value is not an array iterable`, self, true);
       return false;
     }
     return true;
@@ -3048,7 +3297,7 @@ const Houxit=(function(global){
     // vNode.props=assign({}, vNode.props);
     delete vNode.props[srcKey];
     if(loopType === 'in' && valToken && ( validateType(obj, [ Object, Collections]))){
-      $warn(`((Warning))\n\nWe recommend agaimst the use of the 'for...in' loops type since it iterates over all of the object's enumerable and non-symbol properties \n\nLeaving the value data as "undefined"\nUse "for...of" instead......`, self);
+      $warn(`((Warning))\n\nWe recommend against the use of the 'for...in' loops type since it iterates over all of the object's enumerable and non-symbol properties \n\nLeaving the value data as "undefined"\nUse "for...of" instead......`, self);
       $warn(`Many JavaScript style guides and linters recommend against the use of 'for...in', because it iterates over the entire prototype chain which is rarely what one wants, and may be a confusion with the more widely-used "for...of" loop\n\nIt's included in Houxit for completeness.`, self);
     }
     const NodeList=[];
@@ -3144,7 +3393,7 @@ const Houxit=(function(global){
   function keyIndex(obj, key){
     return isObject(obj) ? keys(obj).indexOf(key) : validateType(obj, [Array, Set, Number]) ? Number(key) : isMap(obj) ? obj.keys().indexOf(key) : NaN;
   }
-  function VNodeManager(self, vnode, element, hx_Element, siblings, saveGarbageContent, ctx){
+  function VNodeManager(self, vnode, element, hx_Element, siblings, saveGarbageContent, ctx, starterKit, config){
     const is_hyperscript=vnode.is_hyperscript;
     const { type, props, children }=vnode;
     const { hasIFWithFor , ifIndex , elseIndex, elseIfIndex, forIndex}=saveGarbageContent
@@ -3155,17 +3404,17 @@ const Houxit=(function(global){
     const getKey= hasIf ? ifKey : hasElse ? elseKey : hasElseIf ? elseIfKey : hasFor ? forKey : null ;
     const conditionalArgs= [getEx, getValue, getKey, [ hasIf, hasElseIf, hasElse ]];
     if(hasElse && hasFor && elseIndex > forIndex){
-      $debug_log(`A "$$for" directive loop cannot take precedence in the presence of an "$$else" condition directive statements\n\ndirective scoping error`, self, true);
+      debugHandler(`A "$$for" directive loop cannot take precedence in the presence of an "$$else" condition directive statements\n\ndirective scoping error`, self, true);
       return;
     }
     vnode =memMove(vnode, true);
     vnode.filesFilter.hasDir=true;
     if((hasIFWithFor && (hasIf ? ifIndex : hasElse ? elseIndex : hasElseIf ? elseIfIndex : -1 ) < forIndex) ) {
-      return _$Conditional_Dir_Resolver(self, vnode,  hx_Element, siblings, ctx, conditionalArgs );
+      return _$Conditional_Dir_Resolver(self, vnode,  hx_Element, siblings, ctx, conditionalArgs, config );
     }else if(hasFor) {
       return _$Directive_$For_Loop$_Renderer(self, vnode, hx_Element, siblings, ctx,  [getEx, getFor, forKey ], saveGarbageContent );
     }else if(getEx) {
-      return _$Conditional_Dir_Resolver(self, vnode, hx_Element, siblings, ctx, conditionalArgs);
+      return _$Conditional_Dir_Resolver(self, vnode, hx_Element, siblings, ctx, conditionalArgs, config);
     }
     return createHouxitElement(vnode, self, is_hyperscript, ctx, siblings,null, hx_Element );
   }
@@ -3180,8 +3429,8 @@ const Houxit=(function(global){
           const instance=isHouxitNativeElement(hx_Element) ? element : self.__public_model__;
           hook.call(self.__public_model__, instance, bindings );
         }catch(err){
-          $debug_log("$$"+hook.name+"("+Name.slice(0, -5)+") >>\nUnresolved problem during the call of the "+Name.slice(0, -5) +" hook of custom "+(hook.dirName||"")+" directive\n",  self, true);
-          $debug_log(err, self);
+          debugHandler("$$"+hook.name+"("+Name.slice(0, -5)+") >>\nUnresolved problem during the call of the "+Name.slice(0, -5) +" hook of custom "+(hook.dirName||"")+" directive\n",  self, true);
+          debugHandler(err, self);
           break;
         }
       }
@@ -3215,7 +3464,7 @@ const Houxit=(function(global){
     try{
       tick(()=>ref[ref[refInternalEffectKey].accessor]=element);
     }catch(err){
-      $debug_log(`(ref) >>\nUresolved problem when dilating the special ref prop>>>\n\n${err}`, self, true);
+      debugHandler(`(ref) >>\nUresolved problem when dilating the special ref prop>>>\n\n${err}`, self, true);
       return;
     }
   }
@@ -3228,7 +3477,7 @@ const Houxit=(function(global){
   function debug_self_prop_warn(props, self, args){
     const [ WidgetName, propName ] = args;
     if(!props || !hasOwn(props, propName)){
-      $debug_log(`"${WidgetName}" built-in widget expects a "${propName}" params\nMissing...`, self, true);
+      debugHandler(`"${WidgetName}" built-in widget expects a "${propName}" params\nMissing...`, self, true);
       return false;
     }
     return true;
@@ -3264,7 +3513,7 @@ const Houxit=(function(global){
     const target=unToken(props.target);
     const portalElement=target ? _GenerateRoot(target) : undefined;
     if(!portalElement || !IS_ELEMENT_NODE(portalElement)){
-      $debug_log(`Unable to generate portal element\n\n
+      debugHandler(`Unable to generate portal element\n\n
         Target not existing in the current document model layer\n\n
         Mount target for Portal widget is not a valid element node`, self, true);
       return;
@@ -3285,26 +3534,10 @@ const Houxit=(function(global){
     wrapper.$element=_createFragment();
     return wrapper;
   }
-  function generateWidgetBasedBuiltin(vnode, self, is_hyperscript, ctx, siblings, ssc, hx__Elemen){
-    const { prototype_ } = vnode;
-    let instance;
-    if(prototype_ === Motion){
-      vnode.GeneticProvider={
-        name:'hx:motion',
-        signals:['introstart', 'introend', 'outrostart', 'outroend'],
-        params:{
-          options:Object,
-          transite:Any,
-          animate:Any
-        }
-      }
-    }
-    return createRenderlessElement();
-  }
   function built_in_memo_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
     if(isNull(vnode.key)){
-      $debug_log(`<Memo> was rendered without a key prop.`, self, true);
-      $warn(`Memo widgets use keys to preserve identity across re-renders. \nPass a stable and unique key to avoid unnecessary re-compilation during rerender.`);
+      debugHandler(`<Memo> was rendered without a key prop.`, self, true);
+      $warn(`Memo widgets use keys to preserve identity across re-renders. \nPass a stable and unique key to avoid unnecessary render re-compilation during rerender.`);
     }
     const widget={
       name:'hx:memo',
@@ -3314,7 +3547,7 @@ const Houxit=(function(global){
           default:Infinity,
           validator(num){
             if(num < 1 || isNaN(num)){
-              $debug_log(`Failed validation of <Memo>.max param\n"${num}" ${isNaN(num) ? 'is not a number' : 'is less than 1'}`);
+              debugHandler(`Failed validation of <Memo>.max param\n"${num}" ${isNaN(num) ? 'is not a number' : 'is less than 1'}`);
               return false;
             }
             return true;
@@ -3333,24 +3566,32 @@ const Houxit=(function(global){
     ELEMENT.prototype_=Memo;
     return ELEMENT;
   }
-  function separateSuspenseSlots(self, vNode, suspense, hx_Element, metrics){
-    const res={
-      defaultX:new Tuple(),
-      fallbackX:new Tuple()
+  function normalizeEarlySlotsCompile(self, vNode, hx_Element, metrics, slotNames=[], suspense){
+    if(!new Set(slotNames).has('default')){
+      slotNames.push('default');
     }
+    const _$$all_= new Tuple();
+    const _$$props_ = new Tuple();
+    const res={};
+    iterate(slotNames).each((name, ind)=>{
+      res[name+'X']=new Tuple();
+    });
+    const [ hx_Ele, siblings, type, ctx, ssc, op  ] = metrics;
     const is_hyperscript=self[$$$core].map.is_hyperscript;
+    let UnStableNodeList=[];
     iterate(arrayInverter(vNode.children)).each((node, key)=>{
       if(isPrimitive(node)){
         res.defaultX.add(node);
+        _$$all_.add(node);
         return iterate.Continue();
       }
       if(is_hyperscript){
         if(isSlotInstance(node)){
           iterate(node.slots).each((value, name)=>{
-            iterate(['fallback', 'default']).each((n)=>{
+            iterate(slotNames).each((n)=>{
               if(name === n){
-                if(n === 'fallback' && len(res.fallbackX)){
-                  $debug_log('"fallback" slot already define...\nduplicated fallback slot Encountered', self, true);
+                if( n !== 'default' && len(res[n])){
+                  debugHandler('"'+n+'" slot already defined...\nduplicated slot for '+'"'+n+'" not allowed!!!', self, true);
                   return iterate.Continue();
                 }   
                 res[n+'X'].add(value);
@@ -3361,10 +3602,56 @@ const Houxit=(function(global){
           res.defaultX.add(node);
         }
       }else{
+        if(isHtmlComment(node)){
+          return iterate.Continue();
+        }
         const props=node.props;
+        hx_Element=memMove(hx_Element);
+        hx_Element.NodeList=new Tuple();
+        const stable=isHouxitElement(node) ? node : createHouxitElement(node, self, is_hyperscript, ctx,  UnStableNodeList, ssc, hx_Element, {
+          suspenseFlag:true
+        });
+        if(isHouxitElement(stable) || isVNodeClass(stable)){
+          UnStableNodeList.push(stable);
+          if(isVNodeClass(stable)){
+            node=stable;
+          }
+          if(stable.conditional_record.src === 'else'){
+            UnStableNodeList=[];
+          }
+        }
+        if(isFalse(stable)){
+          UnStableNodeList=[];
+        }else if(isRenderlessElement(stable)){
+          return iterate.Continue();
+        }
         const { hasDir:hasSlot, getKey:getSlot, getDir:getSlotValue } = dirExistenceCheck(props || {}, "$$slot");
         if(!hasSlot){
-          res.defaultX.add(node);
+          if(isBlockTag(node.prototype_)){
+            const NodeList=new Tuple();
+            if(suspense){
+              node.filesFilter.suspense=suspense;
+            }
+            blockElementsPreProcessors(self, node, [hx_Element, NodeList, node.type, metrics[3], metrics[4]], {
+              suspenseFlag:true
+            });
+            const response=normalizeEarlySlotsCompile(self, {
+              children:NodeList.list()
+            }, hx_Element, metrics, slotNames, suspense);
+            iterate(response).each((value, ky)=>{
+              if(len(value)){
+                res[ky].extend(value);
+                _$$all_.extend(value);
+                iterate(arrayInverter(value)).each((nd)=>{
+                  _$$props_.add(memMove(nd.props, true));
+                });
+              }
+            });
+          }else{
+            res.defaultX.add(node);
+            _$$all_.add(node);
+            _$$props_.add(memMove(node.props, true));
+          }
           return iterate.Continue();
         }
         const bindings=validateIncomingPropsKeys(self, {
@@ -3373,41 +3660,125 @@ const Houxit=(function(global){
         }, is_hyperscript, hx_Element, {
           isRerender:self[$$$operands].initializedRender
         });
-        iterate(['fallback', 'default']).each((n)=>{
+        iterate(slotNames).each((n)=>{
           if(bindings.key === n){
-            if(n === 'fallback' && len(res.fallbackX)){
-              $debug_log('"fallback" slot already define...\nduplicated fallback slot defined', self, true);
+            if((n !== 'default' && len(res[n]))){
+              debugHandler('"'+n+'" slot already defined...\nduplicated slot for '+'"'+n+'" not allowed!!!', self, true);
               return iterate.Continue();
             }
             res[n+'X'].add(node);
+            _$$all_.add(node);
+            _$$props_.add(memMove(node.props, true));
           }
         });
-        delete props?.[getSlot];
+        delete node?.props?.[getSlot];
+        
       }
+    });
+    assign(op, {
+      _$$all_,
+      _$$props_
     });
     return res;
   }
-  function built_in_suspense_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
-    const suspense=new SuspenseBoundary();
-    const { defaultX, fallbackX } = separateSuspenseSlots(self, vnode, suspense, hx_Element);
-    // log(vnode)
-    const widget={
-      name:'hx:suspense',
-      slots:['fallback', 'error'],
-      params:{
-        await:[Function, Promise]
-      },
-      signals:['pending', 'fullfilled', 'failed']
+  function createSuspenseFallback(self, suspense, [fallbackX, errorX], vnode, ssc, hx_Element){
+    // log(len(fallbackX), suspense.state.pending)
+    if(len(fallbackX) && suspense.state.pending){
+      const createFallBack=(nodeList)=>{
+        const toggler=smart_render_toggler(self);
+        let tree= _HouxitCoreRenderer(arrayInverter(nodeList.list()), self, null, hx_Element, ssc);
+        tree= new HouxitFragmentElement(arrayInverter(tree), self, hx_Element );
+        toggler();
+        return tree;
+      }
+      let res=[ createFallBack(fallbackX), createFallBack(errorX)]
+      return res
     }
-    assign(vnode, {
-      GeneticProvider:widget,
-      prototype_:widget,
-      type:widget
+    if(suspense.delay > 0){
+      setTimeout(()=>{
+        // createAsyncFallback
+        
+      }, suspense.delay);
+    }
+    
+  }
+  function built_in_suspense_widget(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element){
+    const isRerender=self[$$$operands].initializedRender;
+    const suspense=new SuspenseBoundary(self, vnode);
+    let { timeout, delay, await } = vnode.props || {};
+    iterate({
+      timeout,
+      delay,
+    }).each((value, key)=>{
+      if(!hasOwn(vnode.props||{}, key) ){
+        return iterate.Continue();
+      }
+      if(!isNumber(value) || isNaN(Number(value))){
+        debugHandler(`<Suspense> validation for "${key}" prop failed\n expects a Number value type`, self, true);
+        return iterate.Continue();
+      }else if(value < 0){
+        debugHandler(`<Suspense>.[${key}] prop receives a negative value...`, self, true);
+        return iterate.Continue();
+      }
+      suspense[key]=value;
     });
-    vnode[$$BuiltinWidgetKey]="hx:suspense";
-    const ELEMENT = createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc, hx_Element);
-    ELEMENT.prototype_=Suspense;
-    return ELEMENT;
+    let awaitCallback;
+    if(hasOwn(vnode.props||{}, 'await') ){
+      if(!isAsyncFunction(await) || !isPromise(await)){
+        let throwE=true;
+        if(isPFunction(await)){
+          awaitCallback=await();
+          if(isPromise(awaitCallback)){
+            throwE=false
+          }
+        }
+        if(throwE){
+          debugHandler(`"await" <Suspense> prop expects an "async Function" , a "Promise object" or a callback that returns a "Promise object" object`, self, true);
+        }
+      }else{
+        awaitCallback = isAsyncFunction(await) ? await() : await;
+      }
+    }
+    const oldProps={};
+    const metrics=[ hx_Element, siblings, vnode.type, ctx, ssc, oldProps ];
+    const { defaultX, fallbackX, errorX, } = normalizeEarlySlotsCompile(self, vnode, hx_Element, metrics, ['default', 'fallback', 'error'], suspense);
+    iterate(defaultX).each((node, index)=>{
+      if(isVNodeClass(node)){
+        node.filesFilter.suspense=suspense;
+      }else if(isHouxitElement(node)){
+        node.VNodeManager.suspense=suspense;
+      }
+    });
+    if(!isInfinity(suspense.timeout)){
+      setTimeout(()=>{
+        if(!suspense.state.resolved){
+          debugHandler(`<Suspense> render wait timed out`, self, true);
+        }
+      }, timeout);
+    }
+    useContext
+    suspense.promise= isPromise(awaitCallback) ? awaitCallback : Promise.resolve();
+    $$dir_PROVIDE
+    suspense.hooks.awaitHooks.add(()=>{
+      suspense.state.pending=true;
+    });
+    const render=_HouxitCoreRenderer(defaultX.list(), self, null,  hx_Element, smartDextCtxMerging(ctx||{}, ssc||{}));
+    if(suspense.state.postLoad){
+      log(suspense, hx_Element)
+      suspense.promise.then(()=>{
+        
+      });//activeAwaits
+      
+    }
+    const [ fallback, error ]=createSuspenseFallback(self, suspense, [fallbackX, errorX], vnode, ssc, hx_Element);
+    iterate(oldProps._$$props_).each((nd, ind)=>{
+      if(nd){
+        oldProps._$$all_.at(ind).props=nd;
+      }
+    })
+    suspense.activeElement=fallback;
+    // log(render)
+    return new HouxitFragmentElement(render, self);
   }
   function built_in_motion_widget(){
     
@@ -3420,9 +3791,10 @@ const Houxit=(function(global){
     const props_object={};
     hx_Element={
       subscriptions:new Tuple(),
-      PropFlags:new Tuple()
+      PropFlags:new Tuple(),
+      vNodeClass:vnode
     }
-    if(_makeMap_([Fragment, Self, Build, Portal], prototype_)){
+    if(_makeMap_([Fragment, Self, Build, Portal, Suspense], prototype_)){
       if(prototype_ === Build){
         vnode.rawProps=memMove(vnode.props, is_hyperscript);
       }
@@ -3450,17 +3822,15 @@ const Houxit=(function(global){
       return built_in_motion_widget(...resArgs);
     }else if(prototype_ === Provider) {
       return built_in_provider_widget(...resArgs);
-    }// else {
-      // return generateWidgetBasedBuiltin(...resArgs);
-    // }
+    }
   }
-  function createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc,  hx_Element){
+  function createHouxitElement(vnode, self, is_hyperscript, ctx, siblings, ssc,  hx_Element, config={}){
     let starterKit;
     const isRerender=self[$$$operands].initializedRender;
     if(isRerender && vnode.filesFilter.memMoved) {
       delete vnode.filesFilter.memMoved;
     }
-    if(!vnode.filesFilter.memMoved){
+    if(!vnode.filesFilter.memMoved && !isRerender){
       starterKit=vnode;
       vnode=memMove(vnode, true);
       vnode.filesFilter.memMoved=true;
@@ -3478,8 +3848,11 @@ const Houxit=(function(global){
         return;
       }
     }
+    if(config.suspenseFlag && (!hasDir && !hasFor)){
+      return false;
+    }
     if(!is_hyperscript && hasDir ) {
-      ELEMENT = VNodeManager(self, vnode, null, hx_Element, siblings, saveGarbageContent, ctx, starterKit);
+      ELEMENT = VNodeManager(self, vnode, null, hx_Element, siblings, saveGarbageContent, ctx, starterKit, config);
     }else if(isHouxitBuiltinSymbolWidget(prototype_)) {
       ELEMENT = simulate_buitin_widget_syms(...args);
     }else if(validHouxitWidget(prototype_)) {
@@ -3499,43 +3872,38 @@ const Houxit=(function(global){
     return ELEMENT;
   }
   function debug_unrecognized_tagname(tagname, self){
-    $debug_log(`tagname "${tagname}" is not a valid html element, or a registered widget instance\n\n
+    debugHandler(`tagname "${tagname}" is not a valid html element, or a registered widget instance\n\n
       if this is a customElement, make sure its defined through the "customElements.define()" method `, self, true);
   }
   function isCustomElementTagname(tagname){
     return isPFunction(customElements.get(tagname));
   }
-  function hasBoundary(self){
-    return (isBuiltinSuspenseWidget(self) || self?.[$$$compiler].SuspenseBoundary) || false ;
-  }
   function getBoundary(instance){
-    return hasBoundary(instance) ? instance[$$$compiler].SuspenseBoundary : undefined;
+    return instance?.[isVNodeClass(instance) ? 'filesFilter' : 'VNodeManager']?.suspense;
   }
   function extendBoundary(self, parentInstance){
     
   }
   function smart_render_toggler(self){
     const initializedRender=self[$$$operands].initializedRender;
-    const toggler=()=>{
+    const toggler=(cond=true)=>{
       if(initializedRender){
-        self[$$$operands].initializedRender=true;
+        self[$$$operands].initializedRender=cond;
       }
     }
-    if(initializedRender){
-      self[$$$operands].initializedRender=false;
-    }
+    toggler(false);
     return toggler;
   }
-  function createAsyncFallback(self, a_p, hx_Element, ssc){
+  function createAsyncFallback(self, a_p, hx_Element, ssc, VN_Tree, boundary){
     const fallback=a_p.config.fallback;
     let useFallback=false, useDefault=false, ELEMENT
     if(fallback){
       const fall_content=()=>{
-        if(a_p.resolved || a_p.failed) {
+        if(boundary || (a_p.resolved || a_p.failed)) {
           return;
         }
         if(!isChildrenNode(fallback)){
-          $debug_log(`fallback content of "asyncWidget" is not a valid Houxit element`, self, true);
+          debugHandler(`fallback content of "asyncWidget" is not a valid Houxit element`, self, true);
           return;
         }
         const toggler=smart_render_toggler(self);
@@ -3559,7 +3927,7 @@ const Houxit=(function(global){
         ELEMENT=fall_content();
       }
     }
-    if(useFallback) {
+    if(useFallback && !boundary) {
       return ELEMENT;
     }
     ELEMENT=new HouxitFragmentElement([], self, hx_Element);
@@ -3567,40 +3935,39 @@ const Houxit=(function(global){
     useDefault=true;
     return ELEMENT;
   }
-  function normalize_lazy_return(self, ELEMENT, a_p){
+  function normalize_lazy_return(self, ELEMENT, a_p, boundary){
     a_p.resolved=true;
     ELEMENT[AsyncHxElementTrackerKey]={};
-    const posix=resolveTargetElement(a_p.fallback);
-    posix.before(ELEMENT.$element);
-    unMountVNode(a_p.fallback);
+    if(!boundary){
+      const posix=resolveTargetElement(a_p.fallback);
+      posix.before(ELEMENT.$element);
+      unMountVNode(a_p.fallback);
+    }
     reinstallFallbackResponses(self, ELEMENT, a_p.fallback[AsyncHxElementTrackerKey]);
   }
-  function asyncErrorElement(self, a_p, hx_Element, ssc){
+  function asyncErrorElement(self, a_p, hx_Element, ssc, boundary){
     const toggler=smart_render_toggler(self);
     let FailedElement= _HouxitCoreRenderer(arrayInverter(a_p.config.error), self, null, hx_Element, ssc);
     FailedElement= new HouxitFragmentElement(arrayInverter(FailedElement), self, hx_Element );
     toggler();
     FailedElement[AsyncHxElementTrackerKey]={};
-    const posix=resolveTargetElement(a_p.fallback);
-    posix.before(FailedElement.$element);
-    unMountVNode(a_p.fallback);
+    if(!boundary){
+      const posix=resolveTargetElement(a_p.fallback);
+      posix.before(FailedElement.$element);
+      unMountVNode(a_p.fallback);
+    }
     reinstallFallbackResponses(self, FailedElement, a_p.fallback[AsyncHxElementTrackerKey]);
     a_p.failed=true
   }
   function flattenWidgetAndAsyncBuild(vnode, self, is_hyperscript=false, ctx, siblings, ssc, hx_Element, starterKit, isWidget=false){
     const { prototype_ } = vnode;
-    const boundary=getBoundary(hx_Element?.widget_instance);
+    const boundary=getBoundary(vnode);
     if(!isAsyncWidget(prototype_)) {
       return new HouxitWidgetElement(...arguments);
     }
     let widget=prototype_;
     const a_p=widget[$asyncVnodeKey];
     const b_x=boundary?.state;
-    
-    if(boundary){
-      // log(vnode, hx_Element.widget_instance, boundary, a_p, )
-      // log(vb(self), vb(hx_Element.widget_instance), b_x)
-    }
     a_p.resolved=false;
     a_p.pending=false;
     a_p.failed=false;
@@ -3608,17 +3975,28 @@ const Houxit=(function(global){
     if(!a_p.postLoad){
       const future=a_p.load();
       if(!isPromise(future)){
-        $debug_log(`asyncWidget instance load callback expects a javascript Promise instance object as a return value`, self, true);
+        debugHandler(`asyncWidget instance load callback expects a javascript Promise instance object as a return value`, self, true);
         return;
       }
       const timeout=a_p.config.timeout;
       if(!isInfinity(timeout)){
         setTimeout(()=>{
           if(!a_p.resolved && !a_p.failed){
-            asyncErrorElement(self, a_p, hx_Element, ssc);
-            $debug_log(`"asyncWidget" resolving timed out`, self, true);
+            asyncErrorElement(self, a_p, hx_Element, ssc, boundary);
+            debugHandler(`"asyncWidget" resolving timed out`, self, true);
           }
         }, timeout);
+      }
+      if(boundary){
+        boundary.activeAwaits++;
+        boundary.loadChain.add(future);
+      }
+      const failureHandler=er=>{
+        if(boundary){
+          return
+        }
+        asyncErrorElement(self, a_p, hx_Element, ssc, boundary);
+        debugHandler(`Failed resolving state during an "async build()" process\n\nReason::"${er.message}"`, self, true);
       }
       future.then((res)=>{
         if(isObject(res) && isUndefined(res.prototype) && hasOwn(res, 'default')) {
@@ -3639,20 +4017,17 @@ const Houxit=(function(global){
           let ELEMENT=new HouxitWidgetElement(...arguments);
           toggler();
           const awaitReady = ELEMENT.widget_instance[$$$operands].awaitReady;
-          const awaitCallback=()=>normalize_lazy_return(self, ELEMENT, a_p);
-          awaitReady ? (awaitReady.then(()=>awaitCallback()).catch(er=>{
-            asyncErrorElement(self, a_p, hx_Element, ssc);
-            $debug_log(`Failed resolving state during an "async build()" process\n\nReason::"${er.message}"`, self, true);
-          })) : awaitCallback();
+          const awaitCallback=()=>{
+            normalize_lazy_return(self, ELEMENT, a_p, boundary);
+          }
+          isPromise(awaitReady) ? (awaitReady.then(()=>{
+            awaitCallback();
+          }).catch(failureHandler)) : awaitCallback();
         }catch(err){
-          asyncErrorElement(self, a_p, hx_Element, ssc);
-          $debug_log(`Failed resolving state during asynchronous widget mount\n\nReason::"${err.message}"`, self, true);
+          failureHandler(err);
         } 
-      }).catch(e=> {
-        asyncErrorElement(self, a_p, hx_Element, ssc);
-        $debug_log(`"asyncWidget" resolver failed with reason\n\n"${e.message}"`, self, true);
-      });
-      const tree=createAsyncFallback(self, a_p, hx_Element, ssc, VN_Tree);
+      }).catch(failureHandler);
+      const tree=createAsyncFallback(self, a_p, hx_Element, ssc, VN_Tree, boundary);
       a_p.fallback=tree;
       return tree;
     }else {
@@ -3705,7 +4080,7 @@ const Houxit=(function(global){
       return;
     }
     if(key && !isPrimitive(key)){
-      $debug_log(`key prop value expects primitive values`, self, true);
+      debugHandler(`key prop value expects primitive values`, self, true);
       return;
     }
     hx_Element._vnode_key=key || undefined;
@@ -3722,6 +4097,9 @@ const Houxit=(function(global){
     const slotBindings=hx_Element?.VNodeManager?.slotBindings;
     if(slotBindings) {
       this.VNodeManager.slotBindings=slotBindings;
+    }
+    if(vnode.filesFilter.suspense){
+      this.VNodeManager.suspense=vnode.filesFilter.suspense;
     }
     let { type, props, children, key } = vnode;
     ctx=smartDextCtxMerging(ctx || {}, ssc || {});
@@ -3775,7 +4153,9 @@ const Houxit=(function(global){
   class HouxitFragmentElement extends HouxitElement{
     constructor(vnodes=[], self, hx_Element, key){
       super();
-      if(!isHouxitBuild(self)) self=null;
+      if(!isHouxitBuild(self)) {
+        self=null;
+      }
       vnodes=arrayInverter(vnodes);
       let index=0;
       const isRerender = self ? self[$$$operands].initializedRender : undefined;
@@ -3907,10 +4287,10 @@ const Houxit=(function(global){
     for(let dir of props[dir$$__render].values()){
       if(isChar(dir.name) && !isHouxitDirective(dir.name)){
         if(!hasProp(self[$$$register].directives, dir.name) || !self[$$$register].directives[dir.name]){
-          $debug_log(`"${dir.name}" is not a registered directive\n`, self, true);
+          debugHandler(`"${dir.name}" is not a registered directive\n`, self, true);
           return;
         }else if(!validateType(self[$$$register].directives[dir.name], [Function, Object])){
-          $debug_log(`directive resolved at "${dir.name}" is not a valid directive data value`,self, true);
+          debugHandler(`directive resolved at "${dir.name}" is not a valid directive data value`,self, true);
           return;
         }
         dirMap(self, dir, self[$$$register].directives[dir.name], hx_Element );
@@ -3926,7 +4306,7 @@ const Houxit=(function(global){
       for(let [name, hook] of entries(dir)){
         if(_makeMap_(directivesHooksMap, name)){
           if(!isPFunction(hook)){
-            $debug_log(`"${name} directive hook received at $$ is not a function`, self, true);
+            debugHandler(`"${name} directive hook received at $$ is not a function`, self, true);
             return;
           }
           hook.value=resolver.value;
@@ -3950,7 +4330,7 @@ const Houxit=(function(global){
       return ;//renderimg of slots contents in hyperscript;
     }
     if(isClass(options)){
-      $debug_log(`Uresolved function type ---- received at "enSlot"\n\nSeems to be a "class" instance value type`);
+      debugHandler(`Uresolved function type ---- received at "enSlot"\n\nSeems to be a "class" instance value type`);
       return;
     }else if(isPFunction(options)) {
       options={
@@ -3997,7 +4377,7 @@ const Houxit=(function(global){
     key = isNaN(Number(key)) ? key : Number(key);
     const KEYS_INDEXES=hx_Element.VN_Tree.KEYS_INDEXES;
     if(KEYS_INDEXES.has(key)){
-      $debug_log(`keyed element seemes to have been dublicated within this render siblings >>"${key}"<<<\n\nCheck for possible duplicates in special key props\n`, self, true);
+      debugHandler(`keyed element seemes to have been dublicated within this render siblings >>"${key}"<<<\n\nCheck for possible duplicates in special key props\n`, self, true);
       return;
     }
     KEYS_INDEXES.add(key);
@@ -4073,8 +4453,6 @@ const Houxit=(function(global){
         key:getSlot,
         attr:getSlotValue
       }, is_hyperscript, hx_Element, metrics, );
-      
-      log(bindings, 9)
       $$dir_SLOT(self, bindings, virtualNode, hx_Element, metrics, {});
     }
     let childNodes;
@@ -4158,7 +4536,7 @@ const Houxit=(function(global){
     if(validHouxitWidget(prototype_)) {
       buildInstance =$compilerEngine(self, virtualNode, hx_Element, slotsCompilerArgs);
     }else{
-      $debug_log(`widget initializer failed to compile...`, true, self);
+      debugHandler(`widget initializer failed to compile...`, true, self);
     }
     if(buildInstance){
       if(!is_hyperscript) {
@@ -4280,20 +4658,20 @@ const Houxit=(function(global){
   }
   function validateDelimiterConstruct(self, delimiters){
     if(!isArray(delimiters)){
-      $debug_log(`expects an arrah of character strings encoding\n\n.....delimiters config setup`, self, isHouxitBuild(self));
+      debugHandler(`expects an arrah of character strings encoding\n\n.....delimiters config setup`, self, isHouxitBuild(self));
       return false;
     }
     let [ open, close ] = delimiters ;
     if( open && close ){
       if( !hasSpecialCharacters( open ) || !hasSpecialCharacters( close ) ) {
-        $debug_log(`mustache customization error::\n\n delimeters must match value of special characters\n\ne.g !, @, #, $, %, ^, &, *, (, ),  [, ], {, }, ;, :, ?`,  self, isHouxitBuild(self) ); 
+        debugHandler(`mustache customization error::\n\n delimeters must match value of special characters\n\ne.g !, @, #, $, %, ^, &, *, (, ),  [, ], {, }, ;, :, ?`,  self, isHouxitBuild(self) ); 
         return false;
       }else if(includesUnsupported([ open, close ])) {
-        $debug_log(`Invalid  delimiter value :: \n\n"${open} or ${close} is an unsupported delimiter constructs"\n cannot be used as a string mustache delimeter since this are javascript multiline string interpolation technic\n\n Delimeter Configuration failed`, self, isHouxitBuild(self));
+        debugHandler(`Invalid  delimiter value :: \n\n"${open} or ${close} is an unsupported delimiter constructs"\n cannot be used as a string mustache delimeter since this are javascript multiline string interpolation technic\n\n Delimeter Configuration failed`, self, isHouxitBuild(self));
         return false;
       }
     }
-    return true
+    return true;
   }
   function resolveAccessor(self, str, hx_Element, $$bind=false){
     let [ open, close ] = self[$$$core].settings.delimiters ;
@@ -4331,7 +4709,9 @@ const Houxit=(function(global){
     if(!hasOwn(model, ref) && !hasOwn(context, ref) && !returnToken) {
       throw new Error('AccessorError')
       return;
-    }else if (returnToken) return ref;
+    }else if (returnToken) {
+      return ref;
+    }
   }
   function _$runModelBind(self, ref, hx_Element, returnToken=false){
     let value;
@@ -4345,9 +4725,11 @@ const Houxit=(function(global){
     } catch(err){
       console.error(err)
       if(ref && !returnToken){
-        $debug_log(`Accessor Error::\n\n"${ref}" property value was accessed during render, but not initialized on model or is undefined\n\nat at\n ..."${ref}" property \n\n${err}`, self, true);
+        debugHandler(`Accessor Error::\n\n"${ref}" property value was accessed during render, but not initialized on model or is undefined\n\nat at\n ..."${ref}" property \n\n${err}`, self, true);
         return;
-      }else return ref
+      }else {
+        return ref;
+      }
     }
     return value 
   }
@@ -4359,11 +4741,15 @@ const Houxit=(function(global){
       max:2,
       validators:[ String, Object ]
     });
-    if(!response) return null
+    if(!response) {
+      return null;
+    }
     const self=getCurrentRunningEffect({
       name:'useBind'
     });
-    if(!self) return null;
+    if(!self) {
+      return null;
+    }
   }
   function useBind(ref, config){
     return _useBind__(ref, config);
@@ -4372,7 +4758,7 @@ const Houxit=(function(global){
   const normalize_Filter=(self, name)=>hasOwn(BUILT_IN_FILTERS, name) ? BUILT_IN_FILTERS[name] : self[$$$register].filters[name] || pass;
   function customFilterDebugger(value, filter){
     if(!canRender(value)){
-      $debug_log(`"${filter}" template filter expects a plain string value`);
+      debugHandler(`"${filter}" template filter expects a plain string value`);
       return false;
     }
     return true;
@@ -4390,24 +4776,31 @@ const Houxit=(function(global){
       let term=digits+'.'+secondValue;
       res=term+text;
     }
-    if (verboseText) return res+' '+useVerbose(Number(dValue),verboseText);
-    else return res;
+    if (verboseText) {
+      return res+' '+useVerbose(Number(dValue),verboseText);
+    }else {
+      return res;
+    }
 }
   function SHORTENER_FILTER_SERVICE(value, verboseText=""){
     value=Number(value);
     if(!isNumber(value) || isNaN(value)){
-      $debug_log(`shortener filter Adapter at argument <1> expects a number`);
+      debugHandler(`shortener filter Adapter at argument <1> expects a number`);
       return value;
     }else if(!isString(verboseText)){
-      $debug_log(`shortener filter Adapter at argument <2> expects a string`);
+      debugHandler(`shortener filter Adapter at argument <2> expects a string`);
       return value;
     }
     var result=value;
-    if (value > 999 && value < 999999 ) result=evaluateShortener(value,[0,-3],[-3,-2],'K');
-    else if(value > 1000000 && value < 999999999 ) result=evaluateShortener(value,[0,-6],[-6,-5],' Million');
-    else if(value > 1000000000 && value < 999999999999 ) result=evaluateShortener(value,[0,-9],[-9,-8],' Billion');
-    else if(value> 1000000000000 && value < 999999999999999 ) result=evaluateShortener(value,[0,-12],[-12,-11],' Trillion');
-    else if(value > 1000000000000000){
+    if (value > 999 && value < 999999 ) {
+      result=evaluateShortener(value,[0,-3],[-3,-2],'K');
+    }else if(value > 1000000 && value < 999999999 ) {
+      result=evaluateShortener(value,[0,-6],[-6,-5],' Million');
+    }else if(value > 1000000000 && value < 999999999999 ) {
+      result=evaluateShortener(value,[0,-9],[-9,-8],' Billion');
+    }else if(value> 1000000000000 && value < 999999999999999 ) {
+      result=evaluateShortener(value,[0,-12],[-12,-11],' Trillion');
+    }else if(value > 1000000000000000){
       let digits=String(value).slice(0,-15);
       let digitsConvert=Number(digits);
       let expo=digitsConvert.toExponential();
@@ -4415,13 +4808,16 @@ const Houxit=(function(global){
     }
     if (verboseText) {
       return result+' '+useVerbose(value,verboseText);
+    }else {
+      return result;
     }
-    else return result;
   }
   function useVerbose(value, txt){
     var val=Number(value);
     var result=String(txt);
-    if (val>1) result=result+'s';
+    if (val>1) {
+      result=result+'s';
+    }
     return result;
   }
   function PERCENTAGE_FILTER_SERVICE(value, arg, decimalIndex){
@@ -4434,10 +4830,10 @@ const Houxit=(function(global){
   }
   function CURRENCY_FILTER_SERVICE(value, currency='$'){
     if(!isNumber(value) || isNaN(value)){
-      $debug_log(`currency filter Adapter at argument <1> expects a number`);
+      debugHandler(`currency filter Adapter at argument <1> expects a number`);
       return value;
     }else if(!isString(currency)){
-      $debug_log(`currency filter Adapter at argument <2> expects a string`);
+      debugHandler(`currency filter Adapter at argument <2> expects a string`);
       return value;
     }
     const stringifyNum=String(value);
@@ -4448,18 +4844,27 @@ const Houxit=(function(global){
       recorder=[];
     }
     for(const val of values(stringifyNum).toReversed()){
-      if(len(recorder) === 3 ) reInstate();
-      else recorder.push(val);
+      if(len(recorder) === 3 ) {
+        reInstate();
+      }else {
+        recorder.push(val);
+      }
     }
-    if(len(recorder)) reInstate();
+    if(len(recorder)) {
+      reInstate();
+    }
     return currency+houxitBank.toReversed().join(",")+".00";
   }
   function UPPER_FILTER_SERVICE(value){
-    if(!customFilterDebugger(value, 'upper')) return value;
+    if(!customFilterDebugger(value, 'upper')) {
+      return value;
+    }
     return compileToRenderable(value).toUpperCase();
   }
   function TITLE_FILTER_SERVICE(value){
-    if(!customFilterDebugger(value, 'title')) return value;
+    if(!customFilterDebugger(value, 'title')) {
+      return value;
+    }
     const splitted=String(value).split(' ');
     for(let [ind, val] of entries(splitted)){
       splitted[Number(ind)]=val.charAt(0).toUpperCase()+val.slice(1);
@@ -4467,7 +4872,9 @@ const Houxit=(function(global){
     return splitted.join(' ');
   }
   function LOWER_FILTER_SERVICE(value){
-    if(!customFilterDebugger(value, 'lower')) return value;
+    if(!customFilterDebugger(value, 'lower')) {
+      return value;
+    }
     return String(value).toLowerCase();
   }
   const BUILT_IN_FILTERS={
@@ -4479,7 +4886,9 @@ const Houxit=(function(global){
     currency:CURRENCY_FILTER_SERVICE
   }
   function $Filter_HelpersService(self, value, filters,hx_Element, $$bind){
-    if(!len(filters)) return  value;
+    if(!len(filters)) {
+      return  value;
+    }
     let filterInstance;
     let parameters;
     for(const [ index, filter ] of filters.entries()){
@@ -4489,7 +4898,9 @@ const Houxit=(function(global){
         return;
       }
       const VResponse=filterInstancesValidator(name, self, hx_Element);
-      if(!VResponse ) break;
+      if(!VResponse ) {
+        break;
+      }
       [ filterInstance, parameters ] = VResponse;
      const filterCallback=isPFunction(filterInstance) ? {
        filter:filterInstance
@@ -4498,12 +4909,12 @@ const Houxit=(function(global){
         const filterResponse=filterCallback.filter(value, ...parameters);
         value=filterResponse;
       }catch(error){
-        $debug_log(`Encountered an error when running the filter callback at >>>>>> ${name}`, self, true);
-        $debug_log(error, self);
+        debugHandler(`Encountered an error when running the filter callback at >>>>>> ${name}`, self, true);
+        debugHandler(error, self);
         break;
       }
     }
-    return value
+    return value;
   }
   function filterInstancesValidator(name, self, hx_Element){
     let parameters=[];
@@ -4515,19 +4926,19 @@ const Houxit=(function(global){
       parameters=_$runModelBind(self, reader, hx_Element);
     }
     if(!hasFilterInstance(self, name)) {
-      $debug_log(`Unrecognized  filter name "${name}"\n\n if this is a custom filter, make sure it's registered through the local filter option or global prototype 'filter' method`,  self, true);
+      debugHandler(`Unrecognized  filter name "${name}"\n\n if this is a custom filter, make sure it's registered through the local filter option or global prototype 'filter' method`,  self, true);
       return;
     }
     const filterInstance=normalize_Filter(self, name);
     if(!validateType(filterInstance, [Function, Object])){
-      $debug_log(`${name} filter receives an Invalid type definition\n\nExpects a filter function or a plain object type exposing a filter method which acts as the filter callable itself`, self, true);
+      debugHandler(`${name} filter receives an Invalid type definition\n\nExpects a filter function or a plain object type exposing a filter method which acts as the filter callable itself`, self, true);
       return;
     }else if(isPObject(filterInstance)){
       if(!hasProp(filterInstance, 'filter')){
-        $debug_log(`"${name}" filter instance object does not expose a "filter" method which acts as the filter function`, self, true);
+        debugHandler(`"${name}" filter instance object does not expose a "filter" method which acts as the filter function`, self, true);
         return;
       }else if(!isPFunction(filterInstance.filter)){
-        $debug_log(`"${name}".<filter> instance filter property value is not a method/callable  \n\n Expects a function type which acts as the filter function`, self, true);
+        debugHandler(`"${name}".<filter> instance filter property value is not a method/callable  \n\n Expects a function type which acts as the filter function`, self, true);
         return;
       }
     }
@@ -4563,7 +4974,7 @@ const Houxit=(function(global){
     if (checkRegex && unsupportedRegex.test(expressionWithoutComments.replace(stringsMonitorRegex, ()=>"" ))) {
       throw new Error(`Invalid expression: \n\nUnsupported constructs are not allowed.\n\n"${str}"`, self, true);
     }else if(commentRegex.test(str)){
-      $debug_log(`Template SyntaxError...\n\nComments not allowed in template expression\n\n"${str}"`, self, true);
+      debugHandler(`Template SyntaxError...\n\nComments not allowed in template expression\n\n"${str}"`, self, true);
       return;
     }
     let dexTransform;
@@ -4599,7 +5010,7 @@ const Houxit=(function(global){
     }, (uuid)=>{
       if(!register.has(uuid)){
         register.add(uuid);
-        return true
+        return true;
       }
       return false;
     }));
@@ -4635,11 +5046,13 @@ const Houxit=(function(global){
   function facadeArgsRegister(setup, namespace, index, traverse){
     if(len(setup.ariel)){
       const word=setup.ariel.join("");
-      if(word.trim()) namespace.push(traverse ? word : {
-        start:index-(len(setup.ariel)),
-        end:index-1,
-        key:word
-      });
+      if(word.trim()) {
+        namespace.push(traverse ? word : {
+          start:index-(len(setup.ariel)),
+          end:index-1,
+          key:word
+        });
+      }
       setup.ariel=[];
     }
   }
@@ -4663,7 +5076,9 @@ const Houxit=(function(global){
     let prev_item;
     for(const val of values(src)){
       const prev=index > 0 ? src[index-1] : undefined;
-      if(isString(prev) ? prev.trim() : prev) prev_item=prev;
+      if(isString(prev) ? prev.trim() : prev) {
+        prev_item=prev;
+      }
       const next=src[index+1];
       if(/[`'"]/.test(val)){
         if(!setup.op_str){
@@ -4683,13 +5098,22 @@ const Houxit=(function(global){
           setup.re_start=true
         }else if(/[\)}\]]/.test(val)){
           if(hasOwn(setup.deff_cage, rChar[val])){
-            if((setup.deff_cage[rChar[val]] || 0) <= 1) delete setup.deff_cage[rChar[val]];
-            else setup.deff_cage[rChar[val]]--;
+            if((setup.deff_cage[rChar[val]] || 0) <= 1) {
+              delete setup.deff_cage[rChar[val]];
+            }else {
+              setup.deff_cage[rChar[val]]--;
+            }
           }
-        }else if(!len(setup.deff_cage) && /[{([\])},]/.test(val)) setup.deff=false;
-      }else if(/[, \W]/.test(val) && !/[$:]/.test(val)) facadeArgsRegister(setup, namespace, index, traverse);
-      else if(/\w$/.test(val)) setup.ariel.push(val)
-      else if(val === ":") setup.ariel=[];
+        }else if(!len(setup.deff_cage) && /[{([\])},]/.test(val)) {
+          setup.deff=false;
+        }
+      }else if(/[, \W]/.test(val) && !/[$:]/.test(val)) {
+        facadeArgsRegister(setup, namespace, index, traverse);
+      }else if(/\w$/.test(val)) {
+        setup.ariel.push(val)
+      }else if(val === ":") {
+        setup.ariel=[];
+      }
       index++;
     }
     return namespace;
@@ -4715,7 +5139,7 @@ const Houxit=(function(global){
       }
     }
     if(!isString(attr)){
-      $debug_log(`Unexpected value at "${iniAttr}" as dynamically evaluated prop name binding is not a valId prop string`);
+      debugHandler(`Unexpected value at "${iniAttr}" as dynamically evaluated prop name binding is not a valId prop string`);
       return iniAttr;
     }
     return iniAttr.replace(dynamicAttrRegex, function (match, space){
@@ -4757,26 +5181,38 @@ const Houxit=(function(global){
           let access=[];
           let match=key.replace(dynamicAccessorsRegex, (match, p1, internal)=>{
             internal=Number(internal)
-            if(!isNaN(internal)) access.push(internal)
+            if(!isNaN(internal)) {
+              access.push(internal);
+            }
             return "";
           })
-          if((shouldBreak && !res) || !value ) return false;
-          if(!isEmptyStr(match)) value = value[match];
+          if((shouldBreak && !res) || !value ) {
+            return false;
+          }
+          if(!isEmptyStr(match)) {
+            value = value[match];
+          }
           if(len(access)) {
             for(let [index, keys ] of access.entries()){
-              if( !validateType(value, [ Object , Array, Function]) && isArray(value) && isNaN(Number(keys)) && Number(keys)+1 > len(value)) return false
+              if( !validateType(value, [ Object , Array, Function]) && isArray(value) && isNaN(Number(keys)) && Number(keys)+1 > len(value)) {
+                return false;
+              }
               value=value[keys];
             }
           }
-        }else if (!hasOwn(value||{}, key)) return false;
-        else {
+        }else if (!hasOwn(value||{}, key)) {
+          return false;
+        }else {
           value = value[key];
           res=true;
         }
       }
     } else {
-      if (hasOwn(obj, str)) value=value[str];
-      else return false;
+      if (hasOwn(obj, str)) {
+        value=value[str];
+      }else {
+        return false;
+      }
       return true;
     }
     return res;
@@ -4793,7 +5229,7 @@ const Houxit=(function(global){
         return err
       }
       return obj;
-    `)(obj, value, check, [isToken, get_Object_Value, $debug_log, unwrap ]);
+    `)(obj, value, check, [isToken, get_Object_Value, debugHandler, unwrap ]);
   }
   function get_Prop_Path(obj, prop) {
     const stack = [{ 
@@ -4805,11 +5241,15 @@ const Houxit=(function(global){
       for (const [key, value] of getIterator(object)) {
         const currentPath = path ? `${path}${ isPObject(object) ? '.' : '[' }${key}${isArray(object) ? ']' : ''}` : key;
         prop = isNumber(key) ? ( isNaN(Number(prop) ) ? prop : Number(prop ) ): prop ;
-        if (key === prop) return currentPath;
-        if (validateType(value, [Object, Array ])) stack.push({ 
-          object: value, 
-          path: currentPath 
-        });
+        if (key === prop) {
+          return currentPath;
+        }
+        if (validateType(value, [Object, Array ])) {
+          stack.push({ 
+            object: value, 
+            path: currentPath 
+          });
+        }
       }
     }
     return null;
@@ -4854,10 +5294,14 @@ const Houxit=(function(global){
     const insert=new Tuple();
     const remove=new Tuple();
     newClass.forEach((klass)=>{
-      if(!oldClass.has(klass)) insert.add(klass);
+      if(!oldClass.has(klass)) {
+        insert.add(klass);
+      }
     });
     oldClass.forEach((klass)=>{
-      if(!newClass.has(klass)) remove.add(klass);
+      if(!newClass.has(klass)) {
+        remove.add(klass);
+      }
     });
     return [ insert, remove ];
   }
@@ -4865,8 +5309,11 @@ const Houxit=(function(global){
     const isSSR=isSSRCompiler(self);
     if(!is_hyperscript && len(bindings.deepKeys)){
       const value=bindings.value;
-      if(value || isString(value)) item=bindings.deepKeys;
-      else return;
+      if(value || isString(value)) {
+        item=bindings.deepKeys;
+      }else {
+        return;
+      }
     }
     item=unwrap(item);
     const [ subs ]= patch || [];
@@ -4875,11 +5322,19 @@ const Houxit=(function(global){
       cls=unwrap(cls);
       if(isSSR){
         const props=hx_Element.VNodeManager.SSRVnode.props;
-        if(!hasOwn(props, 'class')) props.class=new Tuple();
-        if(!props.class.has('cls')) props.class.add(cls);
-      }else if(!element.classList.contains(cls)) toggleClassNames(element, cls);
+        if(!hasOwn(props, 'class')) {
+          props.class=new Tuple();
+        }
+        if(!props.class.has('cls')) {
+          props.class.add(cls);
+        }
+      }else if(!element.classList.contains(cls)) {
+        toggleClassNames(element, cls);
+      }
     }
-    if(!is_hyperscript || !len(subs) || isSSR) return;
+    if(!is_hyperscript || !len(subs) || isSSR) {
+      return;
+    }
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       item=_createElementPropsEffectBlock_(self, {
         element, 
@@ -4897,7 +5352,9 @@ const Houxit=(function(global){
   function toggleClassNames(element, classes, remove=false){
     const toggler=remove ? 'remove' : 'add';
     classes.split(' ').forEach((cls)=>{
-      if(cls) element.classList[toggler](cls);
+      if(cls) {
+        element.classList[toggler](cls);
+      }
     })
   }
   function compileStyleProps(self, item, styleProps){
@@ -4905,13 +5362,14 @@ const Houxit=(function(global){
     if(isPObject(item)){
       entries(item).forEach(([key, style])=>{
         if(!isString(unwrap(style))){ 
-          $debug_log(`"${key}" style prop: Unrecognized stype property value \nat at\n "${key}" style property\n\n${element?.outerHTML || "" }`, self); 
+          debugHandler(`"${key}" style prop: Unrecognized stype property value \nat at\n "${key}" style property\n\n${element?.outerHTML || "" }`, self); 
           return;
         }
         styleProps[toCamelCase(key)]=style;
       });
-    }else if(isArray(item)) item.forEach(value=>compileStyleProps(self, value, styleProps));
-    else if(isString(item)){
+    }else if(isArray(item)) {
+      item.forEach(value=>compileStyleProps(self, value, styleProps));
+    }else if(isString(item)){
       let splited=item.trim().split(';');
       for(let styling of splited.values() ){
         if(styling && styling.includes(':')){
@@ -4932,16 +5390,25 @@ const Houxit=(function(global){
     let styleProps;
     const isSSR=isSSRCompiler(self);
     const deepKeys=metrics.bindings.deepKeys;
-    if(!is_hyperscript && len(deepKeys)) styleProps=stylePropsKeys_Normalizing(self, item, deepKeys);
-    else styleProps=compileStyleProps(self, item, {});
+    if(!is_hyperscript && len(deepKeys)) {
+      styleProps=stylePropsKeys_Normalizing(self, item, deepKeys);
+    }else {
+      styleProps=compileStyleProps(self, item, {});
+    }
     entries(styleProps).forEach(([prop, style])=> {
       if(isSSR){
         const props=hx_Element.VNodeManager.SSRVnode.props;
-        if(!hasOwn(props, 'style')) props.style={};
+        if(!hasOwn(props, 'style')) {
+          props.style={};
+        }
         props.style[to_kebab_case(unwrap(prop))]=style;
-      }else element.style[unwrap(prop)]=style;
+      }else {
+        element.style[unwrap(prop)]=style;
+      }
     });
-    if(!is_hyperscript || (!patch && !len(patch?.[0]) || isSSR)) return;
+    if(!is_hyperscript || (!patch && !len(patch?.[0]) || isSSR)) {
+      return;
+    }
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       item=_createElementPropsEffectBlock_(self, {
         element, 
@@ -4965,7 +5432,9 @@ const Houxit=(function(global){
       "$$" :2,
       "#":1
     };
-    if( !isString(key) && !key.trim() && hasSpecialCharacters(attr)) return key ;
+    if( !isString(key) && !key.trim() && hasSpecialCharacters(attr)) {
+      return key ;
+    }
     for(const [ky, sl] of entries(Key_Binding)){
       if(key.startsWith(ky)){
         if(has$$_bind(key)){ 
@@ -5014,22 +5483,30 @@ const Houxit=(function(global){
       binding.key=key;
     }else{
       let [ dir, keys, unecessary ] = directive_sep(key);
-      if(exists(unecessary)) $debug_log(`Error in directive saperator chain.\n\nExcessive directive chain, unable to determine\n >>>> "${unecessary}"`, self, true);
+      if(exists(unecessary)) {
+        debugHandler(`Error in directive saperator chain.\n\nExcessive directive chain, unable to determine\n >>>> "${unecessary}"`, self, true);
+      }
       binding[ ( key.startsWith("$$")) ? 'directive' : 'key' ]=dir;
-      if(!binding.key) binding.key=keys;
-      else keys = binding.key;
+      if(!binding.key) {
+        binding.key=keys;
+      }else {
+        keys = binding.key;
+      }
       if(keys?.includes('|') || dir.includes('|')) {
         const ssd=!keys ? dir : keys;
         binding.modifiers=(ssd).split('|');
         const fV=binding.modifiers.shift();
-        if(keys) keys=fV;
-        else {
+        if(keys) {
+          keys=fV;
+        }else {
           dir=fV;
           binding.directive=dir
         }
         if(len(binding.modifiers)){
           iterate(binding.modifiers).each((value, key)=>{
-            if(!value.trim()) binding.modifiers.splice(key, 1);
+            if(!value.trim()) {
+              binding.modifiers.splice(key, 1);
+            }
           });
         }
       }
@@ -5038,13 +5515,17 @@ const Houxit=(function(global){
     }
     if(keysSeparatorRegex.test(binding.key)){
       const deeps=[ ...(binding.key?.match(keysSeparatorRegex) || [])];
-      if(len(deeps)) binding.key=deeps.shift();
+      if(len(deeps)) {
+        binding.key=deeps.shift();
+      }
       binding.deepKeys=deeps;
     }
     binding.src=key;
     if(binding.directive && !binding.value){
       const canBindDyy =_makeMap_("provide,html,text,model,clone,scoped,transite,animate,bind,slot", binding.directive);
-      if(canBindDyy)  binding.value= binding.key || binding.directive;
+      if(canBindDyy) {
+        binding.value= binding.key || binding.directive;
+      }
     }
     return binding;
   }
@@ -5055,7 +5536,7 @@ const Houxit=(function(global){
       let errType=[ len(modifiers) ? "modifiers" : null, len(deepKeys) ? "deepKeys" : null];
       // iterate(errType).each((val, ind)=>{
       //   if(!val) return;
-      //   $debug_log(`"${val}" carriers are only supported in template directive mode\n\n${key}::(("${bindings[val].join( val==='modifiers' ? "|" : ".")}"))\n\n"${val}" interference has been rescinded`, self, true);
+      //   debugHandler(`"${val}" carriers are only supported in template directive mode\n\n${key}::(("${bindings[val].join( val==='modifiers' ? "|" : ".")}"))\n\n"${val}" interference has been rescinded`, self, true);
       //   response=false;
       // });
     }
@@ -5063,7 +5544,7 @@ const Houxit=(function(global){
   }
   function validateIncomingPropsKeys(self, { key, attr }, is_hyperscript, hx_Element, metrics){
     if(is_hyperscript && isillegalKeyBinding(key, is_hyperscript)){
-      $debug_log(`Illegal binding not allowed in build Adapter mode\n\n"${key}" property has a disallowed binding directive property`, true, self);
+      debugHandler(`Illegal binding not allowed in build Adapter mode\n\n"${key}" property has a disallowed binding directive property`, true, self);
       return {};
     }
     let { isRerender, patch } = metrics ;
@@ -5105,7 +5586,9 @@ const Houxit=(function(global){
   function validateListenSpecialEvent(self, bindings){
     const key = bindings.key;//.slice(2).toLowerCase();
     const is_dispatch_ev=key==='dispatch';
-    if(!is_dispatch_ev && isFunction(bindings.value)) bindings.value=[ bindings.value, bindings.value.options || {}];
+    if(!is_dispatch_ev && isFunction(bindings.value)) {
+      bindings.value=[ bindings.value, bindings.value.options || {}];
+    }
     let response=validateCollectionArgs(bindings.value, {
       validators:is_dispatch_ev ? [ [String, Array], Function, [String, Array]] : [Function, [String, Array]],
       name:bindings.key,
@@ -5118,7 +5601,9 @@ const Houxit=(function(global){
       const func=events;
       modifiers= method;
       events=to_kebab_case(key).split('-');
-      if(to_kebab_case(key).includes('-')) events.shift();
+      if(to_kebab_case(key).includes('-')) {
+        events.shift();
+      }
       method=func;
     }
     bindings.deepKeys=isString(events) ? events.split(".") : isArray(events) ? events : [];
@@ -5137,32 +5622,43 @@ const Houxit=(function(global){
       $orgKey:src,
       forwardAttrs
     }, hx_Element );
-    else if(!isRerender && key === 'class') parse_Class_Binding(self, attr, element, hx_Element, patch, {
-      is_hyperscript,
-      $orgKey:src,
-      bindings,
-      forwardAttrs
-    });
-    else if(!isRerender && isHTMLIDLAttributes(key)) IDLPropsTransform(self, [ key, attr], element, {
-      is_hyperscript,
-      patch,
-      $orgKey:src,
-      bindings,
-      forwardAttrs
-    }, hx_Element );
-    else if(!isRerender && (isOnListener(src) || isInlineListener(key) || key === 'dispatch')){ 
-      if(!click_handler_facading(self, [ key, attr, src ], bindings, element, hx_Element, metrics)) return;
-    }else if(!isRerender && key === "ref") Special_REF_Modifier(self, element, bindings, hx_Element, metrics);
-    else if(!isRerender && key === "attach") transformAttachProp(self, bindings, element, hx_Element, metrics, );
-    else if(isHouxitNativeElement(hx_Element) && key === 'name' && vNode.prototype_ ==='slot') slotNamingTRANSITION(self, bindings, element, hx_Element, metrics);
-    else if(key==="context") SlotContextBindingTRANSITON(self, bindings, element, hx_Element, metrics);
-    else if(!isRerender){
+    else if(!isRerender && key === 'class') {
+      parse_Class_Binding(self, attr, element, hx_Element, patch, {
+        is_hyperscript,
+        $orgKey:src,
+        bindings,
+        forwardAttrs
+      });
+    }else if(!isRerender && isHTMLIDLAttributes(key)) {
+      IDLPropsTransform(self, [ key, attr], element, {
+        is_hyperscript,
+        patch,
+        $orgKey:src,
+        bindings,
+        forwardAttrs
+      }, hx_Element );
+    }else if(!isRerender && (isOnListener(src) || isInlineListener(key) || key === 'dispatch')){ 
+      if(!click_handler_facading(self, [ key, attr, src ], bindings, element, hx_Element, metrics)) {
+        return;
+      }
+    }else if(!isRerender && key === "ref") {
+      Special_REF_Modifier(self, element, bindings, hx_Element, metrics);
+    }else if(!isRerender && key === "attach") {
+      transformAttachProp(self, bindings, element, hx_Element, metrics, );
+    }else if(isHouxitNativeElement(hx_Element) && key === 'name' && vNode.prototype_ ==='slot') {
+      slotNamingTRANSITION(self, bindings, element, hx_Element, metrics);
+    }else if(key==="context") {
+      SlotContextBindingTRANSITON(self, bindings, element, hx_Element, metrics);
+    }else if(!isRerender){
       try{
         attr=compileToRenderable(unwrap(attr));
-        if(isSSR) element.props[key]=attr;
-        else element.setAttribute(key, attr);
+        if(isSSR) {
+          element.props[key]=attr;
+        }else {
+          element.setAttribute(key, attr);
+        }
       }catch(err){
-        $debug_log(`Attribute Error::\n\n...unable to set node attribute "${key}\n\n ${err}`, self, true, `When setting the attribute "${key}" on "${isSSR ? element.type : element.outerHTML}"`, self, !is_hyperscript );
+        debugHandler(`Attribute Error::\n\n...unable to set node attribute "${key}\n\n ${err}`, self, true, `When setting the attribute "${key}" on "${isSSR ? element.type : element.outerHTML}"`, self, !is_hyperscript );
         return;
       }
     }
@@ -5170,7 +5666,9 @@ const Houxit=(function(global){
   function isInlineListener(key){
     if(key.startsWith("on")){
       const ev=key.slice(2);
-      if(!IS_VALID_EVENT_HANDLER(ev)) return;
+      if(!IS_VALID_EVENT_HANDLER(ev)) {
+        return;
+      }
       return ev;
     }
     return;
@@ -5178,17 +5676,21 @@ const Houxit=(function(global){
   function click_handler_facading(self,[ key, attr, src], bindings, element, hx_Element, metrics){
     attr=unwrap(attr);
     if(key === "dispatch" && !isArray(attr)){
-      $debug_log(`<dispatch> dispatcher expects an array value of events and method\n\nFound "${attr}" of "${getType(attr)}" type`, self, !isNull(self));
+      debugHandler(`<dispatch> dispatcher expects an array value of events and method\n\nFound "${attr}" of "${getType(attr)}" type`, self, !isNull(self));
       return;
     }else if(isOnListener(src) && !validateType(attr, [Array, Function])) {
-      $debug_log(`<${key}> listener expects a function value or an array of valid methods functions\n\nFound "${attr}" of "${getType(attr)}" type`, self, !isNull(self));
+      debugHandler(`<${key}> listener expects a function value or an array of valid methods functions\n\nFound "${attr}" of "${getType(attr)}" type`, self, !isNull(self));
       return;
     }
-    if(isInlineListener(key)) bindings.key=isInlineListener(key);
+    if(isInlineListener(key)) {
+      bindings.key=isInlineListener(key);
+    }
     const options=attr.options || {};
     bindings.value=attr;
     metrics=assign({ options }, metrics);
-    if(!validateListenSpecialEvent(self, bindings)) return
+    if(!validateListenSpecialEvent(self, bindings)) {
+      return
+    }
     $$dir_ON(self, bindings, element, hx_Element, metrics);
     return true;
   }
@@ -5235,7 +5737,9 @@ const Houxit=(function(global){
       oldStyleProps=compileStyleProps(self, bindings.value, {});
       for(let [ prop, style ] of entries(styleProps)){
         style=unwrap(style);
-        if(!deepEqualityCheck(style, oldStyleProps[prop]) || !hasOwn(oldStyleProps, prop )) element.style[prop]=style;
+        if(!deepEqualityCheck(style, oldStyleProps[prop]) || !hasOwn(oldStyleProps, prop )) {
+          element.style[prop]=style;
+        }
       }
       keys(oldStyleProps).forEach(style=>{
         if(!hasOwn(styleProps, style)) {
@@ -5257,7 +5761,9 @@ const Houxit=(function(global){
       validators:[Function],
       required:[true],
       name:"attach=Function(ctx){ctx."+name+"()}"
-    })) return;
+    })) {
+      return;
+    }
     hooksTuple.add(callback);
     return undefined;
   }
@@ -5268,7 +5774,9 @@ const Houxit=(function(global){
       validators:[[String, Array], Function, [String, Array]],
       required:[true, true],
       name:"attach=Function(ctx){ctx.on()}"
-    })) return;
+    })) {
+      return;
+    }
     let [ events, callback, modifiers ] = args;
     events=isString(events) ? events.split(".") : events;
     $$dir_ON(self, {
@@ -5287,7 +5795,9 @@ const Houxit=(function(global){
       validators:[[Object, Function], Any, [String, Array]],
       required:[true, true],
       name:"attach=Function(ctx){ctx.use()}"
-    })) return;
+    })) {
+      return;
+    }
     _With_Custom_Directives(self, {
       value:directive,
       modifiers:isString(modifiers) ? modifiers.split("|") : modifiers || [],
@@ -5304,7 +5814,9 @@ const Houxit=(function(global){
       validators:[String, Any],
       required:[true],
       name:"attach=Function(ctx){ctx.prop()}"
-    })) return;
+    })) {
+      return;
+    }
     attributes_hydration({
       key,
       attr:value
@@ -5313,7 +5825,7 @@ const Houxit=(function(global){
   function transformAttachProp(self, bindings, element, hx_Element, metrics){
     const { key, value, } = bindings;
     if(!isPFunction(value)){
-      $debug_log(`"attach" special property expects a plain Function type`, self, true);
+      debugHandler(`"attach" special property expects a plain Function type`, self, true);
       return;
     }
     const hooks=hx_Element.VNodeManager.LifeCycleHooks;
@@ -5342,9 +5854,14 @@ const Houxit=(function(global){
     const [ subsc, transform ] = carrier?.() || [];
     const newValue = unwrap(!is_hyperscript ? transform : vnode.props[$orgKey]);
     const mode=hasOwn(params, key) ? "params" : "attrs";
-    if(deepEqualityCheck(unwrap(value), newValue)) return value;
-    if(mode === "params") useReadonlyBypasser(params[key], params[key][refInternalEffectKey].accessor, newValue);
-    else if(mode === "attrs") useReadonlyBypasser(attrs, key, newValue, true);
+    if(deepEqualityCheck(unwrap(value), newValue)) {
+      return value;
+    }
+    if(mode === "params") {
+      useReadonlyBypasser(params[key], params[key][refInternalEffectKey].accessor, newValue);
+    }else if(mode === "attrs") {
+      useReadonlyBypasser(attrs, key, newValue, true);
+    }
     return newValue;
   }
   function widget_props_plugin(element, bindings, hx_Element, self, metrics){
@@ -5352,13 +5869,17 @@ const Houxit=(function(global){
     const { is_hyperscript, patch, vNode } = metrics;
     let re_evaluate=false;
     const isRerender=self[$$$operands].initializedRender;
-    if(isOnListener(key) || key === 'dispatch') click_handler_facading(self,[ key, value, src], bindings, element, hx_Element, metrics);
-    else if(key === 'attach') transformAttachProp(self, bindings, element, hx_Element, metrics)
-    else if((!hasOwn(element, key))) {
+    if(isOnListener(key) || key === 'dispatch') {
+      click_handler_facading(self,[ key, value, src], bindings, element, hx_Element, metrics);
+    }else if(key === 'attach') {
+      transformAttachProp(self, bindings, element, hx_Element, metrics)
+    }else if((!hasOwn(element, key))) {
       element[key]=value;
       re_evaluate=true;
     }
-    if(isRerender || (!re_evaluate || (!is_hyperscript && !(patch && len(patch[0]))))) return;
+    if(isRerender || (!re_evaluate || (!is_hyperscript && !(patch && len(patch[0]))))) {
+      return;
+    }
     const traverse=hx_Element?.VNodeManager?.propsTraversers;
     traverse?.add(function(token, [ params, attrs ], vnode, observers, app){
       value=__widget_props_effect(app, {
@@ -5398,19 +5919,22 @@ const Houxit=(function(global){
       return;
     }
     if(!isString(value)){
-      $debug_log(`slot "name" atrribute value expects a "string" value data type\n\nuntraceable data type found`, self, true);
+      debugHandler(`slot "name" atrribute value expects a "string" value data type\n\nuntraceable data type found`, self, true);
       return;
     }
     const SSBs=self[$$$compiler].scopeSlotsBindings;
     if(hasOwn(SSBs, value)){
-      $debug_log(`slot with name "${value}" has been duplicated\n\nMore than one slot with same name mapping cannot be implemented to avoid dublicated renderimg of slots contents`, self, true);
+      debugHandler(`slot with name "${value}" has been duplicated\n\nMore than one slot with same name mapping cannot be implemented to avoid dublicated renderimg of slots contents`, self, true);
       $warn(`NOTE: Un-named slots elements shares the same naming scope with implicitly defined "name='default'" slots elements`, self);
       return;
     }
     if(!isRerender){
       const current_value=compileToRenderable(unwrap(value));
-      if(isSSR) element.props.name=current_value;
-      else element.setAttribute('name', current_value);
+      if(isSSR) {
+        element.props.name=current_value;
+      }else {
+        element.setAttribute('name', current_value);
+      }
       SSBs[value]={
         bindings:undefined,
         element
@@ -5423,13 +5947,13 @@ const Houxit=(function(global){
     const isSSR=isSSRCompiler(self);
     const SSRVnode=hx_Element.VNodeManager.SSRVnode
     if(!isRerender && (isSSR ? SSRVnode.type : element.localName) !== "slot"){
-      $debug_log(`"context" special property is only scoped to html "<slot>" element in Houxit\n<slot> element scope context property found on a none "<slot>" element\n\nFailed to resolve binding`);
+      debugHandler(`"context" special property is only scoped to html "<slot>" element in Houxit\n<slot> element scope context property found on a none "<slot>" element\n\nFailed to resolve binding`);
       return;
     }
     const slotName = isRerender && !isSSR ? hx_Element.VNodeManager.element_slot_ref : isSSR ? SSRVnode.props.name : element.name
     const SSBs=self[$$$compiler].scopeSlotsBindings;
     if(!isRerender && !slotName && !hasOwn(SSBs, slotName)){
-      $debug_log(`To specifically bind context scope to slots, they are obliged to be contextually named\n\nIt's either this slot element was not named properly…\nOr that the "context" property precedes the special slot "name" attribute`, self, true);
+      debugHandler(`To specifically bind context scope to slots, they are obliged to be contextually named\n\nIt's either this slot element was not named properly…\nOr that the "context" property precedes the special slot "name" attribute`, self, true);
       $warn(`To resolve this, make sure the "name" attribute comes before the "context" key on this slot element`, self);
       return;
     }
@@ -5452,7 +5976,9 @@ const Houxit=(function(global){
   
     if(isRerender){
       const s_b=SSBs[slotName];
-      if(!deepEqualityCheck(data_bind,  s_b.bindings)) s_b.bindings=bindings.value;
+      if(!deepEqualityCheck(data_bind,  s_b.bindings)) {
+        s_b.bindings=bindings.value;
+      }
     }
     subscribers=is_hyperscript ? (()=> data_bind) : patch[0];
   }
@@ -5461,21 +5987,31 @@ const Houxit=(function(global){
     const { is_hyperscript, patch, $orgKey, forwardAttrs } = metrics;
     const isSSR=isSSRCompiler(self);
     const [ subs ] =patch || [];
-    if(key === 'style') return parse_Style_Binding(self, attr, element, metrics, hx_Element);
-    else if(key === "className") {
+    if(key === 'style') {
+      return parse_Style_Binding(self, attr, element, metrics, hx_Element);
+    }else if(key === "className") {
       const transform=mapClassTypeTransform(attr, new Tuple());
       if(isSSR){
         const props=hx_Element.VNodeManager.SSRVnode.props;
-        if(!hasOwn(props, 'className')) props.className="";
+        if(!hasOwn(props, 'className')) {
+          props.className="";
+        }
         props.className=props.className+" "+transform.join(" ");
       }else element.className=element.className+" "+transform.join(" ");
     }else {
       if(isSSR){
-        if(key === 'innerText' || key === 'textContent') element.props.innerText=escapeDecoder(attr);
-        else element.props[key]=attr;
-      }else element[key]=attr ;
+        if(key === 'innerText' || key === 'textContent') {
+          element.props.innerText=escapeDecoder(attr);
+        }else {
+          element.props[key]=attr;
+        }
+      }else {
+        element[key]=attr ;
+      }
     }
-    if(!is_hyperscript || !len( subs ) || isSSR) return;
+    if(!is_hyperscript || !len( subs ) || isSSR) {
+      return;
+    }
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       attr=_createElementPropsEffectBlock_(self, {
         element, 
@@ -5516,14 +6052,12 @@ const Houxit=(function(global){
       attr
     }, self, hx_Element, metrics, element) ;
     entries(props).forEach(([key, attr ])=>{
-      if(key !== "__hx_keys__") {
+      if(key === "__hx_keys__"){
+        iterate(attr).each(([ky, vl])=> compileProps(ky, vl));
+      }else {
         compileProps(key, attr);
       }
     });
-    if(!hasOwn(props, '__hx_keys__')) {
-      return;
-    }
-    entries(props['__hx_keys__']).forEach(([ index, [ key, attr ] ])=>compileProps(key, attr));
   }
   function specialPropsPrefix(self, props, element, hx_Element){
     
@@ -5532,13 +6066,19 @@ const Houxit=(function(global){
     attr=unwrap(attr);
     const isSSR = isSSRCompiler(self);
     if(attr || isString(attr)) {
-      if(isSSR) element.props[key]=attr;
-      else{
-        if (isHTMLIDLAttributes(key)) element[key]=attr;
-        else element.setAttribute(key, attr||'');
+      if(isSSR) {
+        element.props[key]=attr;
+      }else{
+        if (isHTMLIDLAttributes(key)) {
+          element[key]=attr;
+        }else {
+          element.setAttribute(key, attr||'');
+        }
       }
     }
-    if(!is_hyperscript || !len(patch[0]) || isSSR) return;
+    if(!is_hyperscript || !len(patch[0]) || isSSR) {
+      return;
+    }
     hx_Element.VNodeManager.propsTraversers.add(function(observers, vnode){
       attr=_createElementPropsEffectBlock_(self, {
         element, 
@@ -5565,10 +6105,12 @@ const Houxit=(function(global){
     let { key, value:attr, modifiers, deepKeys, src, directive:Name  } = bindings;
     const isRerender = self[$$$operands].initializedRender;
     let value;
-    if(!is_hyperscript && attr) value=_$runModelBind(self, attr, hx_Element, true)
+    if(!is_hyperscript && attr) {
+      value=_$runModelBind(self, attr, hx_Element, true);
+    }
     let has_modifiers=len(modifiers) ? true : false;
     if(!is_hyperscript && !hasOwn(self[$$$register].directives, Name )){
-      $debug_log(
+      debugHandler(
         `((unrecognized directive reference))\n\n "${Name}" directive was not registered as a directive on this widget\n\nat...........at>>>\n${element?.outerHTML || ""}`
       , self, true, "during directive resolving"  );
       return element;
@@ -5582,16 +6124,17 @@ const Houxit=(function(global){
       mounted :pass
     };
     let dirB=generateCustomDirBinding(self, hx_Element, bindings)
-    if(isPFunction(directive)) CustomDir.mounted=directive;
-    else if(isPObject(directive) ){
+    if(isPFunction(directive)) {
+      CustomDir.mounted=directive;
+    }else if(isPObject(directive) ){
       if( !has_Intersect_Prop(directivesHooksMap.split(','), keys(directive))) {
-        $debug_log(`((Directive Error))\n\ndirective ${ typeof directive } does not define any of widget Directive hook.\n  "created/mounted/updated/init/destroyed" method`, self, true); 
+        debugHandler(`((Directive Error))\n\ndirective ${ typeof directive } does not define any of widget Directive hook.\n  "created/mounted/updated/init/destroyed" method`, self, true); 
         return element;
       }else{
         for(const [ name, hook] of  entries(directive)){
           if(new Set(directivesHooksMap.split(',')).has(name)){
             if(!isPFunction(directive[name])){
-              $debug_log(`((Custom directive))\n\ncustom Directive "${Name}" ${name}  hook is not a function`,self, true);
+              debugHandler(`((Custom directive))\n\ncustom Directive "${Name}" ${name}  hook is not a function`,self, true);
               return element;
             }else {
               hook[lifeCiycleBinding]={
@@ -5606,7 +6149,9 @@ const Houxit=(function(global){
         }
       }
     }
-    if(isRerender) return;
+    if(isRerender) {
+      return;
+    }
     if(!isNativeElement(element) && validHouxitWidget(element.prototype_)){
       define(element, $$$customDirs,{ value:{
         init_hook:new Tuple(), 
@@ -5619,7 +6164,9 @@ const Houxit=(function(global){
     for(let hook of directivesHooksMap.split(',').values()){
       if(CustomDir[hook] && !isPass(CustomDir[hook])) {
         if(isNativeElement(element)){
-          if(hook === 'init') continue;
+          if(hook === 'init') {
+            continue;
+          }
           hx_Element.VNodeManager.LifeCycleHooks[hook+'_hook'].add(CustomDir[hook]);
         }else if(validHouxitWidget(element.prototype_)) element[$$$customDirs][hook+'_hook'].add(CustomDir[hook]);
       }
@@ -5631,21 +6178,39 @@ const Houxit=(function(global){
   }
   function _Run_With_Modifiers(self, element, modifiers, func){
     if(!isPFunction(func)){
-      // $debug_log(`"${''}" event Callback must be passed as  a function \n \n${func } is not a valid event callback  method`, self, true);
+      // debugHandler(`"${''}" event Callback must be passed as  a function \n \n${func } is not a valid event callback  method`, self, true);
       return;
     }
     modifiers=isArray(modifiers) ? new Tuple(...modifiers) : modifiers;
     const options=createObj('Options');
-    if(modifiers.has('once')) options.once=true;
-    if(modifiers.has('passive')) options.passive=true;
-    if(modifiers.has('nonpassive')) options.passive=false;
-    if(modifiers.has('capture')) options.capture=true;
-    if(modifiers.has('noncapture')) options.capture=false;
+    if(modifiers.has('once')) {
+      options.once=true;
+    }
+    if(modifiers.has('passive')) {
+      options.passive=true;
+    }
+    if(modifiers.has('nonpassive')) {
+      options.passive=false;
+    }
+    if(modifiers.has('capture')) {
+      options.capture=true;
+    }
+    if(modifiers.has('noncapture')) {
+      options.capture=false;
+    }
     function __With_Modifiers($event){
-      if(modifiers.has('prevent')) $event.preventDefault();
-      if(modifiers.has('stop')) $event.stopPropagation();
-      if(modifiers.has('trusted')) func=$event.isTrusted ? func : pass
-      if(modifiers.has('self') && !element.isSameNode($event.target)) return;
+      if(modifiers.has('prevent')) {
+        $event.preventDefault();
+      }
+      if(modifiers.has('stop')) {
+        $event.stopPropagation();
+      }
+      if(modifiers.has('trusted')) {
+        func=$event.isTrusted ? func : pass;
+      }
+      if(modifiers.has('self') && !element.isSameNode($event.target)) {
+        return;
+      }
       func.call(this, ...arguments);
     }
     return [ __With_Modifiers, options ];
@@ -5656,21 +6221,21 @@ const Houxit=(function(global){
     const is_hyperscript=hx_Element.is_hyperscript;
     data = is_hyperscript ? value : data ;
     if(!isToken(data)){
-      $debug_log(`"ref" prop value expects a Houxit token value\n\nfailed to mount ref token property value`,self, true);
+      debugHandler(`"ref" prop value expects a Houxit token value\n\nfailed to mount ref token property value`,self, true);
       return;
     }else if(isReadonlyToken(data)){
-        $debug_log(`Path provided to the ref special prop resolves to a readonly token value\n\nfailed to mutate ... except a readonly readonlyBypasser is to be implemented by the Houxit compiler`, self, true);
+        debugHandler(`Path provided to the ref special prop resolves to a readonly token value\n\nfailed to mutate ... except a readonly readonlyBypasser is to be implemented by the Houxit compiler`, self, true);
         return;
     }
-    if(node && isWidget) node.props[$$$$dir__ref$$$$]=data;
-    else if(node) {
+    if(node && isWidget) {
+      node.props[$$$$dir__ref$$$$]=data;
+    }else if(node) {
       hx_Element.compiler_options['ref_$$Prop']=data;
       hx_Element.VNodeManager.templateRefs.add(data);
     }
   }
   function $$dir_HTML(self, bindings, element, hx_Element, metrics, text ){
     let { value, modifiers } = bindings;
-    const { isRerender } = metrics;
     modifiers=new Set(modifiers);
     const isSSR=isSSRCompiler(self);
     const SSRVnode=hx_Element.VNodeManager.SSRVnode;
@@ -5719,7 +6284,7 @@ const Houxit=(function(global){
     let { value, modifiers, key } = bindings;
     const { is_hyperscript, isRerender } = metrics;
     if(!key){
-      $debug_log(`slot key error: "$$slot" directive has no key mapping name defined to the "slot" element\n\n--failed-- to normalize slot --directive--`);
+      debugHandler(`slot key error: "$$slot" directive has no key mapping name defined to the "slot" element\n\n--failed-- to normalize slot --directive--`);
       return;
     }
     modifiers=new Set(modifiers);
@@ -5736,7 +6301,6 @@ const Houxit=(function(global){
     }else {
       hx_Element.LabContext=assign({}, hx_Element.LabContext);
     }
-    log(value, key)
     if(value && isDestructureSyntax(value)){
       if(!destructWarn(value, dataBind, self)) {
         return;
@@ -5794,7 +6358,7 @@ const Houxit=(function(global){
       patch:[subscribers, carrierGetter, transform]
     }, metrics);
     if(!key && !isPObject(transform)) {
-      $debug_log(`"$$bind" directive attributes binding expects a plain props object value when not chained to any key argument`, self, true);
+      debugHandler(`"$$bind" directive attributes binding expects a plain props object value when not chained to any key argument`, self, true);
       return ;
     }else if(!key && isPObject(transform)) {
       for(const [ ky, attr ] of entries(transform)){
@@ -5804,19 +6368,21 @@ const Houxit=(function(global){
           data:attr
         }, self, hx_Element, metrics, el);
       }
-    }else attributes_hydration({
-      key,
-      attr:transform,
-      data:response,
-      deepKeys
-    }, self, hx_Element, metrics, el, true);
+    }else {
+      attributes_hydration({
+        key,
+        attr:transform,
+        data:response,
+        deepKeys
+      }, self, hx_Element, metrics, el, true);
+    }
     hx_Element=!isHouxitElement(hx_Element) ? shatteredFlags : hx_Element;
   }
   function $$dir_ON(self, bindings, node, hx_Element, metrics){
     let { key, value:attr, deepKeys, modifiers, src } = bindings;
     let options=metrics.options;
     const isRerender=self[$$$operands].initializedRender;
-    const vNode=hx_Element.VNodeManager.vNodeClass
+    const vNode=isHouxitElement(hx_Element) ? hx_Element.VNodeManager.vNodeClass : hx_Element.vNodeClass;
     const isSSR=isSSRCompiler(self);
     const isWidget=node && validHouxitWidget(vNode.prototype_) && !((isSSR && isString(node.type)) || isNativeElement(node));
     if(isString(attr)){
@@ -5830,12 +6396,12 @@ const Houxit=(function(global){
         attr=_$runModelBind(self, attr, hx_Element);
         attr=object_Has_Path(self.__public_model__, funcToken) && isPFunction(attr) ? attr.bind(self.__public_model__) : attr;
       }catch(err){
-        $debug_log(`${err}`, self, true);
+        debugHandler(`${err}`, self, true);
         return node;
       }
       attr=unwrap(attr);
       if(!isPFunction(attr)){
-        $debug_log(`"${name}" event must be wrapped as or in a function \n\non.....on...\n  "${isWidget ?  '' : node?.localName}" \n`, self, true);
+        debugHandler(`"${name}" event must be wrapped as or in a function \n\non.....on...\n  "${isWidget ?  '' : node?.localName}" \n`, self, true);
         return node;
       }
     }
@@ -5864,7 +6430,7 @@ const Houxit=(function(global){
       let index=0;
       for(let event of deepKeys.values()) {
         if(!IS_VALID_EVENT_HANDLER(event)){
-          $debug_log(`"${event}" is not a valid event name`, self, true);
+          debugHandler(`"${event}" is not a valid event name`, self, true);
         }else {
           const callbackListen=element=>element.addEventListener(event, isFunction(attr) ? attr : pass, options);
           if(isHydration(self)) {
@@ -5882,7 +6448,7 @@ const Houxit=(function(global){
     let { key, value:item, modifiers, deepKeys, directive:name }=bindings;
     modifiers=new Set(modifiers);
     if(!object_Has_Path(self.__public_model__, item)){
-      $debug_log(`value "${item}" property value was referenced during render, but not initialized on model or is undefined\n\nat at\n ..."${name} directive on ${isWidget ? '$$clone' : vnode.localName} `,self, true);
+      debugHandler(`value "${item}" property value was referenced during render, but not initialized on model or is undefined\n\nat at\n ..."${name} directive on ${isWidget ? '$$clone' : vnode.localName} `,self, true);
       return;
     }
     let ref;
@@ -5897,14 +6463,14 @@ const Houxit=(function(global){
         ref = get_Object_Value(self.__public_model__, item, modifiers.has('bind'));
       }
     }catch(err){
-      $debug_log(`There is a problem with accessing the path "${item}" property which was referenced during render, but seems not initialized on model or is undefined\n\nat at\n ..."${name} directive on ${isWidget ? '$$ref' : vnode.localName} `, self, true);
-      $debug_log(err)
+      debugHandler(`There is a problem with accessing the path "${item}" property which was referenced during render, but seems not initialized on model or is undefined\n\nat at\n ..."${name} directive on ${isWidget ? '$$ref' : vnode.localName} `, self, true);
+      debugHandler(err)
       return;
     }
     let propPath=item;
     if(isToken(ref)){
       if(isReadonlyToken(ref)){
-        $debug_log(`Path provided to the $$clone directive path "${item}" resolves to a readonly ref value\n\nFailed to mutate a readonly ref......at ......."${name}"`, self, true);
+        debugHandler(`Path provided to the $$clone directive path "${item}" resolves to a readonly ref value\n\nFailed to mutate a readonly ref......at ......."${name}"`, self, true);
         return;
       }
       propPath= item+ref[refInternalEffectKey].accessor;
@@ -5919,12 +6485,12 @@ const Houxit=(function(global){
     const runBinding= ()=> _$runModelBind(self, value, hx_Element, !modifiers.has('bind'))
     if(!is_hyperscript) {
       [ subscribers, value ] = effectDependencyTracking(self, function(){
-        return runBinding()
+        return runBinding();
       } );
     }else {
       value= runBinding();
     }
-    value=unwrap(value)
+    value=unwrap(value);
     motionElementNode(self, node, {
       hx_Element,
       modifiers,
@@ -5936,7 +6502,7 @@ const Houxit=(function(global){
     modifiers=new Set(modifiers);
     const isStyleEl=isNativeElement(node) && node.localName === 'style';
     if(!isStyleEl) {
-      $debug_log(`"$$scoped" directive is only restricted to document <style> elements only`, self, true);
+      debugHandler(`"$$scoped" directive is only restricted to document <style> elements only`, self, true);
       return node;
     }
     let subscribers;
@@ -5972,12 +6538,12 @@ const Houxit=(function(global){
         return get_Object_Value(self.__public_model__, item, true);
       });
     }catch(err){
-      $debug_log(`undefined reference for directive "$$model"\n\n "${item}" is not defined on widget model instance\n\n${err}`, self, true);
+      debugHandler(`undefined reference for directive "$$model"\n\n "${item}" is not defined on widget model instance\n\n${err}`, self, true);
       return
     }
     if((isSSR && isString(element.type)) || IS_ELEMENT_NODE(element)){
       if(!(isSSR ? _makeMap_(HTML_FORM_ELEMENTS, element.type) : Is_Form_Element(element) )){
-        $debug_log(`Compilation Error::\n\n cannot bind a data model to  a none form element\n\n`, self, true);
+        debugHandler(`Compilation Error::\n\n cannot bind a data model to  a none form element\n\n`, self, true);
         $warn("widget root element is not a form element", self);
         return;
       }
@@ -5993,16 +6559,21 @@ const Houxit=(function(global){
               initVal=value;
             }
           }catch(err){
-            $debug_log(`${err}`, self, true);
+            debugHandler(`${err}`, self, true);
           }
         });
       }
-      if(isHydration(self)) element.filesFilter.$ssr_kit.hydrationFlushs.add(flushCallback);
-      else if(!isSSR) flushCallback(element);
+      if(isHydration(self)) {
+        element.filesFilter.$ssr_kit.hydrationFlushs.add(flushCallback);
+      }else if(!isSSR) {
+        flushCallback(element);
+      }
     }else{
       
     }
-    if(!len(subscribers)) return;
+    if(!len(subscribers)) {
+      return;
+    }
     // hx_Element.VNodeManager.propsTraversers.add(function(observers, vNode){
     // });
       
@@ -6024,7 +6595,9 @@ const Houxit=(function(global){
     const tag=element.localName;
     const type=element.type;
     if(IS_ELEMENT_NODE(element) && Is_Form_Element(element)){
-      if(tag === 'input') return _makeMap_(['file'], type) ? 'change' : _makeMap_(['button','submit','reset'], type) ? 'click' : _makeMap_(['image','hidden'], type ) ? 'change' : 'input';
+      if(tag === 'input') {
+        return _makeMap_(['file'], type) ? 'change' : _makeMap_(['button','submit','reset'], type) ? 'click' : _makeMap_(['image','hidden'], type ) ? 'change' : 'input';
+      }
       return tag === 'form' ? 'submit' : tag === 'select' ? 'change' : tag === 'textarea' ? 'input' : 'input';
     }
   }
@@ -6035,30 +6608,34 @@ const Houxit=(function(global){
   function scaffold(render, ctx){
     render=isPFunction(render) ? render() : render;
     if(!isChildrenNode(render)){
-      $debug_log(`Illegal value type passed to scaffold `);
+      debugHandler(`Illegal value type passed to scaffold `);
       return;
-    }else if(isPrimitive(render) && !isNull(render)) render=String(render);
+    }else if(isPrimitive(render) && !isNull(render)) {
+      render=String(render);
+    }
     return _compileToStaticTemplateScaffold(this, render);
   }
   function hyperscriptElArgumentsValidator(args){
     const [ type , propsOrChildren , childrenOrProps ] = args ;
     if(  len( args ) > 3 ) {
-      $debug_log( `h render function cannot receive more than 3 arguments\n\n"...........${ len( args ) }" received" `  )
+      debugHandler( `h render function cannot receive more than 3 arguments\n\n"...........${ len( args ) }" received" `  )
       return false ;
     }else if( !validateType( type , [ String , Object , Function , ...( inBrowserCompiler ? [ HTMLElement ] : []) ] ) && !isHouxitBuiltinSymbolWidget(type) ) {
-      $debug_log( `parameter 1 at h macro expects a native Element name or a widget options instance dataType `) ;
+      debugHandler( `parameter 1 at h macro expects a native Element name or a widget options instance dataType `) ;
       return false ;
     }else if( isPObject( propsOrChildren ) && !isChildrenObj(propsOrChildren) && isPObject( childrenOrProps ) && !isChildrenObj(childrenOrProps) ) {
-      $debug_log( `Unintended plain object parsed at parameter 2 and 3 of h render macro\n\nplain objects are considered as props and cannot be duplicated`) ;
+      debugHandler( `Unintended plain object parsed at parameter 2 and 3 of h render macro\n\nplain objects are considered as props and cannot be duplicated`) ;
       return false ;
     }else if( ( exists( propsOrChildren ) && isChildrenNode( propsOrChildren ) )  && ( exists( childrenOrProps ) && isChildrenNode( childrenOrProps ) ) ) {
-      $debug_log( `arguments 2 and arguments 3 of h render receives duplicated identical Vnodes instance \n\nRenderable Vnodes cannot be duplicated` );
+      debugHandler( `arguments 2 and arguments 3 of h render receives duplicated identical Vnodes instance \n\nRenderable Vnodes cannot be duplicated` );
       return false ;
     }
     return true ;
   }
   function propsAndChildrenGetter( type , propsOrChildren , childrenOrProps ) {
-    if(!hyperscriptElArgumentsValidator( [ ...arguments ] ))  return {} ;
+    if(!hyperscriptElArgumentsValidator( [ ...arguments ] ))  {
+      return {} ;
+    }
     let props ;
     const lab = new Set() ;
     if( isPObject( propsOrChildren ) && !isChildrenNode( propsOrChildren ) ) { 
@@ -6095,7 +6672,7 @@ const Houxit=(function(global){
           },
           set(modelX){
             if(!isPObject(modelX)){
-              $debug_log(`Unexpected assignment to the model instance object\n\nassignment expects a plain object`);
+              debugHandler(`Unexpected assignment to the model instance object\n\nassignment expects a plain object`);
               return false;
             }
             model=modelX;
@@ -6109,13 +6686,15 @@ const Houxit=(function(global){
       }else if(isPFunction(options)){
         this.build=options;
         if(opts && isPObject(opts)) {
-          if(hasProp(opts, 'build')) delete opts.build;
+          if(hasProp(opts, 'build')) {
+            delete opts.build;
+          }
           assign(this, opts);
         }
       }else if(isClass(options)){
         options=new options();
         if(!isBaseWidget(options)){
-          $debug_log('class widget not an instance of the "Widget" base Widget');
+          debugHandler('class widget not an instance of the "Widget" base Widget');
         }else{
           for(let [key, value ] of entries(options)){
             this[key]=value;
@@ -6149,7 +6728,9 @@ const Houxit=(function(global){
       name:"useParams",
       validators:[[Array, Object]],
       count:1
-    } ))) return self.__public_model__.$params;
+    } ))) {
+      return self.__public_model__.$params;
+    }
     paramsManager(self, params, self.__public_model__.$attrs, true);
     return self.__public_model__.$params
   }
@@ -6172,7 +6753,7 @@ const Houxit=(function(global){
     }
     for(const [index, sl ] of slots.entries()){
       if(!isString(sl)) {
-        $debug_log(`defineSlots() adapter macro array value expects a String value\n\nat array index ..........${index}`, self, true);
+        debugHandler(`defineSlots() adapter macro array value expects a String value\n\nat array index ..........${index}`, self, true);
         continue;
       }
     }
@@ -6187,12 +6768,14 @@ const Houxit=(function(global){
   function _defineSignalsEvents(signals){
     const self=getCurrentRunningEffect({
       name:'defineSignals'
-    })
+    });
     if(!self && !(validateCollectionArgs(arguments, {
       name:"defineSignals",
       count:1,
       validators:[Array]
-    }))) return self.__public_model__.$signals;
+    }))) {
+      return self.__public_model__.$signals;
+    }
     $construct_With_Signals(self, { 
       signals 
     }, true);
@@ -6210,7 +6793,9 @@ const Houxit=(function(global){
       name:"defineConfig",
       count:1,
       validators:[Object]
-    }))) return
+    }))) {
+      return;
+    }
     setConfig(self, { 
       buildConfig: config 
     });
@@ -6227,7 +6812,9 @@ const Houxit=(function(global){
       name:"useTransmit",
       validators:[Object],
       count:1
-    } ))) return;
+    } ))) {
+      return;
+    }
     mapPublicationsTraverse(self, { 
       transmit(){
         return transmit;
@@ -6242,7 +6829,9 @@ const Houxit=(function(global){
       name:"useReceiver",
       validators:[[Array, Object]],
       count:1
-    } ))) return undefined;
+    } ))) {
+      return;
+    }
     return receivePublicationPrefix(self, { 
       receive 
     }, true);
@@ -6258,7 +6847,9 @@ const Houxit=(function(global){
       name:"useContext",
       validators:[Function],
       count:1
-    } ))) return false;
+    } ))) {
+      return false;
+    }
     if(!hasOwn(self[$$$core].opts, "context")){
       self[$$$core].opts.context=function(){
         return context.call(this, ...arguments);
@@ -6277,7 +6868,9 @@ const Houxit=(function(global){
       validators:[Function],
       required:[true]
     });
-    if(!self && !response ) return false;
+    if(!self && !response ) {
+      return false;
+    }
     self[$$$compiler][garbageKey][name].add([ ...args ][0]);
     return true;
   }
@@ -6323,7 +6916,9 @@ const Houxit=(function(global){
       name:"useAdapter",
       validators:[[Object,Function]],
       count:1
-    } ))) return pass;
+    } ))) {
+      return pass;
+    }
     return Function('adapter', `
       return function ${widget.name || ""}(propsOrChildren, childrenOrProps){
         return adapter(...arguments)
@@ -6361,7 +6956,7 @@ const Houxit=(function(global){
   function genericModelPropTransform(self, key, value, code , mygetters, useModel=false){
     if(isComputedMacro(value)){
       if(!useModel){
-        $debug_log(`The computed macro is not allowed within the model option method\n\nThey can only to be used within the body of the Build method option or in a function based widget or within the <script build> WUF (Widget Unit File) build system scope\n\nUse the "computed" method option instead if you are using the options API`, self, true);
+        debugHandler(`The computed macro is not allowed within the model option method\n\nThey can only to be used within the body of the Build method option or in a function based widget or within the <script build> WUF (Widget Unit File) build system scope\n\nUse the "computed" method option instead if you are using the options API`, self, true);
         return;
       }
     }else if(isReadonlyToken(value)){
@@ -6373,7 +6968,7 @@ const Houxit=(function(global){
           return value;
         },
         set(valueX){
-          $debug_log(`cannot reassign/mutate a "readonly" Reactive property\n\n.........on property "${key}"`) ;
+          debugHandler(`cannot reassign/mutate a "readonly" Reactive property\n\n.........on property "${key}"`) ;
           return false;
         }
       })
@@ -6386,16 +6981,20 @@ const Houxit=(function(global){
         value, 
         enumerable
       } );
-    }else self[code][key]=value;
+    }else {
+      self[code][key]=value;
+    }
   }
   function modelManager(self, opts){
-    if(isNull(opts.model)) return;
+    if(isNull(opts.model)) {
+      return;
+    }
     const modelData=isBaseWidget(opts) ? opts.model : new Model() ;
     if(hasOwn(opts, 'model') && isPFunction(opts.model)) {
       try{
         opts.model.call(modelData, self.__public_model__.$params, self.__public_model__.$attrs) ;
       }catch(err){
-        $debug_log(`There is an error when running the model method option\n\n${err}`, self, true);
+        debugHandler(`There is an error when running the model method option\n\n${err}`, self, true);
       }
     }
     self.__public_model__=assign( self.__public_model__, modelData );
@@ -6406,7 +7005,7 @@ const Houxit=(function(global){
       const FirstCharRegex=/^[a-zA-Z_]+/;
       entries(opts.widgets).forEach(([key, widget])=>{
         if(!FirstCharRegex.test(key.at(0)) && !validNameRegex.test(key)){
-          $debug_log(`Widget registration failed,\nImproper widget namecasing found at "${key}"\n\nwidget names must atleast start with an uppercase letter or a multi-word string seperated by a hyphen or an underscore and not start with hyphen or a number`, self, true);
+          debugHandler(`Widget registration failed,\nImproper widget namecasing found at "${key}"\n\nwidget names must atleast start with an uppercase letter or a multi-word string seperated by a hyphen or an underscore and not start with hyphen or a number`, self, true);
           return;
         }
         define(self[$$$register].widgets, key, {
@@ -6418,10 +7017,12 @@ const Houxit=(function(global){
   }
   const $$isHandler=Symbol()
   function methodsManager(opts, self, vnode){
-    if(!opts.handlers) return;
+    if(!opts.handlers) {
+      return;
+    }
     entries(opts.handlers).forEach(([ind, method])=>{
       if(!isPFunction(method)){
-          $debug_log(`widget method option's values must be a method or a function\n\n type of "${getType(method)}" found`, self, true);
+          debugHandler(`widget method option's values must be a method or a function\n\n type of "${getType(method)}" found`, self, true);
           return;
       }
       method[$$isHandler]=true;
@@ -6455,10 +7056,11 @@ const Houxit=(function(global){
       return false;
     }else if(props ){
       const value=props[ind];
-      if(validateType(value, param)) paramsSet[ind]=value;
-      else{
+      if(validateType(value, param)) {
+        paramsSet[ind]=value;
+      }else{
         paramsSet[ind]=undefined;
-        $debug_log(`params validation error\n\nproperty validation for widget default value failed, property "${ind}" is of an invalid type\n\n typeof "${param.name}" required`, self, true);
+        debugHandler(`params validation error\n\nproperty validation for widget default value failed, property "${ind}" is of an invalid type\n\n typeof "${param.name}" required`, self, true);
         return false;
       }
     }
@@ -6468,28 +7070,30 @@ const Houxit=(function(global){
     if(props && _makeMap_(props, param)){
       const value=!props[param] && !isBoolean(props[param]) ? undefined : props[param];
       paramsSet[param]=value;
-    }else paramsSet[param]=undefined; 
+    }else {
+      paramsSet[param]=undefined; 
+    }
   }
   function runObjectifiedParamsValidation(self, paramsSet, objMetrics, PN){
     const [ props, param, ind ] = objMetrics;
     let response = true;
     if(isTrue(param.required) && hasProp(param, 'default')){
-      $debug_log(`validation error  .......\n\nthe required validator should not be truthy alongside a default value\nat at\n\n"${ind}" ${PN}`, self, true);
+      debugHandler(`validation error  .......\n\nthe required validator should not be truthy alongside a default value\nat at\n\n"${ind}" ${PN}`, self, true);
       response = false;
     }else if(hasProp(param, 'required') && !isBoolean(param.required)){
-      $debug_log(`The "required" validation options receives an unresolvable value \nat at \n"${ind}" ${PN}\n requires a boolean value`, self, true);
+      debugHandler(`The "required" validation options receives an unresolvable value \nat at \n"${ind}" ${PN}\n requires a boolean value`, self, true);
       response = false;
     }else if(!hasProp(param, 'type')){
-      $debug_log(`The type validator property is  required\n  Mising at "${ind}" param`, self, true);
+      debugHandler(`The type validator property is  required\n  Mising at "${ind}" param`, self, true);
       response = false;
     }else if(!validateType(param.type, [Function, Array, Type]) ){
-      $debug_log(`unexpected value passed as the type validator option\n expects a function or an Array of type function`, self, true);
+      debugHandler(`unexpected value passed as the type validator option\n expects a function or an Array of type function`, self, true);
       response = false;
     }else if(hasProp(param,'validator') && !isPFunction(param.validator)){
-      $debug_log(`The "validator option must be a  function\n\nat ${ind} ${PN}`, self, true);
+      debugHandler(`The "validator option must be a  function\n\nat ${ind} ${PN}`, self, true);
       response = false;
     }else if(isTrue(param.required) && !_makeMap_(props || {}, ind)){
-      $debug_log(`Params validation error........\n\nThe ${PN+ ' of the '+'"'+self[$$$ownProperties].name+'"'+' widget' } params is required and seems not to  be provided "\nrequired ${PN} is missing\n\nat at\n  ....."${ind}"  param`, self, true);
+      debugHandler(`Params validation error........\n\nThe ${PN+ ' of the '+'"'+self[$$$ownProperties].name+'"'+' widget' } params is required and seems not to  be provided "\nrequired ${PN} is missing\n\nat at\n  ....."${ind}"  param`, self, true);
       paramsSet[ind]=undefined;
       response = false;
     }
@@ -6502,9 +7106,11 @@ const Houxit=(function(global){
       if(!hasOwn(props || {}, ind)){
         if(!validateType(defaultValue(), param.type)){
           paramsSet[ind]=undefined;
-          $debug_log(`Params validation error .....\n\nproperty validation for widget default value failed, property "${ind}" is of an invalid type\n\n"${ isArray(param.type) ? '"Matches no type in the validation list' :  'typeof '+ param.type.name+" expected"}`, self, true); 
+          debugHandler(`Params validation error .....\n\nproperty validation for widget default value failed, property "${ind}" is of an invalid type\n\n"${ isArray(param.type) ? '"Matches no type in the validation list' :  'typeof '+ param.type.name+" expected"}`, self, true); 
           return false;
-        }else paramsSet[ind]=defaultValue();
+        }else {
+          paramsSet[ind]=defaultValue();
+        }
       }
     }
     return true;
@@ -6516,18 +7122,18 @@ const Houxit=(function(global){
       if(hasOwn(param, 'validator')){
         let valRes=param.validator(value);
         if(!isBoolean(valRes)){
-          $debug_log(`${pn} validator option method must return a Boolean value of true/false`, self, true);
+          debugHandler(`${pn} validator option method must return a Boolean value of true/false`, self, true);
           return false;
         }
         if(isFalse(valRes)){
-          $debug_log(`Validation for ${pn} ${ind} returned false`, self, true);
+          debugHandler(`Validation for ${pn} ${ind} returned false`, self, true);
           return false ;
         }
       }
       paramsSet[ind]=value
     }else if(hasOwn(props, ind) && !validateType(value, param.type)){
       paramsSet[ind]=undefined;
-      $debug_log(`${pn} validation error .....\n\nproperty validation for ${ self ? 'widget' : 'object'} ${pn} value failed, property "${ind}" is of an invalid type\n\n${ isArray(param.type) ? "Matches no type in the required validation list" :  'typeof '+param.type.name+" expected" }`, self,  true);
+      debugHandler(`${pn} validation error .....\n\nproperty validation for ${ self ? 'widget' : 'object'} ${pn} value failed, property "${ind}" is of an invalid type\n\n${ isArray(param.type) ? "Matches no type in the required validation list" :  'typeof '+param.type.name+" expected" }`, self,  true);
       return false;
     }
     return true;
@@ -6546,7 +7152,7 @@ const Houxit=(function(global){
       paramsSet=self.__public_model__.$params;
       entries(params).forEach(([ind, param])=>{
         if(has$$_bind(ind)){
-          $debug_log(`Params validation error "${ind}" passed to widget as a houxit directive binding
+          debugHandler(`Params validation error "${ind}" passed to widget as a houxit directive binding
             \n\n
             The "$$" may not be appended or used on a params identifier key name`, 
             self, true);
@@ -6557,16 +7163,22 @@ const Houxit=(function(global){
           ind,
           props,
           param
-        })) return paramsSet;
+        })) {
+          return paramsSet;
+        }
       })
     }
     return paramsSet;
   }
   function transform_param_master(self, param){
     const setup={}
-    if(validateType(param, [Array, Function ]) || param instanceof Type) setup.type=param;
-    else if(isString(param) || !param) setup.type=Any;
-    else if(isPObject(param)) return param;
+    if(validateType(param, [Array, Function ]) || param instanceof Type) {
+      setup.type=param;
+    }else if(isString(param) || !param) {
+      setup.type=Any;
+    }else if(isPObject(param)) {
+      return param;
+    }
     return setup;
   }
   function validationCoreManager(self, params, paramsSet, metrics){
@@ -6575,10 +7187,18 @@ const Houxit=(function(global){
     //   if(isFalse(paramsKeysDefer(self, paramsSet, [ props, ind, param ]))) return false;//Defer type, runs validation for tyoes in Array and JavaScript prototype Methods tyoes
     // }else if(isArray(params) && isString(param)) arrayParamsResolver(self, paramsSet, [props, param])//array and string based validation
     if(isPObject(param)){
-      if(!runObjectifiedParamsValidation(self, paramsSet, [ props, param, ind ], 'params')) return false;//params in object type
-      if(!defaultParamBuffering(self, paramsSet, [  props, param, ind ])) return false;//validating defaut values
-      if(!paramsValidationCircle(self, paramsSet, [props, param, ind ], "params")) return false;
-      if(!hasOwn(paramsSet, ind)) paramsSet[ind]=undefined;
+      if(!runObjectifiedParamsValidation(self, paramsSet, [ props, param, ind ], 'params')) {
+        return false;//params in object type
+      }
+      if(!defaultParamBuffering(self, paramsSet, [  props, param, ind ])) {
+        return false;//validating defaut values
+      }
+      if(!paramsValidationCircle(self, paramsSet, [props, param, ind ], "params")) {
+        return false;
+      }
+      if(!hasOwn(paramsSet, ind)) {
+        paramsSet[ind]=undefined;
+      }
     }
     return true;
   }
@@ -6586,18 +7206,25 @@ const Houxit=(function(global){
     // if(in_build) vnode=opts;
     props=assign({}, props);
     const garbage={};
-    if(!in_build) defineGetter(self.__public_model__, '$params', new Params());
+    if(!in_build) {
+      defineGetter(self.__public_model__, '$params', new Params());
+    }
     if(params && !validateType(params, [ Object, Array ])){
-      $debug_log(`param option type validation failed, \n\n
+      debugHandler(`param option type validation failed, \n\n
         unexpected data type of "${getType(params)}"`, self,  true);
       return;
     }
     const paramsSet=resolveParamsPossibility(self, [ props, params], in_build);
-    if(!paramsSet) return;
+    if(!paramsSet) {
+      return;
+    }
     GarbagePropsPrefix(self, paramsSet, garbage, props);
     entries(props||{}).forEach(([ind, value])=>{
-      if(!hasOwn(paramsSet||{}, ind))  self.__public_model__.$attrs[ind]=value;
-      else if(hasOwn(paramsSet || {}, ind) && hasOwn(self.__public_model__.$attrs, ind)) delete self.__public_model__.$attrs[ind];
+      if(!hasOwn(paramsSet||{}, ind)) {
+        self.__public_model__.$attrs[ind]=value;
+      }else if(hasOwn(paramsSet || {}, ind) && hasOwn(self.__public_model__.$attrs, ind)) {
+        delete self.__public_model__.$attrs[ind];
+      }
     });
     if(len(paramsSet)){
       for(const [key, value ] of entries(paramsSet)){
@@ -6617,7 +7244,9 @@ const Houxit=(function(global){
   
   }
   function _hydrate_props_fallthrough(opts, self, vnode, metrics){
-    if(self[$$$operands].initializedRender) return vnode;
+    if(self[$$$operands].initializedRender) {
+      return vnode;
+    }
     const { forwardAttrs, forwardEvents }=self[$$$core].settings;
     const isSSR=isSSRCompiler(self);
     const { $attrs, $events } =self.__public_model__;
@@ -6645,7 +7274,7 @@ const Houxit=(function(global){
             forwardAttrs
           });
         }catch(err){
-          $debug_log(`Encountered a road block during attributes fallthrough forwarding on element "<${vnode.$element[ isSSR ? 'type' : 'localName']} ... >"\n\n
+          debugHandler(`Encountered a road block during attributes fallthrough forwarding on element "<${vnode.$element[ isSSR ? 'type' : 'localName']} ... >"\n\n
             Check warning details info on attribute "${key}"`, self, true);
           return Break();
         }
@@ -6665,7 +7294,7 @@ const Houxit=(function(global){
     }
     for(let [key, klass] of entries(options.templateClasses)){
       if(!(isPFunction(klass)|| isTemplateClass(klass))){
-        $debug_log(`"${key}" templateClasse property value expects a plain function`, self, true);
+        debugHandler(`"${key}" templateClasse property value expects a plain function`, self, true);
         return;
       }
       define(self.__public_model__, key, {
@@ -6689,11 +7318,11 @@ const Houxit=(function(global){
         pass;
       }else if(isValidWidgetOption(key) && !isNodeJSOnlyOption(key) && !validateType(opt, widgetOptionType[key])){
         if(isClassBasedBuild(self) && key === 'model' && !isPObject(opt) || !isClassBasedBuild(self) ){
-          $debug_log(`${key} option is of an invalid type, \n\n "${key}" option cannot be of a "${getType(opt)}" type`, self, true);
+          debugHandler(`${key} option is of an invalid type, \n\n "${key}" option cannot be of a "${getType(opt)}" type`, self, true);
           return;
         }
       }else if(isNodeJSOnlyOption(key) && inBrowserCompiler) {
-        $debug_log(`"${key}" option is a nodejs only option, and cannot be used in houxit inbrowser compiler`, self, true);
+        debugHandler(`"${key}" option is a nodejs only option, and cannot be used in houxit inbrowser compiler`, self, true);
       }else if(!isValidWidgetOption(key)) {
         self[$$$operands]._OPTIONS[key]=opt;
       }
@@ -6799,12 +7428,18 @@ const Houxit=(function(global){
   }
   function grabSSRVNodSlots(self, vnode, name){
     if(!isSSRCollection(vnode.$element) && isVNodeClass(vnode.$element) && vnode.$element.type === 'slot'){
-      if(name === vnode.$element.props.name || ssrSmartDefaultToggle(vnode.$element.props, name)) return vnode.$element;
+      if(name === vnode.$element.props.name || ssrSmartDefaultToggle(vnode.$element.props, name)) {
+        return vnode.$element;
+      }
       return;
-    }else if(!isSSRCollection(vnode)) return;
+    }else if(!isSSRCollection(vnode)) {
+      return;
+    }
     for(let [ key, value] of vnode.$element.entries()){
       if(isVNodeClass(value) && value.type === 'slot'){
-        if(name === value.props.name || ssrSmartDefaultToggle(value.props, name)) return value;
+        if(name === value.props.name || ssrSmartDefaultToggle(value.props, name)) {
+          return value;
+        }
       }
     }
     return;
@@ -6816,7 +7451,9 @@ const Houxit=(function(global){
         if(isArray(vnode.$element) && slot){
           const slotIndex=vnode.$element.indexOf(slot);
           vnode.$element[slotIndex]=content.$element;
-        }else if(slot) vnode.$element=content.$element;
+        }else if(slot) {
+          vnode.$element=content.$element;
+        }
       }else {
         slot.replaceWith(content.$element);
       }
@@ -6832,13 +7469,19 @@ const Houxit=(function(global){
     return scopedList;
   }
   const shouldForwwardSlots=(element, slots, self)=>{
-    if(!len(slots)) return false;
-    if(isSSRCompiler(self)) return isString(element.type) && !len(element.children) && element?.type !== 'slot';
+    if(!len(slots)) {
+      return false;
+    }
+    if(isSSRCompiler(self)) {
+      return isString(element.type) && !len(element.children) && element?.type !== 'slot';
+    }
     return IS_ELEMENT_NODE(element) && !element.innerHTML.trim() && element?.localName !== 'slot';
   }
   function _$slotHydrationRenderer(self, opts, vnode_build){
     const slots=self[$$$core].slots;
-    if(!len(slots) || !vnode_build || !isHouxitElement(vnode_build) || isHouxitTextElement(vnode_build)) return vnode_build ;
+    if(!len(slots) || !vnode_build || !isHouxitElement(vnode_build) || isHouxitTextElement(vnode_build)) {
+      return vnode_build ;
+    }
     const renderedSlotsList={};
     const slot_elements=resolveSlotsFilter( self, vnode_build ) ;
     const assynedSlots=new Tuple();
@@ -6852,14 +7495,19 @@ const Houxit=(function(global){
       if(forwardSlot) {
         const slotContent=hasOwn(slots, 'default') ? slots.default(self) : null;
         if(slotContent) {
-          if(isSSRCompiler(self)) vnode_build.$element.children.append(slotContent.$element);
-          else vnode_build.$element.append(slotContent.$element);
+          if(isSSRCompiler(self)) {
+            vnode_build.$element.children.append(slotContent.$element);
+          }else {
+            vnode_build.$element.append(slotContent.$element);
+          }
         }
         assynedSlots.add('default');
         renderedSlotsList['default']=slotContent;
       }
     }
-    if(!len(renderedSlotsList)) return vnode_build ;
+    if(!len(renderedSlotsList)) {
+      return vnode_build ;
+    }
     for(const [name, content] of entries(renderedSlotsList) ){
       self[$$$core].slotsFactory.renderedSlotsList[name]=content;
     }
@@ -6869,7 +7517,7 @@ const Houxit=(function(global){
     if(hasProp(options,'directives')){
       for(let [key, value] of entries(options.directives)){
         if(!validateType(value, [ Object, Function])){
-          $debug_log(`a directive requires an object of directive hooks or a function to act as a "mounted" hook `, self, true); 
+          debugHandler(`a directive requires an object of directive hooks or a function to act as a "mounted" hook `, self, true); 
           return;
         }
         define(self[$$$register].directives, has$$_bind(key) ? key.slice(2) : key, {
@@ -6885,15 +7533,17 @@ const Houxit=(function(global){
   function mapSettingCheck(self, key, setting){
     self=!isHouxitBuild(self) ? null : self
     if(!_makeMap_(configOptionsSettings, key)){
-      $debug_log(`unrecognised settings option found in buildConfig defineConfig  at   at\n"${key} name property`,self, isHouxitBuild(self));
+      debugHandler(`unrecognised settings option found in buildConfig defineConfig  at   at\n"${key} name property`,self, isHouxitBuild(self));
       return false;
     }else if(!validateType(setting, ConfigValidator[key])){
-      $debug_log(`${key} config option of buildConfig receives an invalid type\n\nExpects a/an "${ConfigValidator[key].name.toLowerCase()}" type`, self, isHouxitBuild(self));
+      debugHandler(`${key} config option of buildConfig receives an invalid type\n\nExpects a/an "${ConfigValidator[key].name.toLowerCase()}" type`, self, isHouxitBuild(self));
       return false;
     }
     if(key === 'delimiters'){
       let rv=validateDelimiterConstruct(self, setting);
-      if(isFalse(rv)) return false
+      if(isFalse(rv)) {
+        return false;
+      }
     };
     return true;
   }
@@ -6924,7 +7574,7 @@ const Houxit=(function(global){
       if(hasOwn(options, 'flushType')){
         const flushType=options.flushType;
         if(!isString(flushType) && !_makeMap_(flushOptions, flushType)){
-          $debug_log(`unrecognised flushType options received\n\nvalue "${flushType}" is not a vailid flushType`, self, true);
+          debugHandler(`unrecognised flushType options received\n\nvalue "${flushType}" is not a vailid flushType`, self, true);
         }else {
           this.flushType=flushType;
         }
@@ -7010,7 +7660,9 @@ const Houxit=(function(global){
       }
       return undefined;
     }
-    if( !props || !len(props) ) return self.__public_model__ ;
+    if( !props || !len(props) ) {
+      return self.__public_model__ ;
+    }
     for( let [ key , value ] of entries( props ) ) {
       if( !object_Has_Path( self.__public_model__ , key ) && (!isProxySkipped( key ) && key !== '$params')){
         genericModelPropTransform( self , key , value , '__public_model__' , null , true ) ;
@@ -7026,13 +7678,13 @@ const Houxit=(function(global){
   function checkObserversValidations(self, propOrGetter, callback){
     const errArgs=()=>[ self, true, 'During the call of the "effect" macro'];
     if(!validateType(propOrGetter, [BaseToken, Function, String, Array, Tuple, Set]) && !isStream(propOrGetter)){
-      $debug_log(`proplem setting Observer for tracked dependency value "${propOrGetter}"\n\n invalid type\nexpects a getter or collections of getter functions`, ...errArgs());
+      debugHandler(`proplem setting Observer for tracked dependency value "${propOrGetter}"\n\n invalid type\nexpects a getter or collections of getter functions`, ...errArgs());
       return false;
     }else if(!isPFunction(callback)){
-      $debug_log(`observer callback expects a plain function method`);
+      debugHandler(`observer callback expects a plain function method`);
       return false;
     } else if(isString(propOrGetter) && !object_Has_Path(self.__public_model__, propOrGetter)){
-      $debug_log(`undefined property "${propOrGetter}" accessed in effect  macro "EffectObserver"`, ...errArgs());
+      debugHandler(`undefined property "${propOrGetter}" accessed in effect  macro "EffectObserver"`, ...errArgs());
       return false;
     }
     return true;
@@ -7057,7 +7709,7 @@ const Houxit=(function(global){
       required:[true, true]
     } ))) {
       if(!self) {
-        $debug_log(`You can't use the "$observe()" adapter within a widget public model instance`);
+        debugHandler(`You can't use the "$observe()" adapter within a widget public model instance`);
       }
       return;
     }
@@ -7068,15 +7720,19 @@ const Houxit=(function(global){
   }
   function EffectObserver(propOrGetter, callback, options){
     if(len(arguments) === 3 && !isPObject(options)){
-      $debug_log(`Invalid Argument Type: parameter 3 arguments of effect observer expects a plain object`, this, true);
+      debugHandler(`Invalid Argument Type: parameter 3 arguments of effect observer expects a plain object`, this, true);
       return ;
     }
     let rv=checkObserversValidations(this, propOrGetter, callback);
-    if(isFalse(rv)) return;
+    if(isFalse(rv)) {
+      return;
+    }
     if(isArray(propOrGetter)){
       propOrGetter.forEach((value)=>{
         rv=checkObserversValidations(this, value, callback);
-        if(isFalse(rv)) return;
+        if(isFalse(rv)) {
+          return;
+        }
       })
     }
     const effectDeps={
@@ -7087,18 +7743,21 @@ const Houxit=(function(global){
     const self=this;
     function _stopEffect(callback){
       if(!self[$$$operands]._OBSERVERS.has(observer)){
-        $debug_log(`Inert Stopper Call: effect observer has already been stopped`, self, true);
+        debugHandler(`Inert Stopper Call: effect observer has already been stopped`, self, true);
         return false;
       }
       observer.stopEffect(self, observer);
       if(isPFunction(callback) ) {
         let returnValue=undefined
-        if(hasOwn(callback, effectHookValueKey)) returnValue=callback[effectHookValueKey];
-        else returnValue = effectDeps.value;
+        if(hasOwn(callback, effectHookValueKey)) {
+          returnValue=callback[effectHookValueKey];
+        }else {
+          returnValue = effectDeps.value;
+        }
         callback.call(self.__public_model__, returnValue);
         return true;
       }else if(len(arguments) && !isPFunction(callback)) {
-        $debug_log(`unexpected args Type:: callback argument at effect stopper expects a plain function`, self, true);
+        debugHandler(`unexpected args Type:: callback argument at effect stopper expects a plain function`, self, true);
         return false;
       }
     }
@@ -7108,9 +7767,13 @@ const Houxit=(function(global){
   }
   function map_Events_Fall(self, vnode, in_build=false){
     self.__public_model__.$attrs= new Attrs();
-    if(!len(vnode.filesFilter.$$$Events)) return;
+    if(!len(vnode.filesFilter.$$$Events)) {
+      return;
+    }
     for(let [ name, value ] of entries(vnode.filesFilter.$$$Events)){
-      if(hasOwn(self.__public_model__.$signals, name)) continue;
+      if(hasOwn(self.__public_model__.$signals, name)) {
+        continue;
+      }
       const transformKey=toCamelCase("on-"+name);
       self.__public_model__.$events[name]=function(){
         value.callbacks.forEach((callback)=>callback.call(this, ...arguments));
@@ -7123,11 +7786,10 @@ const Houxit=(function(global){
     function merger(){
       let res;
       try{
-        log(event)
         event.callbacks.forEach((callback)=> callback.call(this, ...arguments));
       }catch(err){
-        $debug_log(`Signal traceBack error:: prevíous call on Signal events failed with an error`, self, true);
-        $debug_log(`${err}`, self);
+        debugHandler(`Signal traceBack error:: prevíous call on Signal events failed with an error`, self, true);
+        debugHandler(`${err}`, self);
         return;
       }
       return res;
@@ -7164,14 +7826,14 @@ const Houxit=(function(global){
     const sName=optName.slice(0, -1)
     for(const [name, filter] of entries(options[optName])){
       if(optName === 'blocks' ? isBuiltinBlocks(name) : _makeMap_(BUILT_IN_FILTERS, name)){
-        $debug_log(`registration failure\nFailed to register the custom ${sName} with the name "${name}\n\n Which collides with a BUILT_IN_${sName.toUpperCase()} name\nregistration FAILED___`,self, true);
+        debugHandler(`registration failure\nFailed to register the custom ${sName} with the name "${name}\n\n Which collides with a BUILT_IN_${sName.toUpperCase()} name\nregistration FAILED___`,self, true);
         continue;
       }else if(!validateType(filter, [ Function, Object] )) {
-        $debug_log(`${sName.at(0).toUpperCase()+sName.slice(1)} must be a function or an object exposing a "${sName}" method option \n\nat        at\n "${name}" ${sName} registration`, self, true);
+        debugHandler(`${sName.at(0).toUpperCase()+sName.slice(1)} must be a function or an object exposing a "${sName}" method option \n\nat        at\n "${name}" ${sName} registration`, self, true);
         continue;
       }
       if(isObject(filter) && (!hasOwn(filter, sName) || !isPFunction(filter[sName]))){
-        $debug_log(`"${name}" ${sName} object must expose a ${sName} method\n\nregistration FAILED___`, self, true);
+        debugHandler(`"${name}" ${sName} object must expose a ${sName} method\n\nregistration FAILED___`, self, true);
         continue
       }
       self[$$$register][optName][name]=filter;
@@ -7378,7 +8040,7 @@ const Houxit=(function(global){
       return true;
     }
     if(isReadonly && (name === 'deleteProperty' || !isReadonlyBypasser(value)) ){
-      $debug_log(`Cannot reassign/mutate a "readonly" stream prop\n\n___MUTATION FAILED___\n........"{}.${prop}" property assignment/mutation using {##}.${name} method \n\n{##} object props are readonly \n.........>>>bypassKey verification failure`, );
+      debugHandler(`Cannot reassign/mutate a "readonly" stream prop\n\n___MUTATION FAILED___\n........"{}.${prop}" property assignment/mutation using {##}.${name} method \n\n{##} object props are readonly \n.........>>>bypassKey verification failure`, );
       return false;
     }else if(isReadonly && (!name === 'deleteProperty' || ( (name === 'defineProperty'/* || name === 'set'*/) && isReadonlyBypasser(value)))){
       value =  value[bypassSymbol];
@@ -7480,31 +8142,34 @@ const Houxit=(function(global){
     return obj;
   }
   function transformProxyStream(obj, ReactiveEffect, config, master){
-    if(validateType(obj, [Object, Array, Tuple ])) return new Proxy(obj, {
-      get(target, prop){
-        const getter=()=> Reflect.get(...arguments);
-        hydrateEffectSubs(ReactiveEffect);
-        if(ReactiveEffect.watchGetters) {
-          subscribeEffect( ReactiveEffect, [ getter ]);
-        }
-        ReactiveEffect.subscribers.add(getter);
-        ReactiveEffect.effect_sync;
-        return getter();
-      },
-      set(target, prop, value, receiver){
-        return streamMutationTransform(arguments, obj, ReactiveEffect, 'set', config, master);
-      },
-      defineProperty(target, prop, value, receiver){
-        return streamMutationTransform(arguments, obj, ReactiveEffect, 'defineProperty', config, master);
-      },
-      deleteProperty(target, prop, value, receiver){
-        return streamMutationTransform(arguments, obj, ReactiveEffect, 'deleteProperty', config, master);
-      },
+    if(validateType(obj, [Object, Array, Tuple ])) {
+      return new Proxy(obj, {
+        get(target, prop){
+          const getter=()=> Reflect.get(...arguments);
+          hydrateEffectSubs(ReactiveEffect);
+          if(ReactiveEffect.watchGetters) {
+            subscribeEffect( ReactiveEffect, [ getter ]);
+          }
+          ReactiveEffect.subscribers.add(getter);
+          ReactiveEffect.effect_sync;
+          return getter();
+        },
+        set(target, prop, value, receiver){
+          return streamMutationTransform(arguments, obj, ReactiveEffect, 'set', config, master);
+        },
+        defineProperty(target, prop, value, receiver){
+          return streamMutationTransform(arguments, obj, ReactiveEffect, 'defineProperty', config, master);
+        },
+        deleteProperty(target, prop, value, receiver){
+          return streamMutationTransform(arguments, obj, ReactiveEffect, 'deleteProperty', config, master);
+        },
       // apply(target, thisArg, args ){
       //   return Reflect.apply(...arguments);
       // }
-    });
-    else return obj;
+      });
+    }else {
+      return obj;
+    }
   }
   function streamReactiveHook(X, args, name, callback){
     const res = X.prototype[name].call(this, ...args);
@@ -7514,7 +8179,9 @@ const Houxit=(function(global){
   function CollectionsEffectMutationsTrap(collection, callback){
     const mutators = isSet(collection) ? setMM : isArray(collection) ? arrayMM : isTuple(collection) ? tupleMM : isMap(collection) ? mapMM : "";
     mutators.split(",").values().forEach((method)=>{
-      if(!method) return;
+      if(!method) {
+        return;
+      }
       collection.prototype[method]=Function('streamReactiveHook', `
         return function ${ method === 'delete' ? 'del' : method }(){
           return streamReactiveHook();
@@ -7532,7 +8199,9 @@ const Houxit=(function(global){
   }
   function _createArrayStream(array, callback){
     const isSVA=len(array) === 1 && isNumber(array[0]);
-    if(isSVA) array.push(undefined);
+    if(isSVA) {
+      array.push(undefined);
+    }
     class ArrayStream extends Array{
       constructor(){
         super(...array);
@@ -7657,7 +8326,7 @@ const Houxit=(function(global){
         if(writable) {
           value=valueX;
         }else if(debug) {
-          $debug_log(`"{}<${prop}>" not writable!!!`);
+          debugHandler(`"{}<${prop}>" not writable!!!`);
         }
       }
     }
@@ -7743,7 +8412,9 @@ const Houxit=(function(global){
   function createCordinationProperties(self, vnode){
     self.__public_model__=new Model();
     let opts=vnode;
-    if(isVNodeClass(vnode)) opts= defineWidget(vnode.prototype_);
+    if(isVNodeClass(vnode)) {
+      opts= defineWidget(vnode.prototype_);
+    }
     self[$$$ownProperties]=createObj('OwnProperties', HXBuildOwnPropertiesInitial(opts, vnode) );
     defineGetter(self, $$$register, registra() );
     defineGetter(self, $$$operands, createObj('Operands', HXBuildOperandInitial()));
@@ -7853,7 +8524,7 @@ const Houxit=(function(global){
   }
   function slotDebuger(self){
     return (slotName, slotContent)=>{
-      $debug_log(`Problem when mapping slot element>>>\n\nMore than one vnode slot name seems to be pointing to the  same slot\nat at "${slotName}" slot Directive  of "${slotContent.$element.outerHTML}" \n\nmaybe you should wrap them within a single template wrapper`, self, true, "During the induction of slots contents");
+      debugHandler(`Problem when mapping slot element>>>\n\nMore than one vnode slot name seems to be pointing to the  same slot\nat at "${slotName}" slot Directive  of "${slotContent.$element.outerHTML}" \n\nmaybe you should wrap them within a single template wrapper`, self, true, "During the induction of slots contents");
       $warn(`Note: unnamed contents will be automatically weapped as "default" slot\nWon't conflict with other default contents`, self );
       return;
     }
@@ -7912,8 +8583,8 @@ const Houxit=(function(global){
   function defineFallbackSlotsToken(self, options, defaultSlotsRecord, slotsCore){
     function factory(name){
       return function slotRender(def){
-        if(len(arguments) && def && !isChildrenNode(def) || (isAFunction(def) && !isChildrenNode(def()))){
-          $debug_log(`Render functions default slot content must be a render function also`, self, true);
+        if(len(arguments) && def && !isChildrenNode(def) || (isArrowFunction(def) && !isChildrenNode(def()))){
+          debugHandler(`Render functions default slot content must be a render function also`, self, true);
            return null;
         }else if(def && isChildrenNode(def)) {
           def=isPFunction(def) ? def(self) : def;
@@ -7999,7 +8670,7 @@ const Houxit=(function(global){
       hook.call(self.__public_model__);
     }catch(err){
       console.error(err);
-      $debug_log(`${name} hook \n\n`,self, true, `during the call of the "${name}" LifeCycle hook`, self, true);
+      debugHandler(`${name} hook \n\n`,self, true, `during the call of the "${name}" LifeCycle hook`, self, true);
       $warn(`${err}`);
     }
   }
@@ -8025,12 +8696,12 @@ const Houxit=(function(global){
         for(let [slotN, slotRender] of entries(value.slots)){
           slotRender=slotRender.call(($$$context()?.value), slotBindings[slotN]?.bindings);
           if(!isChildrenNode(slotRender)){
-            $debug_log(`Element Recognition Error: unrecognised element/value passed to render`, self, true);
+            debugHandler(`Element Recognition Error: unrecognised element/value passed to render`, self, true);
             return;
           }
           slotRender=arrayInverter(_HouxitCoreRenderer(arrayInverter( slotRender ), patchFlags, null, hx_Element, null, config));
           if(slotN !=='default' && except.has(slotN) ){
-            $debug_log(`Duplicate Slot Error: slot content with the name mapping "${slotN}" has already be defined\n\nUntraced slotting mapping\n"${slotN}" slot Duplicate found`, self, true);
+            debugHandler(`Duplicate Slot Error: slot content with the name mapping "${slotN}" has already be defined\n\nUntraced slotting mapping\n"${slotN}" slot Duplicate found`, self, true);
             return;
           }else{
             except.add(slotN);
@@ -8079,7 +8750,9 @@ const Houxit=(function(global){
     let { hx_Element, self:patchFlags, fall, config } =  slotsCompilerArgs;
     const is_hyperscript=vnode.is_hyperscript;
     if(!config?.slotBindings) {
-      if(!config) config={};
+      if(!config) {
+        config={};
+      }
       config.slotBindings={};
     }
     if(!is_hyperscript && slotsCompilerArgs?.config?.slotBindings) {
@@ -8123,12 +8796,12 @@ const Houxit=(function(global){
         flushType:'post'
       });
     }catch(err){
-      $debug_log(`Provider Method Error: Encountered an error while trying to run the context >> provider option method`, self, true);
-      $debug_log(`${err}`, self);
+      debugHandler(`Provider Method Error: Encountered an error while trying to run the context >> provider option method`, self, true);
+      debugHandler(`${err}`, self);
       return;
     }
     if(isNull(data)){
-      $debug_log(`Context Return Error: The context option returns a nullish or undefined value \nReturning null is an invalid semantic `, self, true);
+      debugHandler(`Context Return Error: The context option returns a nullish or undefined value \nReturning null is an invalid semantic `, self, true);
       return;
     }
     self[$$$core].map.$$$context=()=>({
@@ -8206,7 +8879,7 @@ const Houxit=(function(global){
       return opts.transmit.call(self.__public_model__)
     });
     if(!isPObject(value)) {
-      $debug_log(`transmit method option expects a plain object as a return value`, self, true);
+      debugHandler(`transmit method option expects a plain object as a return value`, self, true);
       return;
     }
     const globalBoard= isInitialBuild(self) ? self[$$$core].$globals.transmited : self[$$$core].$root[$$$core].$globals.transmited;
@@ -8222,7 +8895,7 @@ const Houxit=(function(global){
     for(let [ key, valueX] of getIterator(opts.receive)){
       let keyName = isArray(opts.receive) ? valueX : key ;
       if( !validateType(keyName, [String, Symbol])){
-        $debug_log(`Arrays value of receive option expects a string / Symbol values of transmited property names\n\n
+        debugHandler(`Arrays value of receive option expects a string / Symbol values of transmited property names\n\n
           ........"${keyName}"`, self, true);
         return
       }
@@ -8232,10 +8905,10 @@ const Houxit=(function(global){
           if(!isPFunction(valueX.default)) {
             defaultValue=valueX.default
           }else{
-            defaultValue = !isAFunction(valueX.default) ? valueX.default.call(self.__public_model__) : valueX.default()
+            defaultValue = !isArrowFunction(valueX.default) ? valueX.default.call(self.__public_model__) : valueX.default()
           }
         }else{ 
-          $debug_log(`No transmited props with the provided receive key "${keyName}"\n\n
+          debugHandler(`No transmited props with the provided receive key "${keyName}"\n\n
             Unrecognized receive property`, self, true);
           return;
         }
@@ -8243,10 +8916,10 @@ const Houxit=(function(global){
       let received= get_Object_Value( globalBoard , keyName );
       if(isPObject(valueX) && hasOwn(valueX, 'receive')){
         if(!isPFunction(valueX.receive)){
-          $debug_log(`receive option of "${key}" receive property expects a function`, self, true);
+          debugHandler(`receive option of "${key}" receive property expects a function`, self, true);
           return 
         }
-        received = !isAFunction(valueX.receive) ? valueX.receive.call(self.__public_model__, received ) : valueX.receive(received);
+        received = !isArrowFunction(valueX.receive) ? valueX.receive.call(self.__public_model__, received ) : valueX.receive(received);
       }
       if(!hasOwn(globalBoard, keyName) && !exists(received) && hasProp(valueX, 'default') && exists(defaultValue)) received=defaultValue ;
       if(isReactiveToken(received) || isShallowReadonlyToken(received)){
@@ -8255,13 +8928,13 @@ const Houxit=(function(global){
       let aliasKey=keyName;
       if(isPObject(valueX)){
         if(!hasOwn(valueX, 'alias')){
-          $debug_log(`receive prop "${keyName}" object expects an "alias" property`, self, true);
+          debugHandler(`receive prop "${keyName}" object expects an "alias" property`, self, true);
           return;
         }else if(!validateType(valueX.alias, [ String, Symbol])){
-          $debug_log(`"${keyName}" receive alias property expects a String or a Symbol`, self, true);
+          debugHandler(`"${keyName}" receive alias property expects a String or a Symbol`, self, true);
           return;
         }else if(!exists(valueX.alias)){
-          $debug_log(`alias property of "${keyName}" receive property is an empty string or undefined prop naming`, self, true);
+          debugHandler(`alias property of "${keyName}" receive property is an empty string or undefined prop naming`, self, true);
           return
         }else if(validateType(valueX, [String, Symbol])){
           valueX={ alias:valueX };
@@ -8269,7 +8942,7 @@ const Houxit=(function(global){
         aliasKey = valueX.alias;
       }
       if(object_Has_Path(self.__public_model__, aliasKey)){
-        $debug_log(`"${aliasKey}" property of receive conflicts with an existing model property\n\n
+        debugHandler(`"${aliasKey}" property of receive conflicts with an existing model property\n\n
           Try configuring an alias property instead\n\n............at "${keyName}"`, self, true);
         return;
       }
@@ -8425,7 +9098,7 @@ const Houxit=(function(global){
   function validateMemoContent(self, children){
     self=self[$$$core].$owner;
     if(len(children) > 1 || (!len(children) || !validHouxitWidget(children[0].prototype_))){
-      $debug_log(`"<Memo>" expects only one child component instance`, self, true );
+      debugHandler(`"<Memo>" expects only one child component instance`, self, true );
       return false;
     }
     return true;
@@ -8443,7 +9116,7 @@ const Houxit=(function(global){
     const vNode=self[$$$core].virtualNode;
     const children=vNode.children;
     if(!len(children)){
-      $debug_log(`"<Memo>" expects at-least one child component instance`, self, true );
+      debugHandler(`"<Memo>" expects at-least one child component instance`, self, true );
       return
     }
     const is_hyperscript=vNode.is_hyperscript;
@@ -8465,33 +9138,9 @@ const Houxit=(function(global){
     const render=trackTemplateSource(self, null, null, context?.hx_Element, context?.props);
     return render;
   }
-  function createSuspenseScope(self, context){
-    const vNode=self[$$$core].virtualNode;
-    const children=vNode.children;
-    
-    const parent= self[$$$core].$parent;
-    self[$$$compiler].SuspenseBoundary={
-      errorElement:undefined,
-      loadingElement:undefined,
-      timeout:Infinity,
-      delay:200,
-      state:{
-        pending:false,
-        failed:false,
-        resolved:false,
-        postLoad:0
-      },
-      instance:self
-    }
-    self[$$$core].build=[];
-    const render=trackTemplateSource(self, null, null, context?.hx_Element, context?.props);
-    return render;
-  }
   function HydrateBuiltInTransform(self, context){
     if(isBuiltinMemoWidget(self)) {
       return instanciateMemoBuild(self, context);
-    }else if(isBuiltinSuspenseWidget(self)) {
-      return createSuspenseScope(self, context);
     }else if(isBuiltinMotionWidget(self));
     else if(isBuiltinProviderWidget(self));
     return;
@@ -8522,38 +9171,45 @@ const Houxit=(function(global){
       }
       let responseRender, renderer;
       createGarbageCollector(self);
-      const useState=!isAFunction(widgetBuild);
+      const useState=!isArrowFunction(widgetBuild);
       try{
-        if(useState) installCurrentRunningEffect(self);
+        if(useState) {
+          installCurrentRunningEffect(self);
+        }
         renderer = widgetBuild.call(undefined, self.__public_model__.$params, getComposersContext(self), $$houxitPower );
-        if(useState) reinstatePreviousRunningEffect();
+        if(useState) {
+          reinstatePreviousRunningEffect();
+        }
         responseRender=renderer;
-        if(isAFunction(widgetBuild) && !isPFunction(renderer) ) responseRender=()=>renderer;
+        if(isArrowFunction(widgetBuild) && !isPFunction(renderer) ) {
+          responseRender=()=>renderer;
+        }
       }catch(err){
-        $debug_log(`Error during the call of the build function`,self, true, DebugFlags.build);
-        $debug_log(err)
+        debugHandler(`Error during the call of the build function`,self, true, DebugFlags.build);
+        debugHandler(err)
         if(isXtruct(widgetBuild)){
-          $debug_log(`build options method seems to be a constructor function`, self);
+          debugHandler(`build options method seems to be a constructor function`, self);
         }else {
-          $debug_log(`${err}`, self);
+          debugHandler(`${err}`, self);
         }
         return ;
       }
       mapGarbargeHooks(self);
       if(isModelInstance(renderer) && (!isFunctionBasedBuild(self) || isInitialBuild(self))) {
         const options = self[$$$core].opts;
-        if(hasOwn(options, 'render')) responseRender=()=>options.render.call(self.__public_model__);
-        else{
+        if(hasOwn(options, 'render')) {
+          responseRender=()=>options.render.call(self.__public_model__);
+        }else{
           self[$$$core].build=hasOwn(options, "template") ? options.template : null ;
           const templateRender= trackTemplateSource(parent || self, selector, null, context?.hx_Element, context?.props || undefined );
           return templateRender;
         }
       }
-      if(!isPFunction(responseRender) && !isAFunction(widgetBuild) ){
-        $debug_log(`Error during the call of ${ !isFunctionBasedBuild(self) ? 'the build function' : 'functional widget' } context\n\nfailed to return a render function when returning the build method::\nCross-Check your returned build Data as This may lead to unexpected results during Houxit element nodes Compilation`, self, true, DebugFlags.build);
+      if(!isPFunction(responseRender) && !isArrowFunction(widgetBuild) ){
+        debugHandler(`Error during the call of ${ !isFunctionBasedBuild(self) ? 'the build function' : 'functional widget' } context\n\nfailed to return a render function when returning the build method::\nCross-Check your returned build Data as This may lead to unexpected results during Houxit element nodes Compilation`, self, true, DebugFlags.build);
         return;
       }else if(!isChildrenNode(responseRender())){
-        $debug_log(`value not a valid Houxit-DOM instance`, self, true);
+        debugHandler(`value not a valid Houxit-DOM instance`, self, true);
         return;
       }
       self[$$$core].map.is_hyperscript=true;
@@ -8578,10 +9234,14 @@ const Houxit=(function(global){
   }
   function inDomCaveatRemodeling(self){
     for(const [ name, item] of entries(self[$$$register].widgets)){
-      if(hasUpperCase(name)) self[$$$register].widgets[to_kebab_case(name)]=item;
+      if(hasUpperCase(name)) {
+        self[$$$register].widgets[to_kebab_case(name)]=item;
+      }
     }
     for(const [ name, item] of entries(self[$$$register].directives)){
-      if(hasUpperCase(name)) self[$$$register].directives[to_kebab_case(name)]=item;
+      if(hasUpperCase(name)) {
+        self[$$$register].directives[to_kebab_case(name)]=item;
+      }
     }
   }
   function resolve_Proto_Call(self, opts){
@@ -8596,14 +9256,14 @@ const Houxit=(function(global){
   }
   function _GenerateRoot(nodeSelector, self){
     if(isNull(nodeSelector)){
-      $debug_log(`No node model or selector value passed for deployment`, self, true);
+      debugHandler(`No node model or selector value passed for deployment`, self, true);
       return;
     }
     let domRoot;
     if(isString(nodeSelector)){
       domRoot=document.querySelector(nodeSelector);
       if(!isNativeElement(domRoot)){
-        $debug_log(`Error generating element, target not a valid native element instance`, self, true);
+        debugHandler(`Error generating element, target not a valid native element instance`, self, true);
         return;
       }
     }else if(isNativeElement(nodeSelector) || nodeSelector.isHouxit_Fragment || nodeSelector === document){
@@ -8629,13 +9289,13 @@ const Houxit=(function(global){
     const _opts=self[$$$operands]._OPTIONS;
     for(let [ key, opt] of entries(_opts)){
       if(!_makeMap_(registeredOpts, key)){
-        $debug_log(`Unrecognised option found\n\n
+        debugHandler(`Unrecognised option found\n\n
           "${key}" option is not a valid widget option or not registered,
           \n\n
           You can register this option by passing an "optionRegistry" object prop to "build.controller({})" method as an object argument method`, self, true);
         return;
       }else if(!validateType(opt, registeredOpts[key])){
-        $debug_log(`The provided "${key}" option validation failed on the required type\n\n
+        debugHandler(`The provided "${key}" option validation failed on the required type\n\n
           Type of "${getType(opt)}"" found`,self, true );
         return;
       }
@@ -8667,7 +9327,7 @@ const Houxit=(function(global){
   }
   function _AnchorRefAdapter_(self, ref){
     if(!isString(ref)){
-      $debug_log(`tokenRefs options received an invalid data type`, self, true);
+      debugHandler(`tokenRefs options received an invalid data type`, self, true);
       return;
     }
     const tokenized=new Token(undefined);
@@ -8723,13 +9383,15 @@ const Houxit=(function(global){
       validators:[[Function, Object], Object ]
     })
     if(!res && !isPFunction(callback) && !isGettersObject(callback)){
-      $debug_log(`computed macro at Parameter 1 expects a getter function or a descriptor object of a required "get" and an optional "set" property methods`, self, true);
+      debugHandler(`computed macro at Parameter 1 expects a getter function or a descriptor object of a required "get" and an optional "set" property methods`, self, true);
       return;
     }
     const self=getCurrentRunningEffect({
       name:'computed',
     });
-    if(!isHouxitBuild(self)) return new computedCache(callback, config || {});
+    if(!isHouxitBuild(self)) {
+      return new computedCache(callback, config || {});
+    }
     const computed=hydrateComputedTokenTransform(self, callback, true, config || {});
      _mountTokenEffect(computed, self);
     return computed;
@@ -8741,10 +9403,12 @@ const Houxit=(function(global){
     const [ subscribers, value ] = effectDependencyTracking(self, ()=>{
       return ( isFunction(computed) ? computed : isObject(computed) ? computed.get : pass).call(self.__public_model__);
     } );
-    if(isPFunction(computed)) return [ readonly(value, {
-      isComputed:true ,
-      ...( config || {} )
-    }), subscribers ];
+    if(isPFunction(computed)) {
+      return [ readonly(value, {
+        isComputed:true ,
+        ...( config || {} )
+      }), subscribers ];
+    }
     return [ factoryToken(function(track, effect, deepTranform){
       const descriptor={
         get(){
@@ -8759,14 +9423,18 @@ const Houxit=(function(global){
           effect();
           return computed.set.call(self.__public_model__, ...arguments);
         }
-        if(descriptor.isReadonly) delete descriptor.isReadonly;
-      }else descriptor.isReadonly=true;
+        if(descriptor.isReadonly) {
+          delete descriptor.isReadonly;
+        }
+      }else {
+        descriptor.isReadonly=true;
+      }
       return descriptor;
     }), subscribers ];
   }
   function hydrateComputedTokenTransform(self, computed, composed, config={}){
     if(composed && !isPFunction(computed) && !isGettersObject(computed)){
-      $debug_log(`computed:: computed macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
+      debugHandler(`computed:: computed macro at Parameter 1 expects a getter function or a descriptor object of a "get" and an optional "set" property methods`, self, true);
       computed = pass;
     }
     const [ computedData, subscribers ] =composedTokenHydration(self, computed, config);
@@ -8790,10 +9458,12 @@ const Houxit=(function(global){
     return computedData;
   }
   function computedPropsCompiler(self, opts){
-    if(!opts.computed || !len(opts.computed)) return
+    if(!opts.computed || !len(opts.computed)) {
+      return;
+    }
     for(let [key, computed] of entries(opts.computed)){
       if(!isPFunction(computed) && !isGettersObject(computed)){
-        $debug_log(`computed option  at "${key}" property expects a getter function method option or a descriptor object of a "get" and an optional "set" property methods`, self, true);
+        debugHandler(`computed option  at "${key}" property expects a getter function method option or a descriptor object of a "get" and an optional "set" property methods`, self, true);
         return;
       }
       const computedData = hydrateComputedTokenTransform(self, computed);
@@ -8816,27 +9486,34 @@ const Houxit=(function(global){
     activateWatchObserverPlugin(self, nodeSelector, domRoot, wait);
     if(IS_ELEMENT_NODE(domRoot) && isInitialBuild(self) && !isSSR ) domRoot.innerHTML="";
     if(!isSSR && isInitialBuild(self) && !IS_ELEMENT_NODE(domRoot)){
-      $debug_log('Initial entry Point render root expects an element node', self, true);
+      debugHandler('Initial entry Point render root expects an element node', self, true);
       return ;
     }
     if(!isSSR && isInitialBuild(self) && isTrue(domRoot.IS_HOUXIT_MOUNTROOT)){
-      $debug_log(`A Houxit widget has already been mounted on self element, cannot render more than one Widget on a single root element`, self, true, `When trying to render this initialBuild instance to the target DOM`);
+      debugHandler(`A Houxit widget has already been mounted on self element, cannot render more than one Widget on a single root element`, self, true, `When trying to render this initialBuild instance to the target DOM`);
       return ;
     }
     adapterDOMMountingProduction(self, domRoot)
   }
   function render(nodeSelector, config, HydrationFlag){
     const isSSR=isSSRCompiler(this);
-    if(isSSR && HydrationFlag === SSRHydrationSymbol) this[$$$compiler].SSRHydrationFlag=true;
+    if(isSSR && HydrationFlag === SSRHydrationSymbol) {
+      this[$$$compiler].SSRHydrationFlag=true;
+    }
     if(!isSSR && !inBrowserCompiler){
-      $debug_log(`Houxit failed to load Dom specific API(s) as it seems you are running Houxit from a server environment.....\nuse "initSSRBuild" App builder instead.`, self, true);
+      debugHandler(`Houxit failed to load Dom specific API(s) as it seems you are running Houxit from a server environment.....\nuse "initSSRBuild" App builder instead.`, self, true);
       return this;
     }
     let domRoot=(isHydration(this) || !isSSR) && inBrowserCompiler ? _GenerateRoot(nodeSelector, this) : null;
     pre_build_facading(this);
     const buildFacade=handleBuildGenerator(this, nodeSelector);
     this.$build=Render_Template(this, this[$$$core].render, buildFacade, true);
+    const boundary=getBoundary(this[$$$core].virtualNode);
     if(isPromise(buildFacade)){
+      if(boundary){
+        boundary.activeAwaits++;
+        boundary.loadChain.add(buildFacade);
+      }
       this[$$$operands].awaitReady=buildFacade;
       buildFacade.then(()=>{
         const toggler=smart_render_toggler(this);
@@ -8850,7 +9527,9 @@ const Houxit=(function(global){
         finisherLazyRender(this, nodeSelector, domRoot, true );
         toggler();
       });
-    }else finisherLazyRender(this, nodeSelector, domRoot);
+    }else {
+      finisherLazyRender(this, nodeSelector, domRoot);
+    }
     return this;
   }
   function shouldInstallRenderEffect(self){
@@ -8860,7 +9539,9 @@ const Houxit=(function(global){
     return false;
   }
   function misMatchError(self, msg){
-    if(!ignoreHydrationMismatchError(self)) $debug_log(`(((Hydration Mis-Match Error)))....\n\n${msg}`, self, true);
+    if(!ignoreHydrationMismatchError(self)) {
+      debugHandler(`(((Hydration Mis-Match Error)))....\n\n${msg}`, self, true);
+    }
   }
   function hydration_match(self, el, vNode){
     if((IS_ELEMENT_NODE(el) && isSSRText(vNode)) || (isVNodeClass(vNode) && IS_TEXT_NODE(el))){
@@ -8941,7 +9622,9 @@ const Houxit=(function(global){
     const end=document.createComment(c_str);
     first.before(start);
     last.after(end);
-    if(isHouxitElement(hx_Element)) hx_Element.VNodeManager.posix=[start, end];
+    if(isHouxitElement(hx_Element)) {
+      hx_Element.VNodeManager.posix=[start, end];
+    }
   }
   function pre_build_facading(self){
     Hydrate_Network_Prefixes(self, self[$$$core].opts);
@@ -9003,13 +9686,19 @@ const Houxit=(function(global){
       self.property('$root', self.$build);
       domRoot.IS_HOUXIT_MOUNTROOT=true;
       tick(()=>{
-        if(domRoot.hasAttribute('hx-cloak')) domRoot.removeAttribute('hx-cloak');
+        if(domRoot.hasAttribute('hx-cloak')) {
+          domRoot.removeAttribute('hx-cloak');
+        }
       });
-    }else domRoot=self.$build?.$element;
+    }else {
+      domRoot=self.$build?.$element;
+    }
     return domRoot;
   }
   function createCloakDirectiveHydrator(action){
-    if(!inBrowserCompiler) return;
+    if(!inBrowserCompiler) {
+      return;
+    }
     const styleEl=document.createElement('style');
     styleEl.append(`
     [hx-cloak]{
@@ -9025,21 +9714,28 @@ const Houxit=(function(global){
       validators:[String, [Function, Object, Class]],
       count:2,
       required:[true, true]
-    })) return;
-    if(len(new Set(arguments)) === 2) this[$$$core].$globals.register.widgets[name]= widget;
+    })) {
+      return;
+    }
+    if(len(new Set(arguments)) === 2) {
+      this[$$$core].$globals.register.widgets[name]= widget;
+    }
     return this;
   }
   function install(plugin, options){
     if(!validateType(plugin, [ Object, Function ])){ 
-      $debug_log(`plugin installation Error::\n\n install argument must be an object value with  an exposed plugin installation method or a function which acts as the plugin method itself`, this, true);
+      debugHandler(`plugin installation Error::\n\n install argument must be an object value with  an exposed plugin installation method or a function which acts as the plugin method itself`, this, true);
       return this;
     }else if(isPObject(plugin) && !isPFunction(plugin.plugin)){
-      $debug_log(`plugin installation Error::\n\n plugin object did not expose a plugin installation method`, this, true);
+      debugHandler(`plugin installation Error::\n\n plugin object did not expose a plugin installation method`, this, true);
       return this;
     }
     let usePlugin=isPObject(plugin) ? plugin.plugin : plugin;
-    if(isPObject(usePlugin) ) plugin.plugin(this, options);
-    else usePlugin(this, options);
+    if(isPObject(usePlugin) ) {
+      plugin.plugin(this, options);
+    }else {
+      usePlugin(this, options);
+    }
     return this;
   }
   function handler(name, handler){
@@ -9048,8 +9744,12 @@ const Houxit=(function(global){
       validators:[String, Function],
       count:2,
       required:[true, true]
-    })) return;
-    if(len(arguments) === 2) this[$$$core].$globals.register.handlers[name]=handler;
+    })) {
+      return;
+    }
+    if(len(arguments) === 2) {
+      this[$$$core].$globals.register.handlers[name]=handler;
+    }
     return this;
   }
   function directive(name, directive){
@@ -9058,16 +9758,20 @@ const Houxit=(function(global){
       validators:[String, [Function, Object]],
       count:2,
       required:[true, true]
-    })) return;
-    if(len(arguments) === 2) this[$$$core].$globals.register.directives[name]=directive;
+    })) {
+      return;
+    }
+    if(len(arguments) === 2) {
+      this[$$$core].$globals.register.directives[name]=directive;
+    }
     return this;
   }
   function mixin(mixin){
     if(!isClass(mixin) && !validateType(mixin, [Object])){
-      $debug_log(`unrecognised global mixin registration for\n ${compileToRenderable(mixin)}`, this, true);
+      debugHandler(`unrecognised global mixin registration for\n ${compileToRenderable(mixin)}`, this, true);
       return this;
     }else if(!len(arguments) === 1){
-      $debug_log(`.mixin() expects not more than one formal argument`, this);
+      debugHandler(`.mixin() expects not more than one formal argument`, this);
       return this;
     }
     this[$$$core].$globals.register.mixins.add(mixin);
@@ -9079,8 +9783,12 @@ const Houxit=(function(global){
       validators:[String, [Function, Object]],
       count:2,
       required:[true, true]
-    })) return;
-    if(len(arguments) === 2) this[$$$core].$globals.register.filters[name]=filter;
+    })) {
+      return;
+    }
+    if(len(arguments) === 2) {
+      this[$$$core].$globals.register.filters[name]=filter;
+    }
     return this ;
   }
   function block(name, block){
@@ -9089,8 +9797,12 @@ const Houxit=(function(global){
       validators:[String, [Function, Object]],
       count:2,
       required:[true, true]
-    })) return;
-    if(len(arguments) === 2) this[$$$core].$globals.register.blocks[name]=block;
+    })) {
+      return;
+    }
+    if(len(arguments) === 2) {
+      this[$$$core].$globals.register.blocks[name]=block;
+    }
     return this ;
   }
   
@@ -9100,8 +9812,12 @@ const Houxit=(function(global){
       validators:[String, Any],
       count:2,
       required:[true, true]
-    })) return;
-    if(len(arguments) === 2) this[$$$core].$globals.register.properties[name]=value;
+    })) {
+      return;
+    }
+    if(len(arguments) === 2) {
+      this[$$$core].$globals.register.properties[name]=value;
+    }
     return this
   }
   function templateClass(name, value){
@@ -9110,7 +9826,9 @@ const Houxit=(function(global){
       validators:[String, Any],
       count:2,
       required:[true, true]
-    })) return;
+    })) {
+      return;
+    }
     if(len(arguments) === 2) {
       this[$$$core].$globals.register.templateClasses[name]=value;
     }
@@ -9118,9 +9836,9 @@ const Houxit=(function(global){
   }
   function _Build_destroy(){
     if(len(arguments)){
-      $debug_log(`.destroy() method of initBuild accepts no formal parameters`, this);
+      debugHandler(`.destroy() method of initBuild accepts no formal parameters`, this);
     }else if(!this[$$$operands].hasMountProto){
-      $debug_log(`instance of widget not yet mounted\n\nwidget unmounting failure`);
+      debugHandler(`instance of widget not yet mounted\n\nwidget unmounting failure`);
       return false
     }
     try{
@@ -9136,8 +9854,8 @@ const Houxit=(function(global){
       // Object.setProtypeOf(this, null)
       */
     }catch(err){
-      $debug_log(`widget instance destroy failed`, this, true);
-      $debug_log(err);
+      debugHandler(`widget instance destroy failed`, this, true);
+      debugHandler(err);
       return false;
     }
     return freeze(this);
@@ -9176,14 +9894,14 @@ const Houxit=(function(global){
   }
   function _controller_Adapter(options){
     if(!isPObject(options)){
-      $debug_log(`argument at position 1 expects a plain object\n\nType unaccepted`, this, true);
+      debugHandler(`argument at position 1 expects a plain object\n\nType unaccepted`, this, true);
       return;
     }
     this[$$$core].$globals.controller.add(options);
     optionsRegistery(this, options);
     let { setup , pluginAdapter } = options;
     if(hasOwn(options, 'pluginAdapter') && !isPFunction(pluginAdapter)) {
-      $debug_log(`pluginAdapter option of .controller({}) method expects a function/method type`, this, true);
+      debugHandler(`pluginAdapter option of .controller({}) method expects a function/method type`, this, true);
       return this;
     }
     if(!exists(pluginAdapter) && !isPFunction(pluginAdapter)) pluginAdapter = pass
@@ -9198,16 +9916,17 @@ const Houxit=(function(global){
     return this
   }
   function optionsRegistery(self, options){
-    if(!hasProp(options, 'optionsRegistery')) return;
-    else if(!isPObject(options.optionsRegistery)){
-      $debug_log(`The "optionsRegistery" property argument of controller expects a plain object\n\nType Unexpected`, self, true);
+    if(!hasProp(options, 'optionsRegistery')) {
+      return;
+    }else if(!isPObject(options.optionsRegistery)){
+      debugHandler(`The "optionsRegistery" property argument of controller expects a plain object\n\nType Unexpected`, self, true);
       return;
     }
     const registered=options.optionsRegistery;
     const globals=getGlobalRegistery(self);
     entries(options.optionsRegistery).forEach(([key, validator])=>{
       if(_makeMap_(globals.legalOptions, key)){
-        $debug_log(`${key} custom optionsRegistery already exists in the registery record`, self, true);
+        debugHandler(`${key} custom optionsRegistery already exists in the registery record`, self, true);
         return;
       }
       define(globals.legalOptions, key, {
@@ -9219,7 +9938,7 @@ const Houxit=(function(global){
   function mountedWarning(self, name){
     if(isTrue(self[$$$operands].hasMountProto)){
       if(!self[$$$core].map.mountWarn) {
-        $debug_log(`This "render" method has been called\n\ncalling of methods after the widget is mounted is prohibited\n\n call to ('.${name}') method is considered an invalid houxit syntax`, self, true);
+        debugHandler(`This "render" method has been called\n\ncalling of methods after the widget is mounted is prohibited\n\n call to ('.${name}') method is considered an invalid houxit syntax`, self, true);
         self[$$$core].map.mountWarn=true;
       }
       return false;
@@ -9228,7 +9947,7 @@ const Houxit=(function(global){
   }
   function transmit(prop, value){
     if(!validateType(prop, [ String, Symbol ])){
-      $debug_log(`Parameter 1 on .transmit() expects a string or a Symbol `, this, true);
+      debugHandler(`Parameter 1 on .transmit() expects a string or a Symbol `, this, true);
       return this;
     }
     const globalBoard= isInitialBuild(this) ? this[$$$core].$globals.transmited : this[$$$core].$root[$$$core].$globals.transmited;
@@ -9240,7 +9959,7 @@ const Houxit=(function(global){
   }
   function hydrate(nodeSelector){
     if(!isSSRCompiler(this)){
-      $debug_log("Incompatibility when trying to call the .hydrate on a non SSR App build");
+      debugHandler("Incompatibility when trying to call the .hydrate on a non SSR App build");
       return this;
     }
     this.render(nodeSelector, null, SSRHydrationSymbol);
@@ -9317,7 +10036,7 @@ const Houxit=(function(global){
         childList: true,
         subtree: true
       });
-    }).then(() => callback()).catch((err) => $debug_log(`${err}`, self, true));
+    }).then(() => callback()).catch((err) => debugHandler(`${err}`, self, true));
   }
   function whenUnMounted(self, build, callback){
     
@@ -9352,8 +10071,8 @@ const Houxit=(function(global){
     if(!isRerender) {
       subs=s_x.endWatch() || [];
       self[$$$operands].shouldInstallRenderEffect= len(subs) > 0;
-      if(!isBuiltinWidgetBuild(self) || isBuiltinSuspenseWidget(self )) {
-        if((!(isPromise(buildFacade) && isTrue(slotter))) || isBuiltinSuspenseWidget(self)){
+      if(!isBuiltinWidgetBuild(self)) {
+        if(!(isPromise(buildFacade) && isTrue(slotter))){
           widgetSlotsManager(self, self[$$$core].opts, self[$$$core].virtualNode);
         }
       }
@@ -9372,7 +10091,7 @@ const Houxit=(function(global){
     }
     const self= this && isHouxitBuild( this ) ? this : null
     if( len( arguments ) && !isPFunction( fn ) ) {
-      $debug_log( `positional argument 1 on "tick" is not a function\n\n callback argument 1 requires a function type` , self , !isNull( self ) ) ;
+      debugHandler( `positional argument 1 on "tick" is not a function\n\n callback argument 1 requires a function type` , self , !isNull( self ) ) ;
       fn = pass ;
     }
     return new Promise( ( resolve , reject ) => {
@@ -9395,7 +10114,7 @@ const Houxit=(function(global){
           callback();
           self[$$$operands].EffectFlag=0;
         }catch(err){
-          $debug_log(`Encountered a Problem during DOM rendering effect trigger phase\n\n>>>>>`, self, true);
+          debugHandler(`Encountered a Problem during DOM rendering effect trigger phase\n\n>>>>>`, self, true);
           $warn(`${err}`, self);
           return;
         }
@@ -9430,8 +10149,8 @@ const Houxit=(function(global){
     }) ;
   }
   function RenderEffect_$Warn(self, err){
-    $debug_log(`----unable to complete the rerender effect circle patch\n\nthis is likely a probable bug/error in the houxit's compiler level;\nplease report any problem —— and open an issue in our github repo`, self, true);
-    $debug_log(`${err}`, self)
+    debugHandler(`----unable to complete the rerender effect circle patch\n\nthis is likely a probable bug/error in the houxit's compiler level;\nplease report any problem —— and open an issue in our github repo`, self, true);
+    debugHandler(`${err}`, self)
     console.error(err);
   }
   function Render_Effect_Reactive_Transform(self, observer){
@@ -9439,8 +10158,8 @@ const Houxit=(function(global){
     const isRerender=self[$$$operands].initializedRender;
     try{
       let EffectVNode;
-      Promise.try(()=> EffectVNode=Render_Template(self, self[$$$core].render)).catch((e)=> $debug_log(e)).then(()=>{
-        Promise.try(()=> patchRenderNormalizerCall(self, self.$build, EffectVNode, observer)).catch((e)=> $debug_log(e));
+      Promise.try(()=> EffectVNode=Render_Template(self, self[$$$core].render)).catch((e)=> debugHandler(e)).then(()=>{
+        Promise.try(()=> patchRenderNormalizerCall(self, self.$build, EffectVNode, observer)).catch((e)=> debugHandler(e));
       });
     }catch(e){
       RenderEffect_$Warn(self, e);
@@ -9448,10 +10167,15 @@ const Houxit=(function(global){
   }
   function patchRenderNormalizerCall(self, build, EffectVNode, observer){
     if(isSameHouxitElementType(build, EffectVNode) ){
-      if(isHouxitFragmentElement(build)) resolvePatchAlgorithm(self, build, EffectVNode, observer);
-      else renderVnodeDiffSequence(self, build, EffectVNode, observer, null, {});
+      if(isHouxitFragmentElement(build)) {
+        resolvePatchAlgorithm(self, build, EffectVNode, observer);
+      }else {
+        renderVnodeDiffSequence(self, build, EffectVNode, observer, null, {});
+      }
       return;
-    }else if(isHouxitFragmentElement(EffectVNode)) build=new HouxitFragmentElement(self, [ build ], null);
+    }else if(isHouxitFragmentElement(EffectVNode)) {
+      build=new HouxitFragmentElement(self, [ build ], null);
+    }
     resolvePatchAlgorithm(self, build, EffectVNode, observer);
   }
   function resolvePatchAlgorithm(self, Template, EffectVNode, observer, callback, recursing=false){ 
@@ -9462,7 +10186,9 @@ const Houxit=(function(global){
     const forRemovals=[];
     const exchangeRecorder=[];
     tempIndexes.forEach((key, index)=>{
-      if(!KEYS_INDEXES.has(key)) forRemovals.push([key, tempLeagues[key], index]);
+      if(!KEYS_INDEXES.has(key)) {
+        forRemovals.push([key, tempLeagues[key], index]);
+      }
     });
     const NodeList=new Tuple();
     for(const [index, key ] of KEYS_INDEXES.entries()){
@@ -9479,7 +10205,9 @@ const Houxit=(function(global){
           const vnodeTM=tempLeagues[tempK];
           let targetElem= tempK ? resolveTargetElement(vnodeTM[0], null, true) : undefined;
           const posixElem=document.createComment(c_str);
-          if(tempK && targetElem ) targetElem.after(posixElem);
+          if(tempK && targetElem ) {
+            targetElem.after(posixElem);
+          }
           exchangeRecorder.push({
             elements:[tempLeagues[key], vnodeTM],//the position the current element is destinated
             keys:[key, tempK],
@@ -9490,8 +10218,9 @@ const Houxit=(function(global){
         }else{
           const effectEl=LEAGUE_TREE[key][0];
           const Rerender_Element=__createRerenderBlock(self, effectEl);
-          if(index >= len(tempIndexes)) forAppending.push([Rerender_Element, key, index]);
-          else{
+          if(index >= len(tempIndexes)) {
+            forAppending.push([Rerender_Element, key, index]);
+          }else{
             const [ targetBox, targetInd]=tempLeagues[tempK];
             const targetElem=resolveTargetElement(targetBox, null, );
             const posixElem=document.createComment(c_str);
@@ -9510,7 +10239,9 @@ const Houxit=(function(global){
     fractional_diffing_transform(self, exchangeRecorder, Template, EffectVNode, tempIndexes, tempLeagues, LEAGUE_TREE, KEYS_INDEXES, observer, forAppending, forInsertion, forRemovals);
     tempIndexes.arrange(KEYS_INDEXES.list());
     keys(tempLeagues).forEach(key=>{
-      if(!tempIndexes.has(isNaN(Number(key)) ? key : Number(key))) delete tempLeagues[key];
+      if(!tempIndexes.has(isNaN(Number(key)) ? key : Number(key))) {
+        delete tempLeagues[key];
+      }
     });
   }
   function fractional_diffing_transform(self, exchangeRecorder, Template, EffectVNode, tempIndexes, tempLeagues, LEAGUE_TREE, KEYS_INDEXES, observer, forAppending, forInsertion, forRemovals ){
@@ -9583,9 +10314,10 @@ const Houxit=(function(global){
     try{
       parent.moveBefore(mover, target );
     }catch(err){
-      if(err.name === "HierarchyRequestError") parent.insertBefore(mover, target);
-      else {
-        $debug_log(`${err}`, self, true);
+      if(err.name === "HierarchyRequestError") {
+        parent.insertBefore(mover, target);
+      }else {
+        debugHandler(`${err}`, self, true);
         console.error(err)
       }
     }
@@ -9625,7 +10357,7 @@ const Houxit=(function(global){
   }
   function effectiveElement_REPATCH(self, hx_Element, vNode, observer, parent, ignore){
     if(isHouxitTextElement(hx_Element) ) {
-      return RerenderingTextsContents(self, hx_Element, vNode, observer, parent);
+      return RerenderTextElements(self, hx_Element, vNode, observer, parent);
     }else if(isHouxitWidgetElement(hx_Element)) {
       WidgetEffectTrigger(self, hx_Element, vNode, parent, observer);
     }else if(isRenderlessElement(hx_Element)) {
@@ -9697,10 +10429,14 @@ const Houxit=(function(global){
       return;
     }
     addMEMOState(self, hx_Element, keys.has(hx_Key));
-    if(keys.has(Eff_Key)) return getMEMOState(self, EffectVNode);
+    if(keys.has(Eff_Key)) {
+      return getMEMOState(self, EffectVNode);
+    }
   }
   function installMemoInstance(self, hx_Element, EffectVNode, is_hyperscript){
-    if(!isBuiltinMemoWidget(self)) return;
+    if(!isBuiltinMemoWidget(self)) {
+      return;
+    }
     const { storage, state, caches, keys }=self[$$$compiler].memoVault;
     const hx_Key=hx_Element.prototype_;
     const Eff_Key=EffectVNode.prototype_;
@@ -9708,7 +10444,9 @@ const Houxit=(function(global){
       return complyWithMemoStableCheck(self, hx_Element, EffectVNode, is_hyperscript);
     }
     addMEMOState(self, hx_Element, keys.has(hx_Key));
-    if(keys.has(Eff_Key)) return getMEMOState(self, EffectVNode);
+    if(keys.has(Eff_Key)) {
+      return getMEMOState(self, EffectVNode);
+    }
   }
   function addMEMOState(self, hx_Element, update=false){
     const { storage, caches, keys }=self[$$$compiler].memoVault;
@@ -9716,7 +10454,9 @@ const Houxit=(function(global){
     update = keys.has(hx_Key) && update;
     if(!update) {
       const test=self.__public_model__.$params.test.data;
-      if(test && !test()) return;
+      if(test && !test()) {
+        return;
+      }
       const max=self.__public_model__.$params.max.data;
       if(!isInfinity(max) && !isNaN(Number(max)) && keys.size === max){
         const leastKey=keys.shift();
@@ -9741,9 +10481,13 @@ const Houxit=(function(global){
   function getMEMOState(self, EffectVNode){
     const { storage, caches, keys }=self[$$$compiler].memoVault;
     const Eff_Key=EffectVNode.prototype_;
-    if(!keys.has(Eff_Key)) return;
+    if(!keys.has(Eff_Key)) {
+      return;
+    }
     const state=storage.get(Eff_Key);
-    if(len(keys) < 2) return state;
+    if(len(keys) < 2) {
+      return state;
+    }
     keys.delete(Eff_Key);
     keys.add(Eff_Key);
     return state;
@@ -9751,24 +10495,33 @@ const Houxit=(function(global){
   function deleteMEMOState(self, hx_Element){
     const { storage, caches, keys }=self[$$$compiler].memoVault;
     const hx_Key=hx_Element.prototype_;
-    if(!keys.has(hx_Key)) return false;
+    if(!keys.has(hx_Key)) {
+      return false;
+    }
     keys.delete(hx_Key);
     storage.delete(hx_Key);
     return true;
   }
   function resolveTargetElement(target, fallback, last=false){
     let targetElem;
-    if(isTextOrNativeElement(target)) targetElem = target.$element;
-    else{
-      if(isHouxitWidgetElement(target)) target=WidgetElementUnwrap(target);
-      if(isHouxitFragmentElement(target)) targetElem=target.VNodeManager?.posix[ last ? 1 : 0 ];
-      else if(isTextOrNativeElement(target)) targetElem=target.$element;
+    if(isTextOrNativeElement(target)) {
+      targetElem = target.$element;
+    }else{
+      if(isHouxitWidgetElement(target)) {
+        target=WidgetElementUnwrap(target);
+      }
+      if(isHouxitFragmentElement(target)) {
+        targetElem=target.VNodeManager?.posix[ last ? 1 : 0 ];
+      }else if(isTextOrNativeElement(target)) {
+        targetElem=target.$element;
+      }
     }
     return IS_ELEMENT_NODE(targetElem) || IS_TEXT_NODE(targetElem) || IS_COMMENT_NODE(targetElem) ? targetElem : fallback;
   }
   function unMountVNode(vnode){
-    if(isHouxitWidgetElement(vnode)) vnode.widget_instance.destroy();
-    else if(isHouxitFragmentElement(vnode)) {
+    if(isHouxitWidgetElement(vnode)) {
+      vnode.widget_instance.destroy();
+    }else if(isHouxitFragmentElement(vnode)) {
       vnode.upload(el=> el.remove());
       vnode.NodeList.forEach(el=> unMountVNode(el));
     }else if(!isRenderlessElement(vnode)) {
@@ -9777,9 +10530,12 @@ const Houxit=(function(global){
     }
   }
   function generateWrapElementAction(vnode, callback){
-    if(isHouxitWidgetElement(vnode)) vnode=WidgetElementUnwrap(vnode);
-    if(isHouxitFragmentElement(vnode)) vnode.upload(callback);
-    else if(!isRenderlessElement(vnode)) callback(vnode.$element);
+    if(isHouxitWidgetElement(vnode)) {
+      vnode=WidgetElementUnwrap(vnode);
+    }
+    if(isHouxitFragmentElement(vnode)) {
+      vnode.upload(callback);
+    }else if(!isRenderlessElement(vnode)) callback(vnode.$element);
   }
   function WidgetEffectTrigger(self, hx_Element, vNode, parent, observer){
     const is_hyperscript=self[$$$core].map.is_hyperscript;
@@ -9814,7 +10570,9 @@ const Houxit=(function(global){
     return depsArray.map( getter => getter?.() );
   }
   function primate_check(node, vNode){
-    if(!isPrimitive(node.prototype_) ) return isS(node.prototype_, vNode.prototype_);
+    if(!isPrimitive(node.prototype_) ) {
+      return isS(node.prototype_, vNode.prototype_);
+    }
     return isPrimitive(node.prototype_);
   }
   function HouxitElementDiffing(node, vNode){
@@ -9822,12 +10580,17 @@ const Houxit=(function(global){
     if(isSameHouxitElementType(node, vNode) && deepEqualityCheck(node.prototype_, vNode.prototype_) && primate_check(node, vNode)) return true;
     return false;
   }
-  function RerenderingTextsContents(self, node, vNode, observer, parent){
+  function RerenderTextElements(self, node, vNode, observer, parent){
     const value=node.compiler_options.value;
     if(node?.prototype_ !== vNode?.prototype_) {
-      node.$element.textContent=vNode?.prototype_;
-      node.prototype_=vNode.prototype_;
-      if(parent) linkUpdateHook(self, parent, observer);
+      const update=()=>{
+        node.$element.textContent=vNode?.prototype_;
+        node.prototype_=vNode.prototype_;
+      }
+      vNode.VNodeManager.awaitTextReady?.then(update) || update();
+      if(parent) {
+        linkUpdateHook(self, parent, observer);
+      }
       observer.mutated=true;
     }
   }
@@ -9863,23 +10626,30 @@ const Houxit=(function(global){
     }
     if(directive === "provide"){
       if(!validHouxitWidget(vNode?.GeneticProvider)) {
-        $debug_log(`Illegal Provide Use: "$$provide" directive is only scoped to widget instances vnode only\n\n found on "${(isSSR ? isString(virtualNode.type) : isNativeElement(virtualNode)) ? virtualNode.outerHTML+" element" : ""}"`, self, true);
+        debugHandler(`Illegal Provide Use: "$$provide" directive is only scoped to widget instances vnode only\n\n found on "${(isSSR ? isString(virtualNode.type) : isNativeElement(virtualNode)) ? virtualNode.outerHTML+" element" : ""}"`, self, true);
         return ;
       }
       $$dir_PROVIDE(self, bindings, vNode, hx_Element, metrics);
     }
-    if(hasOwn(DirectiveMacros, directive) && !isRerender) {
+    if( hasOwn(DirectiveMacros, directive) && (isRerender ? _makeMap_('bind', directive) : true)) {
       DirectiveMacros[directive](self, bindings, virtualNode, hx_Element, metrics, directive === "text");
     }
   }
   function dynamicPropRemover(obj, propName){
     for(let [key, value ] of entries(obj)){
-      if(!key.includes(propName)) continue;
+      if(!key.includes(propName)) {
+        continue;
+      }
       let keyCache;
-      if(key.startsWith('$$bind') || key.startsWith('$$slot') ) keyCache=key.slice(6);
-      else if(key.startsWith('$$on')) keyCache=key.slice(4);
+      if(key.startsWith('$$bind') || key.startsWith('$$slot') ) {
+        keyCache=key.slice(6);
+      }else if(key.startsWith('$$on')) {
+        keyCache=key.slice(4);
+      }
       keyCache=fall_AttrName(key);
-      if(key.includes("|")) keyCache=keyCache.split('|').shift();
+      if(key.includes("|")) {
+        keyCache=keyCache.split('|').shift();
+      }
       if(propName === keyCache){
         delete obj[key];
         break;
@@ -9938,14 +10708,14 @@ const Houxit=(function(global){
     const tagname=isBlockTag(vNode.type) ? getBlockTagName(vNode.type) : vNode.type;
     let widget;
     if(!isBlockTag(vNode.type) && !isDynamicPropTag(vNode.type) && !instance_Has_Widget( self , tagname ) && !(inBrowserCompiler ? customElements.get(tagname) : false )){
-      $debug_log(`Template Compilation Error::\n\nUnresolved tagname "<${tagname}>"\n\n   ...if this is a Houxit widget, make sure its registered through the "widgets" option or defined through the CustomElementsInstance.define() method if it's a customElement `, self, true);
+      debugHandler(`Template Compilation Error::\n\nUnresolved tagname "<${tagname}>"\n\n   ...if this is a Houxit widget, make sure its registered through the "widgets" option or defined through the CustomElementsInstance.define() method if it's a customElement `, self, true);
       return false;
     }else if(isBlockTag(vNode.type)){
       if(isBuiltinBlocks(tagname)) {
         return true;
       }
       if(!instance_Has_Block(self, tagname)){
-        $debug_log(`((Block Resolver Error))\n\n"${tagname}" block is not a registered block element`, self, true);
+        debugHandler(`((Block Resolver Error))\n\n"${tagname}" block is not a registered block element`, self, true);
         return false;
       }else {
         vNode.GeneticProvider=normalize_Block(self, tagname);
@@ -9956,7 +10726,7 @@ const Houxit=(function(global){
     }
     widget=normalize_Widget(self, tagname);
     if(!isDynamicPropTag(tagname) && !validHouxitWidget(widget) && !customElements.get(tagname)){
-      $debug_log(`>>>> "${tagname}\n\nCannot compile value as a Houxit widget\nMaybe an invalid houxit widget value type`, self, true);
+      debugHandler(`>>>> "${tagname}\n\nCannot compile value as a Houxit widget\nMaybe an invalid houxit widget value type`, self, true);
       return false;
     }
     if(validHouxitWidget(widget)) {
@@ -10030,7 +10800,9 @@ const Houxit=(function(global){
   function controllerHydration( self, build, hx_Element, vNode ) {
     const globals=getGlobalRegistery(self)
     installTransformersArgumentations(self, build, hx_Element, vNode )
-    if( !len( globals.controller ) ) return build ;
+    if( !len( globals.controller ) ) {
+      return build ;
+    }
     for( let genre of globals.controller.values() ) {
       build.controller( genre ) ;
     }
@@ -10062,13 +10834,17 @@ const Houxit=(function(global){
       validators:[String],
       max:1,
       name:'resolve.widget()'
-    })) return;
+    })) {
+      return;
+    }
     let instance;
-    if(!isHouxitBuild(self)) return;
+    if(!isHouxitBuild(self)) {
+      return;
+    }
     if (instance_Has_Widget(self, name) ){
       instance=normalize_Widget(self, name);
     }else{
-      $debug_log(`resolve macro was unable to find a widget with the provided name "${type.name}"\n\n are you sure this is a builtIn/globaly/localy registered widget`, self, true);
+      debugHandler(`resolve macro was unable to find a widget with the provided name "${type.name}"\n\n are you sure this is a builtIn/globaly/localy registered widget`, self, true);
       return;
     }
     return instance;
@@ -10107,14 +10883,17 @@ const Houxit=(function(global){
       name:'resolve.directive()'
     })) return;
     let instance=name;
-    if(!isHouxitBuild(self)) return;
-    if(!isString(name)) instance=name;
-    else{
+    if(!isHouxitBuild(self)) {
+      return;
+    }
+    if(!isString(name)) {
+      instance=name;
+    }else{
       if(!isHouxitDirective(name)){
         if (instance_Has_Directive(self, name) ){
           instance=normalize_Directives(self, name);
         }else{
-          $debug_log(`"resolve.directive()" macro was unable to find a directive with the provided name "${name}"\n\n are you sure this is a builtIn/globaly/localy registered directive`, self, true);
+          debugHandler(`"resolve.directive()" macro was unable to find a directive with the provided name "${name}"\n\n are you sure this is a builtIn/globaly/localy registered directive`, self, true);
           return;
         }
       }
@@ -10140,7 +10919,9 @@ const Houxit=(function(global){
   const QuoteRegex=/(['"`])/;
   function __HTMLPropsParser__(attrs, config, self){
     attrs=(attrs || "").trim()
-    if(!attrs) return {};
+    if(!attrs) {
+      return {};
+    }
     const props={
       ['__hx_keys__']:[]
     };
@@ -10167,7 +10948,9 @@ const Houxit=(function(global){
             }
             closure();
             continue;
-          }else setup.namingSpace=false
+          }else {
+            setup.namingSpace=false;
+          }
         }
         if(/=/.test(str) && !setup.namingSpace){
           setup.isPropName=false;
@@ -10203,8 +10986,8 @@ const Houxit=(function(global){
             setup.propValue.push(str);
           }
           PropsParserContainment( setup, props );
-          closure()
-          continue
+          closure();
+          continue;
         }else {
           setup.propValue.push(str);
         }
@@ -10277,10 +11060,11 @@ const Houxit=(function(global){
     }
     const dTAG=Vnode.type;
     Vnode.type=Build;
-    if(!Vnode.props) Vnode.props={
-      '$$bind:self':dTAG.slice(2)
-    }
-    else {
+    if(!Vnode.props) {
+      Vnode.props={
+        '$$bind:self':dTAG.slice(2)
+      }
+    }else {
       Vnode.props['$$bind:self']=dTAG.slice(2);
     }
     Vnode.prototype_=Build;
@@ -10329,7 +11113,7 @@ const Houxit=(function(global){
       }else if(JSXParserRegex.test(value)){
         const instance=normalizeJSXPropValue(config, key);
         if(!isString(instance)) {
-          $debug_log(`property key value passed to the "html" macro is not a valid prop name\n\ntype of "${typeof instance}" found >>>> Expects a "string" value`);
+          debugHandler(`property key value passed to the "html" macro is not a valid prop name\n\ntype of "${typeof instance}" found >>>> Expects a "string" value`);
           return;
         }
         vnode.props[instance]=vnode.props[key];
@@ -10378,8 +11162,10 @@ const Houxit=(function(global){
       delete vnode.props.key;
     }
     if(attrs && isBlockTag(tagName)){
-      if(!hasOwn(vnode.props, 'exp')  || len(vnode.props) > 1 ) vnode.props={
-        exp:attrs
+      if(!hasOwn(vnode.props, 'exp')  || len(vnode.props) > 1 ) {
+        vnode.props={
+          exp:attrs
+        }
       }
       vnode.props.exp=escapeReverseDecoder(vnode.props.exp || "");
     }
@@ -10489,15 +11275,18 @@ const Houxit=(function(global){
         let [ match, tagName ]=tagMatch.match(closingTagRegex);
         let lastLoader=trackNodes[len(trackNodes)-1];
         if(len(loaderList)){
-          if(config.JSXParser && tagName === "/") child_src= finishTagLoader(tagName, {
-            loaderList,
-            trackNodes,
-            child_src
-          }, NodeList, self, config, tagMatch);
-          else if(len(trackNodes) && new Set(trackNodes).has(tagName) ){
+          if(config.JSXParser && tagName === "/") {
+            child_src= finishTagLoader(tagName, {
+              loaderList,
+              trackNodes,
+              child_src
+            }, NodeList, self, config, tagMatch);
+          }else if(len(trackNodes) && new Set(trackNodes).has(tagName) ){
             child_src+=tagMatch;
             let mIndex=trackNodes.findLastIndex((f)=> f == tagName);
-            if(mIndex > -1) trackNodes.splice(mIndex, 1);
+            if(mIndex > -1) {
+              trackNodes.splice(mIndex, 1);
+            }
             continue;
           }else if(tagName === loaderList[0][0]){
             child_src=finishTagLoader(tagName, {
@@ -10553,9 +11342,11 @@ const Houxit=(function(global){
     return __HouxitHTMLParser__(...arguments);
   }
   function negotiateRawDirective(self, node){
-    if(!node.props) return;
+    if(!node.props) {
+      return;
+    }
    const { hasDir, getDir, getKey } = dirExistenceCheck(node.props, "$$raw");
-    if(isTrue(hasDir) && isHouxitBuild(self) )  {
+    if((hasDir) && isHouxitBuild(self) )  {
       node.filesFilter['dir--raw']=getDir;
     }
   }
@@ -10603,7 +11394,7 @@ const Houxit=(function(global){
     const args=()=> [ hx_Element, NodeList, tagName, context, fall ];
     if(isString(tagName) && isBlockTag(tagName)) {
       if(!isHouxitBuild(self)) {
-        $debug_log(`block tags Cannot be used in build/static templates mode`, self, true);
+        debugHandler(`block tags Cannot be used in build/static templates mode`, self, true);
       }else {
         return blockElementsPreProcessors(self, vNode, args(), config );
       }
@@ -10640,8 +11431,9 @@ const Houxit=(function(global){
     let childNodes;
     if(isString(node) && node.trim()) {
       childNodes=templateTextNodeCompiler(self, node, hx_Element, config,  NodeList, fall);
-    }else if(isHtmlComment(node))/*Ignore comment nodes*/pass;
-    else if(isVNodeClass(node)) {
+    }else if(isHtmlComment(node)){
+      /*Ignore comment nodes*/pass;
+    }else if(isVNodeClass(node)) {
       node.filesFilter.parent=config?.slotTap?.parent || hx_Element || self;
       childNodes=templateElementNodeCompiler(self, node, hx_Element, config, NodeList, fall );
     }else if(isTemplateClass(node)){
@@ -10689,7 +11481,9 @@ const Houxit=(function(global){
     }
   }
   function _HouxitCoreRenderer(html, self, parent, hx_Element, fall, config={}){
-    if(!html && !validateType(html, [String, Array, Object])) return null;
+    if(!html && !validateType(html, [String, Array, Object])) {
+      return null;
+    }
     const is_hyperscript=self[$$$core].map.is_hyperscript;
     const isRerender=self[$$$operands]?.initializedRender;
     let templateRender= isString(html) ? __HouxitHTMLParser__(html, [], {
@@ -10713,10 +11507,14 @@ const Houxit=(function(global){
   }
   function SSRNodesCollectionStrategy(self, NodeList){
     const isSSR=isSSRCompiler(self);
-    if(!isSSR) return NodeList;
+    if(!isSSR) {
+      return NodeList;
+    }
     const ssr_list=new Tuple();
     for(let [ index, vNode] of NodeList.entries()){
-      if(!isTextOrNativeElement(vNode) && !isHouxitFragmentElement(vNode)) continue;
+      if(!isTextOrNativeElement(vNode) && !isHouxitFragmentElement(vNode)) {
+        continue;
+      }
       ssr_list.add(vNode.VNodeManager.SSRVnode);
     }
     return ssr_list;
@@ -10731,7 +11529,7 @@ const Houxit=(function(global){
     let data;
     const ctx=[children, exp ];
     if(blockN === 'if') {
-      template = blockIFPreprocessor(...args(), ctx);
+      template = blockIFPreprocessor(...args(), ctx, config);
     }else if(blockN === 'else' || blockN === "else:if") {
       blockElseIfPreprocessor(self, node, config, blockN);
     }else if(blockN === 'for') {
@@ -10746,8 +11544,40 @@ const Houxit=(function(global){
       template = blockHtmlEmbedder(...args(), ctx, config);
     }else if(blockN === 'debugger') {
       blockInstallDebugger(self, node, blockN,  metrics , [children, exp], config);
+    }else if(blockN === 'await'){
+      createAwaitBlockNode(...args(), ctx, config);
     }
     return arrayInverter(template);
+  }
+  function createAwaitBlockNode(self, node, blockN,  metrics , [children, exp], config){
+    const [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
+    const Node=new HouxitTextElement('', self);
+    const isRerender=self[$$$operands].initializedRender;
+    let subscribers, val;
+    async function getResp(){
+      [subscribers, val]= await effectDependencyTracking(self, ()=>{
+        return _$runModelBind(self, exp, hx_Element);
+      })
+      return await val;
+    };
+    const response=getResp();
+    Node.VNodeManager.awaitTextReady=response;
+    const boundary=getBoundary(node);
+    if(boundary){
+      boundary.activeAwaits++;
+      boundary.loadChain.add(response);
+    }
+    response.then((value)=>{
+      const N=new HouxitTextElement(compileToRenderable(value), self);
+      if(isRerender){
+        Node.$element=N.$element;
+        Node.prototype_=N.prototype_;
+      }else{
+        Node.$element.textContent=N.$element;
+        Node.prototype_=N.prototype_;
+      }
+    });
+    NodeList.add(Node);
   }
   function blockInstallDebugger(self, node, blockN,  metrics , [children, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics;
@@ -10762,51 +11592,57 @@ const Houxit=(function(global){
   function blockClassTransformer(self, node, blockN,  metrics , [children, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics
     if(!variableDeclarationRegex.test(exp)){
-      $debug_log(`template "@class" block declaration failure \n\ndoes not meet required name and args syntax rules`, self, true);
+      debugHandler(`template "@class" block declaration failure \n\ndoes not meet required name and args syntax rules`, self, true);
       return;
     }
     let [ match, var_name, var_params]= exp.match(variableDeclarationRegex);
     let validator;
-    if(var_params) validator=var_params.match(templateClassValidatorRegex);
+    if(var_params) {
+      validator=var_params.match(templateClassValidatorRegex);
+    }
     if(validator){
       var_params=var_params.slice(len(validator[0]));
       validator=validator[1];
       validator=_$runModelBind(self, validator, hx_Element);
       if(!isPFunction(validator)){
-        $debug_log(`@class: template "@class" block validator prop expects a plain function callback reference`, self, true);
+        debugHandler(`@class: template "@class" block validator prop expects a plain function callback reference`, self, true);
         return;
       }
     }
     if(var_params){
       var_params=var_params.trim();
       if(!(var_params.startsWith("(") && var_params.endsWith(")"))){
-        $debug_log(`${var_name}: arguments of template class "${var_name}" does not meet required syntax\nmissing parenthesis in arguments enclosure  "(" and ")"`, self, true);
+        debugHandler(`${var_name}: arguments of template class "${var_name}" does not meet required syntax\nmissing parenthesis in arguments enclosure  "(" and ")"`, self, true);
         return;
       }
     }
     var_name = var_name || match;
     if(!isValidIdentifier(var_name)){
-      $debug_log(`template "@class" block name "${var_name}" is not a JavaScript valid identifier`, self, true);
+      debugHandler(`template "@class" block name "${var_name}" is not a JavaScript valid identifier`, self, true);
       return;
     }
     function templateKlassGenerator(...props){
       const isValid= validator ? validator([...props]) : true;
       if(!isBoolean(isValid)){
-        $debug_log(`TemplateClass validator expects a Boolean return value\nvalidation proceses failed`, self, true);
+        debugHandler(`TemplateClass validator expects a Boolean return value\nvalidation proceses failed`, self, true);
         return false
       }else if(!isValid){
-        $debug_log(`validation method for template class "${var_name}" failed\nreturns falsy in its props validation check`, self, true);
+        debugHandler(`validation method for template class "${var_name}" failed\nreturns falsy in its props validation check`, self, true);
         return false;
       }
       return true;
     };
-    if(var_params) var_params=var_params.slice(1).slice(0, -1);
+    if(var_params) {
+      var_params=var_params.slice(1).slice(0, -1);
+    }
     const parameters=separateArgsLiterals(var_params);
     class TemplateClass extends BaseTemplateClass{
       constructor(...args){
         super(()=>children);
         const validator = templateKlassGenerator(...args);
-        if(!validator) return []
+        if(!validator) {
+          return [];
+        }
         this[TemplateClassKey]=function factory(){
           const ssc=smartDextCtxMerging(fall, {
             [$$dexTransformKey]:{
@@ -10814,21 +11650,24 @@ const Houxit=(function(global){
               sourcesArray:[...args]
             }
           });
-          return _HouxitCoreRenderer(memMove(children, true), self, null, hx_Element, ssc, config );
+          return config.suspenseFlag ? children : _HouxitCoreRenderer(memMove(children, true), self, null, hx_Element, ssc, config );
         }
       }
     }
-    if(!hasOwn(self.__public_model__, var_name)) define(self.__public_model__, var_name, {
-      value:TemplateClass,
-      enumerable
-    });
+    if(!hasOwn(self.__public_model__, var_name)) {
+      define(self.__public_model__, var_name, {
+        value:TemplateClass,
+        enumerable
+      });
+    }
     return [];
   }
   function createCatacombs(setup, val, char){
     const rChar=char === "{" ? "}" : "]";
     if(val===char) {
-      if(setup.open && setup.type === char) setup.openCurlies++;
-      else if(!setup.open){
+      if(setup.open && setup.type === char) {
+        setup.openCurlies++;
+      }else if(!setup.open){
         setup.open=true;
         setup.type=char;
       }
@@ -10843,7 +11682,9 @@ const Houxit=(function(global){
         setup.single=[];
         setup.open=false;
         setup.type=null;
-      }else if(setup.open && setup.type !== char) setup.single.push(val);
+      }else if(setup.open && setup.type !== char) {
+        setup.single.push(val);
+      }
     }
   }
   function separateArgsLiterals(syntax){
@@ -10867,13 +11708,18 @@ const Houxit=(function(global){
       }else if(isStrRegex(val) && val === setup.concat){ 
         setup.concat=null;
         single.push(val);
-      }else if(val==="{" || val==="}" && !setup.concat) createCatacombs(setup, val, "{");
-      else if(val===',' || /\s/.test(val)){
+      }else if(val==="{" || val==="}" && !setup.concat) {
+        createCatacombs(setup, val, "{");
+      }else if(val===',' || /\s/.test(val)){
         if(setup.concat);
-        else if(!setup.open) continue;
-        else setup.single.push(val);
-      }else if(val === "[" || val==="]" && !setup.concat) createCatacombs(setup, val, "[");
-      else{
+        else if(!setup.open) {
+          continue;
+        }else {
+          setup.single.push(val);
+        }
+      }else if(val === "[" || val==="]" && !setup.concat) {
+        createCatacombs(setup, val, "[");
+      }else{
         if(!setup.open){
           setup.open=true;
           setup.single.push(val);
@@ -10894,7 +11740,7 @@ const Houxit=(function(global){
     let args=hasArg ? ArgsExtractor(exp, name).content : undefined;
     args= args ? _$runModelBind(self, '['+args+']', hx_Element || fall) : [];
     const templateKlass=_$runModelBind(self, name, hx_Element);
-    const deb=()=>$debug_log(`"${name}" reference is not a valid TemplateClass instance`, self, true);
+    const deb=()=>debugHandler(`"${name}" reference is not a valid TemplateClass instance`, self, true);
     if(!isClass(templateKlass) ){
       deb();
       return [];
@@ -10910,19 +11756,21 @@ const Houxit=(function(global){
   function blockConstPreprocessor(self, node, blockN,  metrics , [children, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
     if(exp.trim() && !variableDeclarationRegex.test(exp)){
-      $debug_log(`"${exp}" statement is not recognised or not a valid statement or expression`, self);
+      debugHandler(`"${exp}" statement is not recognised or not a valid statement or expression`, self, true);
       return [];
-    }else if(!exp.trim()) return [];
+    }else if(!exp.trim()) {
+      return [];
+    }
     let [ match, variable, expression ] = exp.match(variableDeclarationRegex);
     variable=variable.trim();
     if(!isDestructureSyntax(variable) && !isValidIdentifier(variable)){
-      $debug_log(`"${variable}" is an invalid identifier`, self);
+      debugHandler(`"${variable}" is an invalid identifier`, self, true);
       return []
     }
     const data = _$runModelBind(self, expression?.trim(), hx_Element || context );
     if(isDestructureSyntax(variable)){
       if(isFalse(destructWarn(variable, data, self))){
-        return []
+        return [];
       }
       smartDextCtxMerging(fall, {
         [$$dexTransformKey]:{
@@ -10930,9 +11778,10 @@ const Houxit=(function(global){
           syntaxArray:[variable]
         }
       }, true);
-    }else if(!hasOwn(context, variable)) fall[variable]=data;
-    else if(hasOwn(context, variable)){
-      $debug_log(`"${variable}" const block namespace already declared\nor instance cannot be re-declared/re-assigned`, self);
+    }else if(!hasOwn(context, variable)) {
+      fall[variable]=data;
+    }else if(hasOwn(context, variable)){
+      debugHandler(`"${variable}" const block namespace already declared\nor instance cannot be re-declared/re-assigned`, self, true);
     }
   }
   function blockForProcessor(self, node, blockN, metrics , [children, exp]){
@@ -10940,13 +11789,15 @@ const Houxit=(function(global){
     let Loop_Data=For_Loop(self, exp, hx_Element, true);
     let template = [];
     if(!isIterable(Loop_Data.obj) && !isNumber(Loop_Data.obj)){
-      $debug_log(`${getType(Loop_Data.obj)} value passed to the if block is not an iterable object`, self, true);
+      debugHandler(`${getType(Loop_Data.obj)} value passed to the if block is not an iterable object`, self, true);
       return template;
     }
     function factoryRender(option, config){
-      return _HouxitCoreRenderer(children, self, true, hx_Element, option, config);
+      return config.suspenseFlag ? children : _HouxitCoreRenderer(children, self, true, hx_Element, option, config);
     }
-    if(!warnTemplateMemo(self, node, NodeList)) return;
+    if(!warnTemplateMemo(self, node, NodeList)) {
+      return;
+    }
     iterate(unwrap(Loop_Data.obj), Loop_Data.loopType).each((value, key, index)=>{
       const options=assign(fall||{}, {});
       const config={};
@@ -10960,16 +11811,20 @@ const Houxit=(function(global){
         count:index
       }, options );
       const source=factoryRender(options, config);
-      if(!warnTemplateMemo(self, node, source)) return;
+      if(!warnTemplateMemo(self, node, source)) {
+        return;
+      }
       if(isCollection(source)){
         for(let [ ind, vnode] of getIterator(source)){
           template.push(vnode);
         }
-      }else template.push(source);
+      }else {
+        template.push(source);
+      }
     });
     return template;
   }
-  function blockIFPreprocessor(self, node, blockN,  metrics, [rawChildren, exp]){
+  function blockIFPreprocessor(self, node, blockN,  metrics, [rawChildren, exp], config){
     const [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
     const children=node.children || [];
     const [ subscribers, data ]=effectDependencyTracking(self, ()=>{
@@ -10977,7 +11832,7 @@ const Houxit=(function(global){
     });
     let template = []
     const condition = unwrap(data) ? true : false;
-    const config={
+    config=assign({
       if_Block:true,
       props:{
         status:condition,
@@ -10986,25 +11841,35 @@ const Houxit=(function(global){
         shouldContinue:!condition
       },
       ctx:{},
-      keywordLists:[]
-    }
+      keywordLists:[],
+    }, config);
     for(const [index, vNode] of children.entries()){
-      if(!warnTemplateMemo(self, vNode, NodeList)) return;
+      if(!warnTemplateMemo(self, vNode, NodeList)) {
+        return;
+      }
       const res=conditionalBlockCompile(self, vNode, metrics, config, NodeList, vNode.props?.exp);
-      if(!res) break;
+      if(!res) {
+        break;
+      }
     }
   }
   function conditionalBlockCompile(self, vNode, metrics, config, NodeList, exp){
     const [ hx_Element, tagName, context, fall ] = metrics ;
     const blockN=!isString(vNode) ? ( isBlockTag(vNode.type) ? getBlockTagName(vNode.type) : vNode.type) : vNode;
     if(isString(vNode)){
-      if(!config.props.status) return true;
+      if(!config.props.status) {
+        return true;
+      }
       const node=new HouxitTextElement(vNode, self);
       NodeList.add(node);
       return true;
     }else if( blockN === 'else:if'){
-      if(!conditionTagOrderCheck(self, config, 'else:if')) return false;
-      if(!config.props.shouldContinue) return false;
+      if(!conditionTagOrderCheck(self, config, 'else:if')) {
+        return false;
+      }
+      if(!config.props.shouldContinue) {
+        return false;
+      }
       const [ subscribers, data ]=effectDependencyTracking(self, ()=>{
         return _$runModelBind(self, exists(exp.trim()) ? exp : "undefined", hx_Element);
       });
@@ -11013,28 +11878,34 @@ const Houxit=(function(global){
       config.props.shouldContinue=!condition;
       return true;
     }else if(blockN === "else" ) {
-      if(!conditionTagOrderCheck(self, config, 'else')) return false;
-      if(!config.props.shouldContinue) return false;
+      if(!conditionTagOrderCheck(self, config, 'else')) {
+        return false;
+      }
+      if(!config.props.shouldContinue) {
+        return false;
+      }
       config.props.status=true;
       config.props.shouldContinue=false;
       return true;
     }
-    if(!config.props.status) return true;
-    const vNodes=_HouxitCoreRenderer(vNode, self, true, hx_Element, fall, config);
+    if(!config.props.status) {
+      return true;
+    }
+    const vNodes=config.suspenseFlag ? vNode : _HouxitCoreRenderer(vNode, self, true, hx_Element, fall, config);
     iterate(arrayInverter( vNodes)).each((node)=> NodeList.add(node));
     return true;
   }
   function conditionTagOrderCheck(self, config, tag){
     const prev=config.keywordLists[len(config.keywordLists)-1];
     if(prev === 'else' && (tag === 'else' || tag === 'else:if')){
-      $debug_log(`An "@else" block already existing\n\nUnresolved Error:: cannot precced with the "@${tag}" block`, self, true);
+      debugHandler(`An "@else" block already existing\n\nUnresolved Error:: cannot precced with the "@${tag}" block`, self, true);
       return false;
     }
     config.keywordLists.push(tag);
     return true;
   }
   function blockElseIfPreprocessor(self, node, config, blockN){
-    $debug_log(`The "@${blockN}" block cannot be used outside of the "@if" template block scope`, self, true);
+    debugHandler(`The "@${blockN}" block cannot be used outside of the "@if" template block scope`, self, true);
     return;
   }
   function instance_Has_Block(self, name ){
@@ -11053,9 +11924,9 @@ const Houxit=(function(global){
     if(isBuiltinBlocks(blockN)) {
       renderedNodes = controlBuiltInBlocks(self, vNode, blockN, metrics, config)
     }else if(instance_Has_Block(self, blockN)){
-      renderedNodes=customBlocksTraverse(self, vNode, blockN, metrics);
+      renderedNodes=customBlocksTraverse(self, vNode, blockN, metrics, config);
     }else{
-      $debug_log(`((Block Resolver Error))\n\n"@${blockN}" block is not a registered block element`, self, true);
+      debugHandler(`((Block Resolver Error))\n\n"@${blockN}" block is not a registered block element`, self, true);
       return;
     }
     for(const [ index, vnode ] of (!isArray(renderedNodes) ? (validateType(renderedNodes, [Set, Tuple]) ? [...arrSet(renderedNodes)] : [renderedNodes] ) : renderedNodes).entries()){
@@ -11063,7 +11934,7 @@ const Houxit=(function(global){
     }
     return renderedNodes;
   }
-  function customBlocksTraverse(self, node, blockN,  metrics){
+  function customBlocksTraverse(self, node, blockN,  metrics, config){
     let [ hx_Element, NodeList, tagName, context, fall ] = metrics ;
     const children=node.rawChildren;
     const blockConfig={
@@ -11075,11 +11946,11 @@ const Houxit=(function(global){
     if(isPObject(block)){
       if(hasOwn(block, 'blockConfig')){
         if(!isPObject(block.blockConfig)){
-          $debug_log(`"blockConfig" option of "${blockN}" custom block is not a valid type...\nExpects a plain object`, self, true);
+          debugHandler(`"blockConfig" option of "${blockN}" custom block is not a valid type...\nExpects a plain object`, self, true);
         }else assign(blockConfig, block.blockConfig);
         iterator(block.blockConfig).each((value, key)=>{
           if(!_makeMap_('isVoid,compileExp', key)){
-            $debug_log(`blockConfig option of "${key}" is not a recognised config option`, self, true);
+            debugHandler(`blockConfig option of "${key}" is not a recognised config option`, self, true);
             delete blockConfig[key];
           }
         });
@@ -11098,9 +11969,9 @@ const Houxit=(function(global){
         return createRenderlessElement();
       }
       if(!isPObject(ctx)){
-        $debug_log(`context data passed to factoryRender expects a plain object`, self);
+        debugHandler(`context data passed to factoryRender expects a plain object`, self);
       }
-      return _HouxitCoreRenderer(children, self, true, hx_Element, smartDextCtxMerging(fall||{}, ctx));
+      return config.suspenseFlag ? arrayInverter(children) : _HouxitCoreRenderer(children, self, true, hx_Element, smartDextCtxMerging(fall||{}, ctx));
     }
     function endFactoryRender(vNode){
       if(!validateCollectionArgs(arguments, {
@@ -11122,7 +11993,7 @@ const Houxit=(function(global){
   function createKlassBoilerPlate(callback, ...args){
     return function factory(self, parent, hx_Element, fall, config){
       const boilerPlate=callback(...args);
-      return _HouxitCoreRenderer( boilerPlate, self, parent, hx_Element, fall, config={});
+      return config.suspenseFlag ? boilerPlate : _HouxitCoreRenderer( boilerPlate, self, parent, hx_Element, fall, config={});
     }
   }
   function __createTemplateClass_Parser(fn, name){
@@ -11154,7 +12025,9 @@ const Houxit=(function(global){
     if(isTrue(parent) && len(NodeList)) {
       const response = len(NodeList) > 1 ? NodeList : NodeList[0];
       return isString(response) ? new HouxitTextElement( response, parent) : response ;
-    }else if(len(NodeList)) return len(NodeList) > 1 ?  new HouxitFragmentElement( NodeList, parent) : ( isPrimitive(NodeList[0]) ? new  HouxitTextElement(isNull(NodeList[0]) ? "" :  NodeList[0], parent) : NodeList[0] ) ;
+    }else if(len(NodeList)) {
+      return len(NodeList) > 1 ?  new HouxitFragmentElement( NodeList, parent) : ( isPrimitive(NodeList[0]) ? new  HouxitTextElement(isNull(NodeList[0]) ? "" :  NodeList[0], parent) : NodeList[0] ) ;
+    }
     else return null ;
   }
   function normalizePreJSXFormat(strings, values){
@@ -11175,16 +12048,18 @@ const Houxit=(function(global){
   }
   function __EncodeJSXParser__(strings, values){
     if(!isFunction(strings.reduce)){
-      $debug_log(`html macro can only be called with backticks embeded directly to method name\n\n"html\`<templates>\`" instead of "html()"\nCheck html macro call`);
+      debugHandler(`html macro can only be called with backticks embeded directly to method name\n\n"html\`<templates>\`" instead of "html()"\nCheck html macro call`);
       return
     }
-    if(len(values)) return normalizePreJSXFormat(strings, values);
+    if(len(values)) {
+      return normalizePreJSXFormat(strings, values);
+    }
     const html = strings.reduce(( acc, str, i) => {
       const value = !isNull( values[i]) ? values[i] : '';
       return acc + str + value;
     }, ''); 
     if(!isString(html)){
-      $debug_log(`html parser macro expects strings values`);  
+      debugHandler(`html parser macro expects strings values`);  
       return null;
     }
     return __HouxitHTMLParser__( html, [], {
@@ -11199,7 +12074,7 @@ const Houxit=(function(global){
   }
   function markdown(mkd, ...values){
     if(!isString(mkd)){
-      $debug_log(`markdown helper expects strings values`);
+      debugHandler(`markdown helper expects strings values`);
       return null
     }
   }
@@ -11222,7 +12097,7 @@ const Houxit=(function(global){
   function generateCustomElementConstructor(name){
     name = ToPascalCase(name);
     if(!isValidIdentifier(name)){
-      $debug_log(`unable to parse the customElements tag name\n\n
+      debugHandler(`unable to parse the customElements tag name\n\n
       seems to have been an invalid identifier`);
       return;
     }
@@ -11241,7 +12116,9 @@ const Houxit=(function(global){
       validators:[[Function,Object]],
       name:"createCustomElement"
     });
-    if(!response) return
+    if(!response) {
+      return;
+    }
     const LifeCycleHooksList="onConnected,onDisconnected,onAdopted,onAttrChanged,plugin";
     const isMNEOwnOptions=opt=>_makeMap_(LifeCycleHooksList, opt);
     let Hooks={};
@@ -11249,7 +12126,7 @@ const Houxit=(function(global){
     entries(widget).forEach(([ind, value])=>{
       if(_makeMap_(LifeCycleHooksList, ind)){
         if(!isFunction(value)){
-          $debug_log(`LifeCycle callback error\n\n"${ind}" is a callback function, received an invalid type`);
+          debugHandler(`LifeCycle callback error\n\n"${ind}" is a callback function, received an invalid type`);
           return;
         }
         if(ind != 'plugin'){
@@ -11291,14 +12168,16 @@ const Houxit=(function(global){
         min:1,
         max:2,
         validators:[String, String]
-      })) return;
+      })) {
+        return;
+      }
       if(!isString(name) && isEmptyStr(name) && IS_VALID_TAGNAME(name)){
-        $debug_log('Name positional argument passed to define is not a string or a valid name value\n\n or may have conflicted with native html/svg/mathml tags');
+        debugHandler('Name positional argument passed to define is not a string or a valid name value\n\n or may have conflicted with native html/svg/mathml tags');
         return;
       }
       if(inherit && !isString(inherit) && !IS_HTML_TAG(inherit)){
-        $debug_log(`problem with the inherit value, \n\n may not be a string value or a valid HTML tagName`);
-        $debug_log(`CustomElement registration failed`);
+        debugHandler(`problem with the inherit value, \n\n may not be a string value or a valid HTML tagName`);
+        debugHandler(`CustomElement registration failed`);
         return;
       }
       const CustomElementsInstance=generateCustomElementConstructor(name);
@@ -11315,7 +12194,9 @@ const Houxit=(function(global){
       min:1,
       max:2,
       validators:[Function, Object]
-    })) return;
+    })) {
+      return;
+    }
     return new AsyncWidget(callback, config);
   }
   function asyncWidget(load, config){
@@ -11326,29 +12207,36 @@ const Houxit=(function(global){
   }
   function _defineWidget(opts, options){
     if(!validHouxitWidget(opts)){
-      $debug_log(`widget transform Error\n\n 
+      debugHandler(`widget transform Error\n\n 
         invalid widget instance\n/... at /././. at`);
       return;
     }else if(len(arguments) > 2){
-      $debug_log(`Parameter Error\n\nmax-2 argument required\n ${len(arguments)} given`);
+      debugHandler(`Parameter Error\n\nmax-2 argument required\n ${len(arguments)} given`);
       return;
     }else if(isPObject(opts) || isFunction(opts)){
-      if(isAFunction(opts) && null) $warn(`Houxit style guides recommend against the use of Arrow functions as widget build instances.\n\n
+      if(isArrowFunction(opts) && null) $warn(`Houxit style guides recommend against the use of Arrow functions as widget build instances.\n\n
       "<${opts.name}>" widget is an Arrow functions widget type`);
       const type=hydrate_widget_type(opts);
       let widget= new Object();
-      if(isPFunction(opts)) widget.build=opts;
-      else if(isPObject(opts)){
+      if(isPFunction(opts)) {
+        widget.build=opts;
+      }else if(isPObject(opts)){
         for( const [ key, value ] of entries(opts)){
-          if(!hasProp(widget, key)) widget[key]=value;
+          if(!hasProp(widget, key)) {
+            widget[key]=value;
+          }
         }
-      }else if(isClass(opts)) widget=new opts();
+      }else if(isClass(opts)) {
+        widget=new opts();
+      }
       if(options) {
         for( const [ key, value ] of entries(options)){
           if(!hasProp(widget, key ) && !isHouxitProp(key)) widget[key]=value;
         }
       }
-      if(!hasOwn(widget, widgetTypeKey)) widget[widgetTypeKey]=type;
+      if(!hasOwn(widget, widgetTypeKey)) {
+        widget[widgetTypeKey]=type;
+      }
       return widget;
     }
   }
@@ -11363,11 +12251,11 @@ const Houxit=(function(global){
       options = options.type;
     }
     if(!validHouxitWidget(options)){
-      $debug_log(`initBuild Error\n\nCannot compile value as a Houxit widget\nMaybe an invalid houxit widget value`);
+      debugHandler(`initBuild Error\n\nCannot compile value as a Houxit widget\nMaybe an invalid houxit widget value`);
       return  ;
     }else if(isBuiltinWidget(options)){
       const name = ToPascalCase(options[$$BuiltinWidgetKey].slice(3))
-      $debug_log(`The built-in "${name}" widget cannot be used in an initBuild widget App`);
+      debugHandler(`The built-in "${name}" widget cannot be used in an initBuild widget App`);
       return ;
     }
     const widget = createVNodeClass(...values(propsAndChildrenGetter( ...arguments )));
@@ -11376,7 +12264,9 @@ const Houxit=(function(global){
   }
   function _initBuild(options, props, children){
     const widget = initialBuildTransform(...arguments);
-    if(!isVNodeClass(widget)) return undefined;
+    if(!isVNodeClass(widget)) {
+      return undefined;
+    }
     return new HouxitBuild( widget );
   }
   function initBuild(options, propsOrChildren, childrenOrProps){
@@ -11389,7 +12279,7 @@ const Houxit=(function(global){
   }
   function _renderToStringCompiler(build, config){
     if(!isSSRCompiler(build)){
-      $debug_log(`"renderToString" macro was called on a non SSR renderer build...\n\nplease check if you may have used "initBuild" app initializer was used instead of the "initSSRBuild"`);
+      debugHandler(`"renderToString" macro was called on a non SSR renderer build...\n\nplease check if you may have used "initBuild" app initializer was used instead of the "initSSRBuild"`);
       return undefined;
     }
     return new Promise((resolve)=>{
@@ -11405,21 +12295,29 @@ const Houxit=(function(global){
     vnodes=arrayInverter(vnodes);
     const isHy=isHydration(self);
     for(let [index, node] of vnodes.entries()){
-      if((isHy ? isSSRText(node) : isString(node))) html += isHy ? node.content : node;
-      else if(isVNodeClass(node)){
+      if((isHy ? isSSRText(node) : isString(node))) {
+        html += isHy ? node.content : node;
+      }else if(isVNodeClass(node)){
         let src="<"+node.type;
         const ctx={};
         if(node.props) src+=compileSSRProps(node.props, ctx);
         src+=">";
         if(!IS_HTML_VOID_TAG(node.type)) {
           if(len(ctx)){
-            if(ctx.innerHTML) src+=ctx.innerHTML;
-            else if(ctx.innerText) src+=ctx.innerText;
-          }else if(node.children) src+=vnodesConversionPipeline(self, node.children);
+            if(ctx.innerHTML) {
+              src+=ctx.innerHTML;
+            }else if(ctx.innerText) {
+              src+=ctx.innerText;
+            }
+          }else if(node.children) {
+            src+=vnodesConversionPipeline(self, node.children);
+          }
           src += "</"+node.type+">";
         }
         html+=src;
-      }else if((isHy ? isSSRFragment(node) : isCollection(node))) html += vnodesConversionPipeline(self, arrSet(isHy ? node.fragment : node));
+      }else if((isHy ? isSSRFragment(node) : isCollection(node))) {
+        html += vnodesConversionPipeline(self, arrSet(isHy ? node.fragment : node));
+      }
     }
     return html;
   }
@@ -11450,7 +12348,9 @@ const Houxit=(function(global){
       type:'stream',
       render:None
     });
-    if(!isVNodeClass(vNode)) return undefined;
+    if(!isVNodeClass(vNode)) {
+      return undefined;
+    }
     return new HouxitBuild( vNode );
   }
   function initAsyncBuild(options, propsOrChildren, childrenOrProps){
@@ -11462,25 +12362,25 @@ const Houxit=(function(global){
   function defineElementOptionsValidator(options){
     const optionsName="type,props,children";
     if(!isPObject(options)){ 
-      $debug_log(`createVNode Error:\n expects an 'object' at......\n\nparameter 1`);
+      debugHandler(`createVNode Error:\n expects an 'object' at......\n\nparameter 1`);
       return false;
     }else if(len(options) > 3){
-      $debug_log(`Options Error\n\n createVNode does not accept more than 3 options props arguments`);
+      debugHandler(`Options Error\n\n createVNode does not accept more than 3 options props arguments`);
       return false
     }else if(!options.type && !validateType(options.type, [String, Object, Function ] )){
-      $debug_log(`Unexpected value passed to type in createVNode\n\n"${getType(options.type)}" is an invalid type value to type option`);
-      $debug_log(`NOTE : The "type" option is required`);
+      debugHandler(`Unexpected value passed to type in createVNode\n\n"${getType(options.type)}" is an invalid type value to type option`);
+      debugHandler(`NOTE : The "type" option is required`);
       return false;
     }
     for(let [ name, opt ] of entries(options)){
       if(!_makeMap_(optionsName, name)) {
-        $debug_log(`${name} is not a valid createVNode options value`);
+        debugHandler(`${name} is not a valid createVNode options value`);
         return false;
       }else if(name === 'props' && opt && !isPObject(opt)){
-        $debug_log(`Element props property expects an object value\n\nUnexpected "${getType(opt)}" value`);
+        debugHandler(`Element props property expects an object value\n\nUnexpected "${getType(opt)}" value`);
         return false;
       }else if(name  === 'children' && exists(opt) && !isChildrenNode(opt)){
-        $debug_log(`Element children property expects a valid houxit child node instance value\n\nUnexpected "${getType(opt)}" value`);
+        debugHandler(`Element children property expects a valid houxit child node instance value\n\nUnexpected "${getType(opt)}" value`);
         return false;
       }
     }
@@ -11490,7 +12390,9 @@ const Houxit=(function(global){
     return new vNodeClass(...arguments);
   }
   function _createVNode_ELEMENT(options){
-    if(!defineElementOptionsValidator(options)) return undefined;
+    if(!defineElementOptionsValidator(options)) {
+      return undefined;
+    }
     let { type , props , children } = options ;
     const vNode= createVNodeClass( type, props, children ) ;
     vNode.is_hyperscript=true;
@@ -11677,7 +12579,7 @@ const Houxit=(function(global){
   global.cloneVElement = cloneVElement ;
   global.createCustomElement = createCustomElement ;
   global._createFragment = _createFragment ;
-  global.$debug_log = $debug_log ; //dev
+  global.debugHandler = debugHandler ; //dev
   global.Fragment = Fragment ;
   global.createAgent = createAgent ;
   global.Exception = Exception ;
